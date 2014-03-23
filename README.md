@@ -32,8 +32,8 @@ Your ID will be shown in the address bar.
 ```
 
 Notes:
-# $HOME is resolved by trying, in order, the ENV variables HOME, HOMEPATH and USERPROFILE.
-# athleteId may alternatively be specified as a command line parameter
+1. $HOME is resolved by trying, in order, the ENV variables HOME, HOMEPATH and USERPROFILE.
+2. athleteId may alternatively be specified as a command line parameter
 
 Applications
 ------------
