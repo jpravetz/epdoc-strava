@@ -13,10 +13,11 @@ Installation
 ------------
 
 * [Install node](http://nodejs.org/download/).
-* [Install git](http://git-scm.com/downloads)
-* Clone or get this project
+* [Install and use git](http://git-scm.com/downloads) to clone or download a zip of [this project](https://github.com/jpravetz/strava)
 * Obtain your [Strava ID, secret and access token](https://www.strava.com/settings/api)
-* Look up your Strava Athlete ID. You can find your Athlete ID by going to your [Strava dashboard](http://www.strava.com/dashboard), and clicking on “My Profile”. Your ID will be shown in the address bar.
+* Look up your Strava Athlete ID. You can find your Athlete ID by going to
+your [Strava dashboard](http://www.strava.com/dashboard), and clicking on “My Profile”.
+Your ID will be shown in the address bar.
 * Create the file $HOME/.strava/settings.json as show here:
 
 ```
@@ -30,7 +31,9 @@ Installation
 }
 ```
 
-Note that $HOME is resolved by trying, in order, the ENV variables HOME, HOMEPATH and USERPROFILE.
+Notes:
+# $HOME is resolved by trying, in order, the ENV variables HOME, HOMEPATH and USERPROFILE.
+# athleteId may alternatively be specified as a command line parameter
 
 Applications
 ------------
@@ -46,20 +49,21 @@ Strava Command Line Application
 ```
 > bin/strava.js --help
 
-  Usage: strava.js [options]
+    Usage: strava.js [options]
 
-  Options:
+    Options:
 
-    -h, --help            output usage information
-    -V, --version         output the version number
-    -a, --athlete         Show athlete
-    -b, --bikes           Show list of bikes
-    -d, --dates <dates>   Comma separated list of activity date or date ranges in format '20141231-20150105',20150107
-    -s, --start <days>    Add activities from this many days ago (alternate way to specify date ranges)
-    -e, --end <days>      End day, used with --start
-    -k, --kml <file>      Create KML file for specified dates
-    -f, --filter <types>  Filter based on comma-separated list of activity types (as defined by Strava, 'Ride', 'Hike', 'Walk', etc), plus 'commute' and 'nocommute'
-    -v, --verbose         Verbose messages
+      -h, --help            output usage information
+      -V, --version         output the version number
+      -i, --id <athleteId>  Athlete ID. Defaults to value of athleteId in $HOME/.strava/settings.json
+      -a, --athlete         Show athlete details
+      -b, --bikes           Show list of bikes
+      -d, --dates <dates>   Comma separated list of activity date or date ranges in format '20141231-20150105',20150107
+      -s, --start <days>    Add activities from this many days ago (alternate way to specify date ranges)
+      -e, --end <days>      End day, used with --start
+      -k, --kml <file>      Create KML file for specified dates
+      -f, --filter <types>  Filter based on comma-separated list of activity types (as defined by Strava, 'Ride', 'Hike', 'Walk', etc), plus 'commute' and 'nocommute'
+      -v, --verbose         Verbose messages
 ```
 
 This command line application can be used to query Strava and:
