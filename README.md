@@ -14,11 +14,13 @@ Installation
 
 * [Install node](http://nodejs.org/download/).
 * [Install and use git](http://git-scm.com/downloads) to clone or download a zip of [this project](https://github.com/jpravetz/strava)
+* Run _cd strava; npm install_ to install nodejs library dependencies
 * Obtain your [Strava ID, secret and access token](https://www.strava.com/settings/api)
 * Look up your Strava Athlete ID. You can find your Athlete ID by going to
 your [Strava dashboard](http://www.strava.com/dashboard), and clicking on “My Profile”.
 Your ID will be shown in the address bar.
-* Create the file $HOME/.strava/settings.json as show here:
+* Create the file $HOME/.strava/settings.json as show below.
+* Run the application with _bin/strava.js --help_
 
 ```
 {
@@ -31,7 +33,9 @@ Your ID will be shown in the address bar.
 }
 ```
 
+
 Notes:
+
 1. $HOME is resolved by trying, in order, the ENV variables HOME, HOMEPATH and USERPROFILE.
 2. athleteId may alternatively be specified as a command line parameter
 
