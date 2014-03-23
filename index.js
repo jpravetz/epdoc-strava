@@ -1,0 +1,1 @@
+return require('./lib/stravaV3api');
