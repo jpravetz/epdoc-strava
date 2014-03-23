@@ -6,4 +6,5 @@ x-*
 *.tmp
 *.kml
 *.gpx
-
+*.pdf
+tmp.*
