@@ -19,9 +19,9 @@ var home = process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE;
 //var Config = require('a5config').init(env, [__dirname + '/../config/project.settings.json'], {excludeGlobals: true});
 //var config = Config.get();
 
-var configFile = Path.resolve( home, ".strava", "settings.json" );
-if( !fs.existsSync(configFile) ) {
-    console.log( "Error: config file does not exist: %s", configFile );
+var configFile = Path.resolve(home, ".strava", "settings.json");
+if (!fs.existsSync(configFile)) {
+    console.log("Error: config file does not exist: %s", configFile);
     process.exit(1);
 }
 
@@ -30,9 +30,10 @@ var config = require(configFile);
 
 program
     .version(version)
-    .option('-i, --id <athleteId>', "Athlete ID. Defaults to value of athleteId in $HOME/.strava/settings.json (this value is " + config.athleteId + ")" )
+    .option('-i, --id <athleteId>', "Athlete ID. Defaults to value of athleteId in $HOME/.strava/settings.json (this value is " + config.athleteId + ")")
     .option('-a, --athlete', "Show athlete details")
     .option('-b, --bikes', "Show list of bikes")
+    .option('-g, --friends [opt]', "Show athlete friends list (set opt to 'detailed' for a complete summary, otherwise id and name are returned)")
     .option('-d, --dates <dates>', "Comma separated list of activity date or date ranges in format '20141231-20150105',20150107", dateList)
     .option('-s, --start <days>', "Add activities from this many days ago (alternate way to specify date ranges)")
     .option('-e, --end <days>', "End day, used with --start")
@@ -45,9 +46,10 @@ program
 var opts = {
 //    start: program.start !== undefined ? parseInt(program.start, 10) : 7,
 //    end: program.end !== undefined ? parseInt(program.end, 10) : 0,
-    athleteId: parseInt(program.id,10) || config.athleteId,
+    athleteId: parseInt(program.id, 10) || config.athleteId,
     athlete: program.athlete,
     bikes: program.bikes,
+    friends: program.friends,
     kml: program.kml,
     dates: program.dates || [],     // array of date ranges, in seconds (not milliseconds)
     filter: _u.without(program.filter || [], 'commute', 'nocommute'),
@@ -112,6 +114,9 @@ function run(options) {
     if (options.bikes) {
         funcs.push(getBikes);
     }
+    if (options.friends) {
+        funcs.push(getFriends);
+    }
     if (options.dates) {
         funcs.push(getActivities);
     }
@@ -144,6 +149,13 @@ function run(options) {
         });
     }
 
+    function getFriends(callback) {
+        strava.getFriends({athleteId: options.athleteId, level: options.friends}, function (err, data) {
+            console.log("Friends: %s", JSON.stringify(data, null, '  '));
+            callback(err);
+        });
+    }
+
     function getActivities(callback) {
         var results = [];
         var count = 0;
@@ -159,10 +171,10 @@ function run(options) {
                 // callback(err, data);
                 // console.log("Found %s", data.length)
                 // results = results.concat(data);
-                if( err ) {
+                if (err) {
                     callback(err);
-                } else if( data && data.errors ) {
-                    callback( new Error(JSON.stringify(data)));
+                } else if (data && data.errors) {
+                    callback(new Error(JSON.stringify(data)));
                 } else {
                     count += data ? data.length : 0;
                     append(data);
@@ -201,7 +213,7 @@ function run(options) {
                 if (err) {
                     callback(err);
                 } else {
-                    console.log("Processing coordinates for " + activity.name);
+                    console.log("Processing coordinates for " + activity.start_date_local + " " + activity.name);
                     activity.coordinates = [];
                     _u.each(data, function (item) {
                         if (item && item.type === 'latlng' && item.data) {
@@ -218,6 +230,7 @@ function run(options) {
 
     function saveKml(callback) {
         var kml = new Kml();
+        // kml.setLineStyles(defaultLineStyles);
         kml.outputActivities(activities, options.kml, callback);
     }
 
