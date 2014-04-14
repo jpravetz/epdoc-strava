@@ -39,6 +39,7 @@ program
     .option('-e, --end <days>', "End day, used with --start")
     .option('-k, --kml <file>', "Create KML file for specified dates")
     .option('-f, --filter <types>', "Filter based on comma-separated list of activity types (as defined by Strava, 'Ride', 'Hike', 'Walk', etc), plus 'commute' and 'nocommute'", commaList)
+    .option('-s, --show', "When generating KML file, include additional info in KML description field")
     .option('-v, --verbose', "Verbose messages")
     .parse(process.argv);
 
@@ -50,12 +51,14 @@ var opts = {
     athlete: program.athlete,
     bikes: program.bikes,
     friends: program.friends,
+    show: program.show,
     kml: program.kml,
     dates: program.dates || [],     // array of date ranges, in seconds (not milliseconds)
     filter: _u.without(program.filter || [], 'commute', 'nocommute'),
     commuteOnly: (program.filter || []).indexOf('commute') >= 0 ? true : false,
     nonCommuteOnly: (program.filter || []).indexOf('nocommute') >= 0 ? true : false
 };
+
 
 if (program.start) {
     var t1 = (new Date()).getTime();
@@ -77,12 +80,17 @@ function dateList(val) {
         var p = range.split('-');
         var t0;
         var t1;
-        if (p && p.length > 1) {
-            t0 = dateStringToDate(p[0]);
-            t1 = dateStringToDate(p[1]) + DAY;
-        } else {
-            t0 = dateStringToDate(range);
-            t1 = t0 + DAY;
+        try {
+            if (p && p.length > 1) {
+                t0 = dateStringToDate(p[0]);
+                t1 = dateStringToDate(p[1]) + DAY;
+            } else {
+                t0 = dateStringToDate(range);
+                t1 = t0 + DAY;
+            }
+        } catch(e) {
+            console.log(e.toString() );
+            process.exit(1);
         }
         result.push({ after: t0 / 1000, before: t1 / 1000 });
     });
@@ -104,6 +112,15 @@ run(opts);
 function run(options) {
 
     var strava = new Strava(config.client);
+    var kml;
+
+    if( options.kml ) {
+        // Run this first to validate line styles before pinging strava APIs
+        kml = new Kml();
+        if( config.lineStyles ) {
+            kml.setLineStyles(config.lineStyles);
+        }
+    }
 
     var funcs = [];
     var activites;
@@ -229,9 +246,7 @@ function run(options) {
     }
 
     function saveKml(callback) {
-        var kml = new Kml();
-        // kml.setLineStyles(defaultLineStyles);
-        kml.outputActivities(activities, options.kml, callback);
+        kml.outputActivities(activities, options.kml, { show: options.show }, callback);
     }
 
     function listActivities(callback) {

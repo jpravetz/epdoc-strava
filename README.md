@@ -45,19 +45,21 @@ Strava Command Line Application
 
     Usage: strava.js [options]
 
-    Options:
+   Options:
 
-      -h, --help            output usage information
-      -V, --version         output the version number
-      -i, --id <athleteId>  Athlete ID. Defaults to value of athleteId in $HOME/.strava/settings.json
-      -a, --athlete         Show athlete details
-      -b, --bikes           Show list of bikes
-      -d, --dates <dates>   Comma separated list of activity date or date ranges in format '20141231-20150105',20150107
-      -s, --start <days>    Add activities from this many days ago (alternate way to specify date ranges)
-      -e, --end <days>      End day, used with --start
-      -k, --kml <file>      Create KML file for specified dates
-      -f, --filter <types>  Filter based on comma-separated list of activity types (as defined by Strava, 'Ride', 'Hike', 'Walk', etc), plus 'commute' and 'nocommute'
-      -v, --verbose         Verbose messages
+       -h, --help            output usage information
+       -V, --version         output the version number
+       -i, --id <athleteId>  Athlete ID. Defaults to value of athleteId in $HOME/.strava/settings.json (this value is 6355)
+       -a, --athlete         Show athlete details
+       -b, --bikes           Show list of bikes
+       -g, --friends [opt]   Show athlete friends list (set opt to 'detailed' for a complete summary, otherwise id and name are returned)
+       -d, --dates <dates>   Comma separated list of activity date or date ranges in format '20141231-20150105',20150107
+       -s, --start <days>    Add activities from this many days ago (alternate way to specify date ranges)
+       -e, --end <days>      End day, used with --start
+       -k, --kml <file>      Create KML file for specified dates
+       -f, --filter <types>  Filter based on comma-separated list of activity types (as defined by Strava, 'Ride', 'Hike', 'Walk', etc), plus 'commute' and 'nocommute'
+       -s, --show            When generating KML file, include additional info in KML description field
+       -v, --verbose         Verbose messages
 ```
 
 This command line application can be used to query Strava and:
@@ -70,7 +72,9 @@ Notes:
 
 * Different activity types are rendered using different colors
 * There is a Strava limit of 200 activities per call, so for date ranges that include more than 200 activities, only
-the first 200 activities are returned (yes I could make mulitple calls, but haven't implemented this yet).
+the first 200 activities are returned (yes I could make multiple calls, but haven't implemented this yet).
+* Strava description field is currently not included when using --show, and yes I need to fix this.
+* The --show field currently doesn't do unit conversion for the <5% of the planet that isn't using metric, and yes reluctantly I should fix this
 
 PDF Reports
 -----------
@@ -82,5 +86,5 @@ effort and may or may not ever complete it. It is at _bin/pdfgen.js_.
 Credits
 -------
 
-The stravaV3api.js file is from github, but I can't remember the source. If you know, please let me know so I can
-add attribution. I found it easier to grab a copy of this source file, and then modify it as needed for this project.
+The stravaV3api.js file is originally from [mojodna](https://github.com/mojodna/node-strav3/blob/master/index.js) and has
+been modified.
