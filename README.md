@@ -27,7 +27,12 @@ Your ID will be shown in the address bar.
         "secret": "ab123...0f",
         "token": "123..abc"
     },
-    "athleteId": 3456
+    "athleteId": 3456,
+
+    "lineStyles": {
+        "Commute": { "color": "C03030C0", "width": 4 },
+        "Run": { "color": "C000FF00", "width": 4 }
+    }
 }
 ```
 
@@ -36,6 +41,9 @@ Notes:
 
 1. $HOME is resolved by trying, in order, the ENV variables HOME, HOMEPATH and USERPROFILE.
 2. athleteId may alternatively be specified as a command line parameter
+3. The lineStyles object allows you to customize colors. The keys are
+Strava [Activity types](http://strava.github.io/api/v3/activities/), and the values include KML line
+color ('aabbggrr', alpha, blue, green, red hex values) and width.
 
 Strava Command Line Application
 -------------------------------
