@@ -4,10 +4,8 @@ Strava Report Generator
 Overview
 --------
 
-This project contains an application that talks directly with the Strava V3 APIs and can generate various
-output formats. The application is a work in progress. It currently supports generation of KML files, suitable for
-import into Google Earth. I also started working on a PDF report generator, however I have barely begun this
-effort and may or may not ever complete it.
+This project contains a command line utility that will generate a single KML file that is suitable for import
+into Google Earth. The utility talks directly with the Strava V3 APIs.
 
 Installation
 ------------
@@ -39,14 +37,6 @@ Notes:
 1. $HOME is resolved by trying, in order, the ENV variables HOME, HOMEPATH and USERPROFILE.
 2. athleteId may alternatively be specified as a command line parameter
 
-Applications
-------------
-
-This project contains the following applications:
-
-* bin/strava.js - a command line application that will generate kml files from Strava
-* bin/pdfgen.js - a barely-started command line application to generate PDF reports from Strava input
-
 Strava Command Line Application
 -------------------------------
 
@@ -75,6 +65,19 @@ This command line application can be used to query Strava and:
 * Return details for an athlete
 * Return your list of bikes (currently not working)
 * Generate a single KML file for the range of dates
+
+Notes:
+
+* Different activity types are rendered using different colors
+* There is a Strava limit of 200 activities per call, so for date ranges that include more than 200 activities, only
+the first 200 activities are returned (yes I could make mulitple calls, but haven't implemented this yet).
+
+PDF Reports
+-----------
+
+I started working on a PDF report generator, however I have barely begun this
+effort and may or may not ever complete it. It is at _bin/pdfgen.js_.
+
 
 Credits
 -------
