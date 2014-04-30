@@ -32,7 +32,14 @@ Your ID will be shown in the address bar.
     "lineStyles": {
         "Commute": { "color": "C03030C0", "width": 4 },
         "Run": { "color": "C000FF00", "width": 4 }
-    }
+    },
+
+    "segments": [
+        { "id": 3073098424, "name": "Grizzly Flat Fire Road" },
+        { "id": 3066858923, "name": "Overpass Sprint"},
+        { "id": 3061080515, "name": "Terrace Drive - Loyola Corners Bump"}
+    ],
+
 }
 ```
 
@@ -44,6 +51,7 @@ Notes:
 3. The lineStyles object allows you to customize colors. The keys are
 Strava [Activity types](http://strava.github.io/api/v3/activities/), and the values include KML line
 color ('aabbggrr', alpha, blue, green, red hex values) and width.
+4. The *segments* list is a list of segments that will be added to the KML activity description (see details below).
 
 Strava Command Line Application
 -------------------------------
@@ -81,8 +89,24 @@ Notes:
 * Different activity types are rendered using different colors
 * There is a Strava limit of 200 activities per call, so for date ranges that include more than 200 activities, only
 the first 200 activities are returned (yes I could make multiple calls, but haven't implemented this yet).
-* Strava description field is currently not included when using --show, and yes I need to fix this.
-* The --show field currently doesn't do unit conversion for the <5% of the planet that isn't using metric, and yes reluctantly I should fix this
+* The --show field currently doesn't do unit conversion for the <5% of the planet that isn't using metric, and yes reluctantly I should fix this.
+
+### KML Description
+
+Using *--show* will result in a description field being added to the KML activity. This will include the following fields (see notes afterwards):
+
+  Distance: 45.28 km
+  Total Elevation Gain: 1507 m
+  Moving Time: 03:47:41
+  Average Temp: 22°C
+  Grizzly Flat Fire Road: 00:23:08
+  Tires: Knobbies
+  Description: 1 garter snake, 1 banana slug, 1 deer, lots of California Salamanders
+
+Notes:
+
+1. Segments will show the name and time, but ony for visible segments listed in your settings.json file.
+2. The Strava *description* field is parsed. Any key/value pairs, represented by a line containing a string of the form *Tires=Knobbies* will result in a separate line being added to the description output.
 
 PDF Reports
 -----------

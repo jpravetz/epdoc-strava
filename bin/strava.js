@@ -9,6 +9,7 @@ var program = require('commander');
 var _u = require('underscore');
 var Strava = require('../lib/stravaV3api');
 var Kml = require('../lib/kml');
+var dateutil = require('dateutil');
 
 var DAY = 24 * 3600 * 1000;
 
@@ -88,8 +89,8 @@ function dateList(val) {
                 t0 = dateStringToDate(range);
                 t1 = t0 + DAY;
             }
-        } catch(e) {
-            console.log(e.toString() );
+        } catch (e) {
+            console.log(e.toString());
             process.exit(1);
         }
         result.push({ after: t0 / 1000, before: t1 / 1000 });
@@ -114,10 +115,10 @@ function run(options) {
     var strava = new Strava(config.client);
     var kml;
 
-    if( options.kml ) {
+    if (options.kml) {
         // Run this first to validate line styles before pinging strava APIs
         kml = new Kml();
-        if( config.lineStyles ) {
+        if (config.lineStyles) {
             kml.setLineStyles(config.lineStyles);
         }
     }
@@ -136,6 +137,9 @@ function run(options) {
     }
     if (options.dates) {
         funcs.push(getActivities);
+    }
+    if (options.show) {
+        funcs.push(addDetails);
     }
     if (options.kml) {
         funcs.push(addCoordinates);
@@ -209,13 +213,96 @@ function run(options) {
                 if ((!options.commuteOnly && !options.nonCommuteOnly) || ( options.commuteOnly && activity.commute) || (options.nonCommuteOnly && !activity.commute)) {
                     if (options.filter.length) {
                         if (options.filter.indexOf(activity.type) >= 0) {
+                            activity.keys = ['distance', 'total_elevation_gain', 'moving_time', 'average_temp'];
                             results.push(activity);
                         }
                     } else {
+                        activity.keys = ['distance', 'total_elevation_gain', 'moving_time', 'average_temp'];
                         results.push(activity);
                     }
                 }
             });
+        }
+    }
+
+    function addDetails(callback) {
+        console.log("Found %s activities", activities ? activities.length : 0);
+        async.eachSeries(activities, function (item, callback) {
+            addActivityDetails(item, callback);
+        }, callback);
+
+        function addActivityDetails(activity, callback) {
+            strava.getActivity(activity.id, function (err, data) {
+                if (err) {
+                    callback(err);
+                } else {
+                    console.log("Adding activity details for " + activity.start_date_local + " " + activity.name);
+                    // console.log(data);
+                    if (data && data.segment_efforts) {
+                        addSegments(activity, data);
+                    }
+                    if (data && data.description) {
+                        addDescription(activity, data);
+                    }
+                }
+                callback(err);
+            });
+        }
+
+        function addSegments(activity, data) {
+            if (config && config.segments) {
+                var ignore = [];
+                activity.segments = [];
+                _u.each(data.segment_efforts, function (segment) {
+                    if( isInList(segment.id) ) {
+                        activity.segments.push( _u.pick(segment,'id','name','elapsed_time','moving_time','distance') );
+                        console.log( "Adding segment '" + segment.name + "', elapsed time " + dateutil.formatMS(segment.elapsed_time * 1000, { ms: false, hours: true }) );
+                    } else {
+                        ignore.push( { id: segment.id, name: segment.name } );
+                    }
+                });
+                if( activity.segments.length ) {
+                    activity.keys.push( 'segments' );
+                }
+                if( ignore.length ) {
+                    console.log( "Ignoring %s segments:", ignore.length );
+                    _u.each( ignore, function(item) {
+                        console.log( JSON.stringify(item) );
+                    });
+                }
+
+                function isInList(id) {
+                    var segment = _u.find(config.segments, function (entry) {
+                        return (id == entry.id) ? true : false;
+                    });
+                    return segment ? true : false;
+                }
+            }
+        }
+
+        function addDescription(activity, data) {
+            var p = data.description.split(/\r\n/);
+            //console.log(p)
+            if (p) {
+                var a = [];
+                _u.each(p, function (line) {
+                    var kv = line.match(/^([^\s\=]+)\s*=\s*(.*)+$/);
+                    //console.log(kv)
+                    if (kv) {
+                        activity.keys.push(kv[1]);
+                        activity[kv[1]] = kv[2];
+                    } else {
+                        a.push(line);
+                    }
+                });
+                if (a.length) {
+                    activity.description = a.join('\n');
+                    activity.keys.push('description');
+                }
+            } else {
+                activity.description = data.description;
+                activity.keys.push('description');
+            }
         }
     }
 
