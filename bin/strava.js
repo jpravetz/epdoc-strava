@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+/*************************************************************************
+ * Copyright(c) 2012-2014 Jim Pravetz <jpravetz@epdoc.com>
+ * May be freely distributed under the MIT license.
+ **************************************************************************/
 
 var env = process.env['NODE_ENV'] || 'development';
 
@@ -20,6 +24,7 @@ var home = process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE;
 //var Config = require('a5config').init(env, [__dirname + '/../config/project.settings.json'], {excludeGlobals: true});
 //var config = Config.get();
 
+var segmentsFile = Path.resolve(home, ".strava", "segments.json");
 var configFile = Path.resolve(home, ".strava", "settings.json");
 if (!fs.existsSync(configFile)) {
     console.log("Error: config file does not exist: %s", configFile);
@@ -41,6 +46,7 @@ program
     .option('-k, --kml <file>', "Create KML file for specified dates")
     .option('-f, --filter <types>', "Filter based on comma-separated list of activity types (as defined by Strava, 'Ride', 'Hike', 'Walk', etc), plus 'commute' and 'nocommute'", commaList)
     .option('-s, --show', "When generating KML file, include additional info in KML description field")
+    .option('-p, --prompt', "With show, when adding segments, prompt user whether to include or exclude a segment.")
     .option('-v, --verbose', "Verbose messages")
     .parse(process.argv);
 
@@ -54,6 +60,7 @@ var opts = {
     friends: program.friends,
     show: program.show,
     kml: program.kml,
+    prompt: program.prompt,
     dates: program.dates || [],     // array of date ranges, in seconds (not milliseconds)
     filter: _u.without(program.filter || [], 'commute', 'nocommute'),
     commuteOnly: (program.filter || []).indexOf('commute') >= 0 ? true : false,
@@ -125,6 +132,8 @@ function run(options) {
 
     var funcs = [];
     var activites;
+    var segments;
+    var segmentsDirty;
 
     if (options.athlete) {
         funcs.push(getAthlete)
@@ -139,6 +148,7 @@ function run(options) {
         funcs.push(getActivities);
     }
     if (options.show) {
+        funcs.push(readSegmentsFile);
         funcs.push(addDetails);
     }
     if (options.kml) {
@@ -147,10 +157,16 @@ function run(options) {
     } else if (options.dates && options.dates.length) {
         funcs.push(listActivities);
     }
+    if (options.show && options.prompt) {
+        funcs.push(writeSegmentsFile);
+    }
 
     async.series(funcs, function (err) {
+        if (options.prompt) {
+            process.stdin.destroy();        // destroys propmt
+        }
         if (err) {
-            console.log("Error: %s", err.toString());
+            console.error(err);
         } else {
             console.log("Done");
         }
@@ -213,11 +229,11 @@ function run(options) {
                 if ((!options.commuteOnly && !options.nonCommuteOnly) || ( options.commuteOnly && activity.commute) || (options.nonCommuteOnly && !activity.commute)) {
                     if (options.filter.length) {
                         if (options.filter.indexOf(activity.type) >= 0) {
-                            activity.keys = ['distance', 'total_elevation_gain', 'moving_time', 'average_temp'];
+                            activity.keys = ['distance', 'total_elevation_gain', 'moving_time', 'elapsed_time', 'average_temp'];
                             results.push(activity);
                         }
                     } else {
-                        activity.keys = ['distance', 'total_elevation_gain', 'moving_time', 'average_temp'];
+                        activity.keys = ['distance', 'total_elevation_gain', 'moving_time', 'elapsed_time', 'average_temp'];
                         results.push(activity);
                     }
                 }
@@ -239,44 +255,83 @@ function run(options) {
                     console.log("Adding activity details for " + activity.start_date_local + " " + activity.name);
                     // console.log(data);
                     if (data && data.segment_efforts) {
-                        addSegments(activity, data);
-                    }
-                    if (data && data.description) {
+                        addSegments(activity, data, function (err) {
+                            if (err) {
+                                callback(err);
+                            } else {
+                                if (data && data.description) {
+                                    addDescription(activity, data);
+                                }
+                                callback();
+                            }
+                        });
+                    } else if (data && data.description) {
                         addDescription(activity, data);
+                        callback();
+                    } else {
+                        callback();
                     }
                 }
-                callback(err);
             });
         }
 
-        function addSegments(activity, data) {
-            if (config && config.segments) {
-                var ignore = [];
-                activity.segments = [];
-                _u.each(data.segment_efforts, function (segment) {
-                    if( isInList(segment.id) ) {
-                        activity.segments.push( _u.pick(segment,'id','name','elapsed_time','moving_time','distance') );
-                        console.log( "Adding segment '" + segment.name + "', elapsed time " + dateutil.formatMS(segment.elapsed_time * 1000, { ms: false, hours: true }) );
-                    } else {
-                        ignore.push( { id: segment.id, name: segment.name } );
+        function addSegments(activity, data, callback) {
+            var ignore = [];
+            activity.segments = [];
+            async.eachSeries(data.segment_efforts, function (segment,callback) {
+                console.log("Examining " + segment.name)
+                if (isInList('include', segment.id)) {
+                    addSegment(segment);
+                    callback();
+                } else if (isInList('exclude', segment.id)) {
+                    ignore.push({ id: segment.id, name: segment.name });
+                    callback();
+                } else if (options.prompt) {
+                    var str = "Include segment '" + segment.name + "' (y/n)? ";
+                    promptSingleLine(str, function (value) {
+                        if (value.match(/^y/i)) {
+                            console.log("Including segment '%s'", segment.name);
+                            addSegment(segment);
+                            segments.include.push({ id: segment.id, name: segment.name });
+                            segmentsDirty = true;
+                        } else {
+                            console.log("Excluding segment '%s'", segment.name);
+                            segments.exclude.push({ id: segment.id, name: segment.name });
+                            segmentsDirty = true;
+                        }
+                        callback();
+                    });
+                } else {
+                    ignore.push({ id: segment.id, name: segment.name });
+                    callback();
+                }
+            }, function (err) {
+                if (err) {
+                    callback(err);
+                } else {
+                    if (activity.segments.length) {
+                        activity.keys.push('segments');
                     }
-                });
-                if( activity.segments.length ) {
-                    activity.keys.push( 'segments' );
+                    if (ignore.length) {
+                        console.log("Ignoring %s segments:", ignore.length);
+                        _u.each(ignore, function (item) {
+                            console.log(JSON.stringify(item));
+                        });
+                    }
+                    callback();
                 }
-                if( ignore.length ) {
-                    console.log( "Ignoring %s segments:", ignore.length );
-                    _u.each( ignore, function(item) {
-                        console.log( JSON.stringify(item) );
-                    });
-                }
+            });
 
-                function isInList(id) {
-                    var segment = _u.find(config.segments, function (entry) {
-                        return (id == entry.id) ? true : false;
-                    });
-                    return segment ? true : false;
-                }
+            function addSegment(segment) {
+                activity.segments.push(_u.pick(segment, 'id', 'name', 'elapsed_time', 'moving_time', 'distance'));
+                console.log("Adding segment '" + segment.name + "', elapsed time " + dateutil.formatMS(segment.elapsed_time * 1000, { ms: false, hours: true }));
+            }
+
+            function isInList(listName, id) {
+                var segment = _u.find(segments[listName], function (entry) {
+                    return (id == entry.id) ? true : false;
+                });
+                return segment ? true : false;
             }
         }
 
@@ -351,6 +406,52 @@ function run(options) {
         callback();
     }
 
+    function readSegmentsFile(callback) {
+        if (fs.existsSync(segmentsFile)) {
+            fs.readFile(segmentsFile, 'utf8', function (err, data) {
+                if (err) {
+                    callback(err);
+                } else {
+                    try {
+                        segments = JSON.parse(data);
+                        _u.each(['include', 'exclude'], function (name) {
+                            if (!(segments[name] instanceof Array)) {
+                                segments[name] = [];
+                            }
+                        });
+                        callback();
+                    } catch (e) {
+                        callback(e);
+                    }
+                }
+            });
+        } else {
+            segments = { description: "Strava segments", include: [], exclude: [], last: true };
+            callback();
+        }
+    }
+
+    function writeSegmentsFile(callback) {
+        if (segmentsDirty === true) {
+            console.log("Writing segments file");
+            fs.writeFile(segmentsFile, JSON.stringify(segments, null, 4), function (err) {
+                if (err) {
+                    callback(err);
+                } else {
+                    console.log("Segments saved to " + segmentsFile);
+                    callback();
+                }
+            });
+        }
+    }
+
 }
 
+function promptSingleLine(str, fn) {
+    process.stdout.write(str);
+    process.stdin.setEncoding('utf8');
+    process.stdin.once('data', function (val) {
+        fn(val);
+    }).resume();
+}
 

@@ -1,6 +1,6 @@
 {
     "name": "strava",
-    "version": "0.1.2",
+    "version": "0.1.3",
     "description": "Strava v3 API application outputs kml files for Google Earth",
     "main": "index.js",
     "scripts": {

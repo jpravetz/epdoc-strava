@@ -32,14 +32,7 @@ Your ID will be shown in the address bar.
     "lineStyles": {
         "Commute": { "color": "C03030C0", "width": 4 },
         "Run": { "color": "C000FF00", "width": 4 }
-    },
-
-    "segments": [
-        { "id": 3073098424, "name": "Grizzly Flat Fire Road" },
-        { "id": 3066858923, "name": "Overpass Sprint"},
-        { "id": 3061080515, "name": "Terrace Drive - Loyola Corners Bump"}
-    ],
-
+    }
 }
 ```
 
@@ -75,6 +68,7 @@ Strava Command Line Application
        -k, --kml <file>      Create KML file for specified dates
        -f, --filter <types>  Filter based on comma-separated list of activity types (as defined by Strava, 'Ride', 'Hike', 'Walk', etc), plus 'commute' and 'nocommute'
        -s, --show            When generating KML file, include additional info in KML description field
+       -p, --prompt          With show, when adding segments, prompt user whether to include or exclude a segment.
        -v, --verbose         Verbose messages
 ```
 
@@ -89,7 +83,7 @@ Notes:
 * Different activity types are rendered using different colors
 * There is a Strava limit of 200 activities per call, so for date ranges that include more than 200 activities, only
 the first 200 activities are returned (yes I could make multiple calls, but haven't implemented this yet).
-* The --show field currently doesn't do unit conversion for the <5% of the planet that isn't using metric, and yes reluctantly I should fix this.
+* The --show field currently doesn't do unit conversion for the less than 5% of the planet that isn't using metric, and yes reluctantly I should fix this.
 
 ### KML Description
 
@@ -105,8 +99,9 @@ Using *--show* will result in a description field being added to the KML activit
 
 Notes:
 
-1. Segments will show the name and time, but ony for visible segments listed in your settings.json file.
-2. The Strava *description* field is parsed. Any key/value pairs, represented by a line containing a string of the form *Tires=Knobbies* will result in a separate line being added to the description output.
+1. Segments will show the name and time, but ony for visible segments listed in your segments.json file.
+2. By using the --prompt option, you will be prompted to include (y) or exclude (anything but 'y') a segment in your segment includes list.
+3. The Strava *description* field is parsed. Any key/value pairs, represented by a line containing a string of the form *Tires=Knobbies* will result in a separate line being added to the description output.
 
 PDF Reports
 -----------
