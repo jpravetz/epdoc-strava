@@ -37,16 +37,18 @@ var config = require(configFile);
 program
     .version(version)
     .option('-i, --id <athleteId>', "Athlete ID. Defaults to value of athleteId in $HOME/.strava/settings.json (this value is " + config.athleteId + ")")
-    .option('-a, --athlete', "Show athlete details")
+    .option('-u, --athlete', "Show athlete details")
     .option('-b, --bikes', "Show list of bikes")
     .option('-g, --friends [opt]', "Show athlete friends list (set opt to 'detailed' for a complete summary, otherwise id and name are returned)")
     .option('-d, --dates <dates>', "Comma separated list of activity date or date ranges in format '20141231-20150105',20150107", dateList)
     .option('-s, --start <days>', "Add activities from this many days ago (alternate way to specify date ranges)")
     .option('-e, --end <days>', "End day, used with --start")
-    .option('-k, --kml <file>', "Create KML file for specified dates")
-    .option('-f, --filter <types>', "Filter based on comma-separated list of activity types (as defined by Strava, 'Ride', 'Hike', 'Walk', etc), plus 'commute' and 'nocommute'", commaList)
-    .option('-s, --show', "When generating KML file, include additional info in KML description field")
-    .option('-p, --prompt', "With show, when adding segments, prompt user whether to include or exclude a segment.")
+    .option('-k, --kml <file>', "Create KML file for specified date range")
+    .option('-a, --activities [filter]', "Output activities to kml file, optionally filtering by activity type (as defined by Strava, 'Ride', 'Hike', 'Walk', etc), plus 'commute' and 'nocommute')", commaList)
+    //.option('-f, --filter <types>', "Filter based on comma-separated list of activity types (as defined by Strava, 'Ride', 'Hike', 'Walk', etc), plus 'commute' and 'nocommute'", commaList)
+    //.option('-p, --prompt', "With --show, when adding segments, prompt user whether to include or exclude a segment.")
+    .option('-s, --segments', "Output starred segments to KML, adding efforts within date range to description if --more.")
+    .option('-m, --more', "When generating KML file, include additional detail info in KML description field")
     .option('-v, --verbose', "Verbose messages")
     .parse(process.argv);
 
@@ -58,15 +60,15 @@ var opts = {
     athlete: program.athlete,
     bikes: program.bikes,
     friends: program.friends,
-    show: program.show,
-    kml: program.kml,
-    prompt: program.prompt,
     dates: program.dates || [],     // array of date ranges, in seconds (not milliseconds)
-    filter: _u.without(program.filter || [], 'commute', 'nocommute'),
+    more: program.more,
+    kml: program.kml,
+    activities: program.activities,
+    activityFilter: _u.without(program.filter || [], 'commute', 'nocommute'),
     commuteOnly: (program.filter || []).indexOf('commute') >= 0 ? true : false,
-    nonCommuteOnly: (program.filter || []).indexOf('nocommute') >= 0 ? true : false
+    nonCommuteOnly: (program.filter || []).indexOf('nocommute') >= 0 ? true : false,
+    segments: program.segments
 };
-
 
 if (program.start) {
     var t1 = (new Date()).getTime();
@@ -76,6 +78,11 @@ if (program.start) {
     }
     opts.dates.push({ after: t0 / 1000, before: t1 / 1000 });
 }
+
+console.log("Date ranges: ");
+_u.each(opts.dates, function (range) {
+    console.log("  after: " + dateutil.toSortableString(1000 * range.after) + ", before: " + dateutil.toSortableString(1000 * range.before));
+});
 
 function commaList(val) {
     return val.split(',');
@@ -131,9 +138,10 @@ function run(options) {
     }
 
     var funcs = [];
-    var activites;
-    var segments;
-    var segmentsDirty;
+    var global = {
+        activities: [],
+        segments: []
+    };
 
     if (options.athlete) {
         funcs.push(getAthlete)
@@ -144,27 +152,28 @@ function run(options) {
     if (options.friends) {
         funcs.push(getFriends);
     }
-    if (options.dates) {
+    if (options.activities) {
         funcs.push(getActivities);
     }
-    if (options.show) {
-        funcs.push(readSegmentsFile);
-        funcs.push(addDetails);
+    if (options.segments) {
+        funcs.push(getStarredSegments);
+    }
+    if (options.more && options.activities) {
+        funcs.push(addActivitiesDetails);
     }
     if (options.kml) {
-        funcs.push(addCoordinates);
+        if (options.activities) {
+            funcs.push(addActivitiesCoordinates);
+        }
+        if( options.segments ) {
+            funcs.push(addSegmentsCoordinates);
+        }
         funcs.push(saveKml);
     } else if (options.dates && options.dates.length) {
         funcs.push(listActivities);
     }
-    if (options.show && options.prompt) {
-        funcs.push(writeSegmentsFile);
-    }
 
     async.series(funcs, function (err) {
-        if (options.prompt) {
-            process.stdin.destroy();        // destroys propmt
-        }
         if (err) {
             console.error(err);
         } else {
@@ -193,6 +202,84 @@ function run(options) {
         });
     }
 
+    /**
+     * Retrieve all the starred segments for the user, including the efforts made by that user on each segment,
+     * and the coordinates for the segment.
+     * @param callback
+     */
+    function getStarredSegments(callback) {
+        var results = [];
+        strava.getStarredSegments(function (err, data) {
+            if (err) {
+                callback(err);
+            } else if (data && data.errors) {
+                callback(new Error(JSON.stringify(data)));
+            } else {
+                global.segments = data;
+                console.log("Found %s starred segments", data ? data.length : 0);
+                if (data && data.length && options.dates && options.dates.length) {
+                    async.each(global.segments, getSegmentEfforts, function (err) {
+                        if (err) {
+                            callback(err);
+                        } else {
+                            // async.each(global.segments, getSegmentDetails, callback);
+                            callback();
+                        }
+                    });
+                }
+            }
+        });
+
+        function getSegmentEfforts(segment, callback) {
+            var results = [];
+            async.each(options.dates, function (range, callback) {
+                var params = {
+                    id: segment.id,
+                    athlete_id: options.athleteId,
+                    per_page: 200,
+                    start_date_local: (new Date(1000 * range.after)).toISOString(),
+                    end_date_local: (new Date(1000 * range.before)).toISOString()
+                };
+                strava.getSegmentEfforts(segment.id, params, function (err, data) {
+                    if (err) {
+                        callback(err);
+                    } else if (data && data.errors) {
+                        callback(new Error(JSON.stringify(data)));
+                    } else {
+                        // append(data);
+                        // console.log(data)
+                        results = results.concat(data);
+                        callback();
+                    }
+                });
+            }, function (err) {
+                if (err) {
+                    callback(err);
+                } else {
+                    segment.efforts = _u.sortBy(results, 'elapsed_time');
+                    console.log("Found %s efforts for %s", segment.efforts.length, segment.name);
+                    callback();
+                }
+            });
+        }
+
+        // Not used, but this works
+        function getSegmentDetails(segment,callback) {
+            strava.getSegment( segment.id, function(err,data) {
+                if (err) {
+                    callback(err);
+                } else if (data && data.errors) {
+                    callback(new Error(JSON.stringify(data)));
+                } else {
+                    console.log( "Retrieved details for %s, distance = %s m", segment.name, data.distance );
+                    console.log(data)
+                    segment.details = data;
+                    callback();
+                }
+            });
+        }
+    }
+
     function getActivities(callback) {
         var results = [];
         var count = 0;
@@ -204,10 +291,6 @@ function run(options) {
                 before: range.before
             };
             strava.getActivities(params, function (err, data) {
-                // console.log("Data = %s", JSON.stringify(data, null, '  '));
-                // callback(err, data);
-                // console.log("Found %s", data.length)
-                // results = results.concat(data);
                 if (err) {
                     callback(err);
                 } else if (data && data.errors) {
@@ -219,16 +302,16 @@ function run(options) {
                 }
             });
         }, function (err) {
-            activities = _u.sortBy(results, 'start_date');
-            console.log("Found total of %s activities (from %s retrieved)", activities.length, count);
+            global.activities = _u.sortBy(results, 'start_date');
+            console.log("Found total of %s activities (from %s retrieved)", global.activities.length, count);
             callback(err);
         });
 
         function append(activities) {
             _u.each(activities, function (activity) {
                 if ((!options.commuteOnly && !options.nonCommuteOnly) || ( options.commuteOnly && activity.commute) || (options.nonCommuteOnly && !activity.commute)) {
-                    if (options.filter.length) {
-                        if (options.filter.indexOf(activity.type) >= 0) {
+                    if (options.activityFilter.length) {
+                        if (options.activityFilter.indexOf(activity.type) >= 0) {
                             activity.keys = ['distance', 'total_elevation_gain', 'moving_time', 'elapsed_time', 'average_temp'];
                             results.push(activity);
                         }
@@ -241,11 +324,13 @@ function run(options) {
         }
     }
 
-    function addDetails(callback) {
-        console.log("Found %s activities", activities ? activities.length : 0);
-        async.eachSeries(activities, function (item, callback) {
-            addActivityDetails(item, callback);
-        }, callback);
+    function addActivitiesDetails(callback) {
+        console.log("Found %s activities", global.activities ? global.activities.length : 0);
+        if (global.activities && global.activities.length) {
+            async.eachSeries(global.activities, function (item, callback) {
+                addActivityDetails(item, callback);
+            }, callback);
+        }
 
         function addActivityDetails(activity, callback) {
             strava.getActivity(activity.id, function (err, data) {
@@ -254,8 +339,8 @@ function run(options) {
                 } else {
                     console.log("Adding activity details for " + activity.start_date_local + " " + activity.name);
                     // console.log(data);
-                    if (data && data.segment_efforts) {
-                        addSegments(activity, data, function (err) {
+                    if ( false && data && data.segment_efforts) {
+                        addDetailSegments(activity, data, function (err) {
                             if (err) {
                                 callback(err);
                             } else {
@@ -275,13 +360,13 @@ function run(options) {
             });
         }
 
-        function addSegments(activity, data, callback) {
+        // Don't use this anymore. Instead we use the --segements option.
+        function addDetailSegments(activity, data, callback) {
             var ignore = [];
             activity.segments = [];
-            async.eachSeries(data.segment_efforts, function (segment,callback) {
-                console.log("Examining " + segment.name)
+            async.eachSeries(data.segment_efforts, function (segment, callback) {
                 if (isInList('include', segment.id)) {
-                    addSegment(segment);
+                    addDetailSegment(segment);
                     callback();
                 } else if (isInList('exclude', segment.id)) {
                     ignore.push({ id: segment.id, name: segment.name });
@@ -291,12 +376,12 @@ function run(options) {
                     promptSingleLine(str, function (value) {
                         if (value.match(/^y/i)) {
                             console.log("Including segment '%s'", segment.name);
-                            addSegment(segment);
-                            segments.include.push({ id: segment.id, name: segment.name });
+                            addDetailSegment(segment);
+                            global.segments.include.push({ id: segment.id, name: segment.name });
                             segmentsDirty = true;
                         } else {
                             console.log("Excluding segment '%s'", segment.name);
-                            segments.exclude.push({ id: segment.id, name: segment.name });
+                            global.segments.exclude.push({ id: segment.id, name: segment.name });
                             segmentsDirty = true;
                         }
                         callback();
@@ -312,7 +397,7 @@ function run(options) {
                     if (activity.segments.length) {
                         activity.keys.push('segments');
                     }
-                    if (ignore.length) {
+                    if (false && ignore.length) {
                         console.log("Ignoring %s segments:", ignore.length);
                         _u.each(ignore, function (item) {
                             console.log(JSON.stringify(item));
@@ -322,13 +407,25 @@ function run(options) {
                 }
             });
 
-            function addSegment(segment) {
+            function addDetailSegment(segment) {
+                console.log("  Adding segment '" + segment.name + "', elapsed time " + dateutil.formatMS(segment.elapsed_time * 1000, { ms: false, hours: true }));
+                // Add segment to this activity
                 activity.segments.push(_u.pick(segment, 'id', 'name', 'elapsed_time', 'moving_time', 'distance'));
-                console.log("Adding segment '" + segment.name + "', elapsed time " + dateutil.formatMS(segment.elapsed_time * 1000, { ms: false, hours: true }));
+                // Add effort to list of efforts for this segment, if not already there
+                var effortId = segment.id;
+                var segId = segment.segment.id;
+                if (!global.segments.data[segId] || !global.segments.data[segId].efforts[effortId]) {
+                    global.segments.data[segId] = global.segments.data[segId] || { efforts: {} };
+                    _u.each(['name', 'distance', 'average_grade', 'elevation_high', 'elevation_low', 'start_latlng', 'end_latlng'], function (prop) {
+                        global.segments.data[segId][prop] = segment.segment[prop];
+                    });
+                    global.segments.data[segId].efforts[effortId] = {id: effortId, elapsed_time: segment.elapsed_time, moving_time: segment.moving_time};
+                    segmentsDirty = true;
+                }
             }
 
             function isInList(listName, id) {
-                var segment = _u.find(segments[listName], function (entry) {
+                var segment = _u.find(global.segments[listName], function (entry) {
                     return (id == entry.id) ? true : false;
                 });
                 return segment ? true : false;
@@ -361,23 +458,32 @@ function run(options) {
         }
     }
 
-    function addCoordinates(callback) {
-        console.log("Found %s activities", activities ? activities.length : 0);
-        async.eachSeries(activities, function (item, callback) {
-            addActivityCoordinates(item, callback);
+    function addActivitiesCoordinates(callback) {
+        addCoordinates('activities',callback);
+    }
+
+    function addSegmentsCoordinates(callback) {
+        addCoordinates('segments',callback);
+    }
+
+    function addCoordinates(type,callback) {
+        var obj = global[type];
+        console.log("Found %s %s", obj ? obj.length : 0, type);
+        async.eachSeries(obj, function (item, callback) {
+            addCoordinates(item, callback);
         }, callback);
 
-        function addActivityCoordinates(activity, callback) {
-            strava.getActivityStream(activity.id, ['latlng'], {}, function (err, data) {
+        function addCoordinates(objItem, callback) {
+            strava.getStream(type,objItem.id, ['latlng'], {}, function (err, data) {
                 if (err) {
                     callback(err);
                 } else {
-                    console.log("Processing coordinates for " + activity.start_date_local + " " + activity.name);
-                    activity.coordinates = [];
+                    console.log("Processing coordinates for " + ( type === 'activities' ? objItem.start_date_local + " " : "" ) + objItem.name);
+                    objItem.coordinates = [];
                     _u.each(data, function (item) {
                         if (item && item.type === 'latlng' && item.data) {
                             _u.each(item.data, function (pt) {
-                                activity.coordinates.push(pt);
+                                objItem.coordinates.push(pt);
                             });
                         }
                     });
@@ -388,13 +494,15 @@ function run(options) {
     }
 
     function saveKml(callback) {
-        kml.outputActivities(activities, options.kml, { show: options.show }, callback);
+        console.log('saving')
+        kml.outputActivities(global.activities, global.segments, options.kml, { more: options.more }, callback);
+        // kml.save(options.kml)
     }
 
     function listActivities(callback) {
         var distance = 0;
         var elevationGain = 0;
-        _u.each(activities, function (activity) {
+        _u.each(global.activities, function (activity) {
             var t0 = activity.start_date_local.substr(0, 10);
             console.log(t0 + " - " + activity.name +
                 " (distance " + Math.round(activity.distance / 10) / 100 +
@@ -408,25 +516,30 @@ function run(options) {
 
     function readSegmentsFile(callback) {
         if (fs.existsSync(segmentsFile)) {
-            fs.readFile(segmentsFile, 'utf8', function (err, data) {
+            fs.stat(segmentsFile, function (err, stats) {
                 if (err) {
                     callback(err);
                 } else {
-                    try {
-                        segments = JSON.parse(data);
-                        _u.each(['include', 'exclude'], function (name) {
-                            if (!(segments[name] instanceof Array)) {
-                                segments[name] = [];
+                    segmentsFileLastModified = stats.mtime;
+                    fs.readFile(segmentsFile, 'utf8', function (err, data) {
+                        if (err) {
+                            callback(err);
+                        } else {
+                            try {
+                                segments = JSON.parse(data);
+                                segments.include = segments.include || [];
+                                segments.exclude = segments.exclude || [];
+                                segments.data = segments.data || {};
+                                callback();
+                            } catch (e) {
+                                callback(e);
                             }
-                        });
-                        callback();
-                    } catch (e) {
-                        callback(e);
-                    }
+                        }
+                    });
                 }
             });
         } else {
-            segments = { description: "Strava segments", include: [], exclude: [], last: true };
+            segments = { description: "Strava segments", include: [], exclude: [], data: {} };
             callback();
         }
     }
@@ -434,6 +547,8 @@ function run(options) {
     function writeSegmentsFile(callback) {
         if (segmentsDirty === true) {
             console.log("Writing segments file");
+            // Make a backup before overwriting the file
+            fs.createReadStream(segmentsFile).pipe(fs.createWriteStream(segmentsFile + '_' + dateutil.toFileString(segmentsFileLastModified)));
             fs.writeFile(segmentsFile, JSON.stringify(segments, null, 4), function (err) {
                 if (err) {
                     callback(err);
@@ -445,13 +560,14 @@ function run(options) {
         }
     }
 
+
 }
 
-function promptSingleLine(str, fn) {
-    process.stdout.write(str);
-    process.stdin.setEncoding('utf8');
-    process.stdin.once('data', function (val) {
-        fn(val);
-    }).resume();
-}
+//function promptSingleLine(str, fn) {
+//    process.stdout.write(str);
+//    process.stdin.setEncoding('utf8');
+//    process.stdin.once('data', function (val) {
+//        fn(val);
+//    }).resume();
+//}
 
