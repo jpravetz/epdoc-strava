@@ -79,9 +79,13 @@ if (program.start) {
     opts.dates.push({ after: t0 / 1000, before: t1 / 1000 });
 }
 
+var dateRanges = [];        // used for kml file
 console.log("Date ranges: ");
 _u.each(opts.dates, function (range) {
-    console.log("  after: " + dateutil.toSortableString(1000 * range.after) + ", before: " + dateutil.toSortableString(1000 * range.before));
+    var tAfter = dateutil.toSortableString(1000 * range.after).replace(/\//g, '-');
+    var tBefore = dateutil.toSortableString(1000 * range.before).replace(/\//g, '-');
+    console.log("  after: " + tAfter + ", before: " + tBefore);
+    dateRanges.push({ after: tAfter.slice(0,10), before: tBefore.slice(0,10) });
 });
 
 function commaList(val) {
@@ -165,7 +169,7 @@ function run(options) {
         if (options.activities) {
             funcs.push(addActivitiesCoordinates);
         }
-        if( options.segments ) {
+        if (options.segments) {
             funcs.push(addSegmentsCoordinates);
         }
         funcs.push(saveKml);
@@ -264,14 +268,14 @@ function run(options) {
         }
 
         // Not used, but this works
-        function getSegmentDetails(segment,callback) {
-            strava.getSegment( segment.id, function(err,data) {
+        function getSegmentDetails(segment, callback) {
+            strava.getSegment(segment.id, function (err, data) {
                 if (err) {
                     callback(err);
                 } else if (data && data.errors) {
                     callback(new Error(JSON.stringify(data)));
                 } else {
-                    console.log( "Retrieved details for %s, distance = %s m", segment.name, data.distance );
+                    console.log("Retrieved details for %s, distance = %s m", segment.name, data.distance);
                     console.log(data)
                     segment.details = data;
                     callback();
@@ -327,7 +331,7 @@ function run(options) {
     function addActivitiesDetails(callback) {
         console.log("Found %s activities", global.activities ? global.activities.length : 0);
         if (global.activities && global.activities.length) {
-            async.eachSeries(global.activities, function (item, callback) {
+            async.each(global.activities, function (item, callback) {
                 addActivityDetails(item, callback);
             }, callback);
         }
@@ -339,7 +343,7 @@ function run(options) {
                 } else {
                     console.log("Adding activity details for " + activity.start_date_local + " " + activity.name);
                     // console.log(data);
-                    if ( false && data && data.segment_efforts) {
+                    if (false && data && data.segment_efforts) {
                         addDetailSegments(activity, data, function (err) {
                             if (err) {
                                 callback(err);
@@ -459,14 +463,14 @@ function run(options) {
     }
 
     function addActivitiesCoordinates(callback) {
-        addCoordinates('activities',callback);
+        addCoordinates('activities', callback);
     }
 
     function addSegmentsCoordinates(callback) {
-        addCoordinates('segments',callback);
+        addCoordinates('segments', callback);
     }
 
-    function addCoordinates(type,callback) {
+    function addCoordinates(type, callback) {
         var obj = global[type];
         console.log("Found %s %s", obj ? obj.length : 0, type);
         async.each(obj, function (item, callback) {
@@ -474,7 +478,7 @@ function run(options) {
         }, callback);
 
         function addCoordinates(objItem, callback) {
-            strava.getStream(type,objItem.id, ['latlng'], {}, function (err, data) {
+            strava.getStream(type, objItem.id, ['latlng'], {}, function (err, data) {
                 if (err) {
                     callback(err);
                 } else {
@@ -495,7 +499,7 @@ function run(options) {
 
     function saveKml(callback) {
         console.log('saving')
-        kml.outputActivities(global.activities, global.segments, options.kml, { more: options.more }, callback);
+        kml.outputActivities(global.activities, global.segments, options.kml, { more: options.more, dates: dateRanges }, callback);
         // kml.save(options.kml)
     }
 
