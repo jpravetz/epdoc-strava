@@ -469,7 +469,7 @@ function run(options) {
     function addCoordinates(type,callback) {
         var obj = global[type];
         console.log("Found %s %s", obj ? obj.length : 0, type);
-        async.eachSeries(obj, function (item, callback) {
+        async.each(obj, function (item, callback) {
             addCoordinates(item, callback);
         }, callback);
 
