@@ -504,16 +504,31 @@ function run(options) {
     }
 
     function saveKml(callback) {
-        var opts = {
-            more: options.more,
-            dates: dateRanges,
-            imperial: options.imperial
-        };
-        if( options.segments === 'flat' ) {
-            opts.segmentsFlatFolder = true;
+        fs.exists(options.kml,function(bExists) {
+            if( bExists ) {
+                fs.unlink(options.kml,function(err) {
+                    if(err) {
+                        callback(err);
+                    } else {
+                        proceed();
+                    }
+                });
+            } else {
+                proceed();
+            }
+        });
+        function proceed() {
+            var opts = {
+                more: options.more,
+                dates: dateRanges,
+                imperial: options.imperial
+            };
+            if( options.segments === 'flat' ) {
+                opts.segmentsFlatFolder = true;
+            }
+            kml.outputData(global.activities, global.segments, options.kml, opts, callback);
+            // kml.save(options.kml)
         }
-        kml.outputData(global.activities, global.segments, options.kml, opts, callback);
-        // kml.save(options.kml)
     }
 
     function listActivities(callback) {
