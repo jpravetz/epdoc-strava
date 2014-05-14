@@ -49,6 +49,7 @@ program
     //.option('-p, --prompt', "With --show, when adding segments, prompt user whether to include or exclude a segment.")
     .option('-s, --segments [opts]', "Output starred segments to KML, adding efforts within date range to description if --more. Segments are grouped into folders by location unless opts is set to 'flat'.")
     .option('-m, --more', "When generating KML file, include additional detail info in KML description field")
+    .option('-y, --imperial', "Use imperial units")
     .option('-v, --verbose', "Verbose messages")
     .parse(process.argv);
 
@@ -67,6 +68,7 @@ var opts = {
     activityFilter: _u.without(program.filter || [], 'commute', 'nocommute'),
     commuteOnly: (program.filter || []).indexOf('commute') >= 0 ? true : false,
     nonCommuteOnly: (program.filter || []).indexOf('nocommute') >= 0 ? true : false,
+    imperial: program.imperial,
     segments: program.segments          // Will be true or 'flat'
 };
 
@@ -186,7 +188,7 @@ function run(options) {
         } else {
             console.log("Done");
         }
-        process.exit(0);
+        // process.exit(0);
     });
 
     function getAthlete(callback) {
@@ -504,7 +506,8 @@ function run(options) {
     function saveKml(callback) {
         var opts = {
             more: options.more,
-            dates: dateRanges
+            dates: dateRanges,
+            imperial: options.imperial
         };
         if( options.segments === 'flat' ) {
             opts.segmentsFlatFolder = true;

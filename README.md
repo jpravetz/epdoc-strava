@@ -74,8 +74,9 @@ Strava Command Line Application
     -e, --end <days>           End day, used with --start
     -k, --kml <file>           Create KML file for specified date range
     -a, --activities [filter]  Output activities to kml file, optionally filtering by activity type (as defined by Strava, 'Ride', 'Hike', 'Walk', etc), plus 'commute' and 'nocommute')
-    -s, --segments             Output starred segments to KML, adding efforts within date range to description if --more.
+    -s, --segments [opts]      Output starred segments to KML, adding efforts within date range to description if --more. Segments are grouped into folders by location unless opts is set to 'flat'.
     -m, --more                 When generating KML file, include additional detail info in KML description field
+    -y, --imperial             Use imperial units
     -v, --verbose              Verbose messages
 ```
 
@@ -83,8 +84,8 @@ This command line application can be used to query Strava and:
 
 * Return details for an athlete
 * Return your list of bikes (currently not working)
-* Generate a KML file that contains activity routes for the range of dates and/or starred segements and corresponding
-segment efforts with the date range.
+* Generate a KML file that contains activity routes for the range of dates and/or starred segments and corresponding
+segment efforts within the date range.
 
 Notes:
 
@@ -93,9 +94,24 @@ A default set of colors is defined in _defaultLineStyles_ in the file lib/kml.js
 * There is a Strava limit of 200 activities per call, so for date ranges that include more than 200 activities, only
 the first 200 activities are returned.
 
+### Example Command Line Use
+
+Create a KML file for the past five days of activities. Use imperial units, and add detailed descriptions to each activity.
+
+```
+bin/strava.js --start 5 --kml ~/tmp/activities.kml --activities --more  --imperial
+```
+
+Create a KML file for 2013 that includes activities and segment efforts.Add detailed descriptions to each activity.
+
+```
+bin/strava.js --date 20130101-20131231 --kml ~/tmp/activities.kml --activities --segments --more
+```
+
 ### KML Description
 
-Using *--show* will result in a description field being added to the KML activity. This will include the following fields (see notes afterwards):
+Using *--more* will result in a description field being added to the KML activity or segment.
+For activities this will include the following fields (see notes afterwards):
 
   Distance: 45.28 km
   Total Elevation Gain: 1507 m
@@ -110,6 +126,10 @@ Notes:
 1. Segments will show the name and time, but ony for visible segments listed in your segments.json file.
 2. By using the --prompt option, you will be prompted to include (y) or exclude (anything but 'y') a segment in your segment includes list.
 3. The Strava *description* field is parsed. Any key/value pairs, represented by a line containing a string of the form *Tires=Knobbies* will result in a separate line being added to the description output.
+
+For segments, using *--more* will add some basic information about the segment _and_ add an ordered list of efforts
+you've made for that segment during the specified date range.
+
 
 PDF Reports
 -----------
