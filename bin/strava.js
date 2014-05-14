@@ -186,6 +186,7 @@ function run(options) {
         } else {
             console.log("Done");
         }
+        process.exit(0);
     });
 
     function getAthlete(callback) {
@@ -508,7 +509,7 @@ function run(options) {
         if( options.segments === 'flat' ) {
             opts.segmentsFlatFolder = true;
         }
-        kml.outputActivities(global.activities, global.segments, options.kml, opts, callback);
+        kml.outputData(global.activities, global.segments, options.kml, opts, callback);
         // kml.save(options.kml)
     }
 
