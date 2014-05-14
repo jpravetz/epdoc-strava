@@ -1,17 +1,17 @@
-Strava KML File Generator
-=======================
+# Strava KML File Generator
 
-Overview
---------
+## Overview
 
 This project contains a command line application bin/strava.js that will generate KML files suitable for import
-into Google Earth. The application uses the Strava V3 APIs to retrieve your personal ride and segment effort information from Strava.
+into Google Earth. The application uses the Strava V3 APIs to retrieve your information and outputs two types of information:
+* Your activities, color coded by activity type, and optionally including a description
+* Your efforts for segments that you have [starred in Strava](http://blog.strava.com/keep-track-of-your-favorites-with-starred-segments-6260/),
+optionally including a description that lists all your times
 
-Installation
-------------
+## Installation
 
-bin/strava.js is a node application, written in javascript, requiring that you install nodejs, this application
-and dependent libraries on your computer. You will also need to obtain your own Strava ID, secret and access token
+The application bin/strava.js is written in javascript for node, requiring that you install nodejs, this application
+and it's dependent libraries on your computer. You will also need to obtain your own Strava ID, secret and access token
 from Strava, then add these to a JSON-encoded settings file.
 
 * [Install node](http://nodejs.org/download/).
@@ -40,7 +40,6 @@ Your ID will be shown in the address bar.
 }
 ```
 
-
 Notes:
 
 1. bin/strava.js will try to resolve the location of .strava/settings.json by resolving $HOME.
@@ -51,15 +50,12 @@ Strava [Activity types](http://strava.github.io/api/v3/activities/), and the val
 color ('aabbggrr', alpha, blue, green, red hex values) and width. There are additional keys for 'Segment' and 'Commute' that
 are not in the list of Strava activity types.
 
-Strava Command Line Application
--------------------------------
+## Strava Command Line Application
 
 ```
 > bin/strava.js --help
 
-    Usage: strava.js [options]
-
-   Options:
+  Usage: strava.js [options]
 
   Options:
 
@@ -102,10 +98,16 @@ Create a KML file for the past five days of activities. Use imperial units, and 
 bin/strava.js --start 5 --kml ~/tmp/activities.kml --activities --more  --imperial
 ```
 
-Create a KML file for 2013 that includes activities and segment efforts.Add detailed descriptions to each activity.
+Create a KML file that includes all activities for the first half of 2013. Add detailed descriptions to each activity.
 
 ```
-bin/strava.js --date 20130101-20131231 --kml ~/tmp/activities.kml --activities --segments --more
+bin/strava.js --date 20130101-20130630 --kml ~/tmp/activities.kml --activities --more
+```
+
+Create a KML file that shows all of your starred segments and lists your times for those efforts.
+
+```
+bin/strava.js --date 20100101-20141231 --kml ~/tmp/activities.kml --segments --more
 ```
 
 ### KML Description
@@ -113,6 +115,7 @@ bin/strava.js --date 20130101-20131231 --kml ~/tmp/activities.kml --activities -
 Using *--more* will result in a description field being added to the KML activity or segment.
 For activities this will include the following fields (see notes afterwards):
 
+```
   Distance: 45.28 km
   Total Elevation Gain: 1507 m
   Moving Time: 03:47:41
@@ -120,32 +123,22 @@ For activities this will include the following fields (see notes afterwards):
   Grizzly Flat Fire Road: 00:23:08
   Tires: Knobbies
   Description: 1 garter snake, 1 banana slug, 1 deer, lots of California Salamanders
+```
 
 Notes:
 
-1. Segments will show the name and time, but ony for visible segments listed in your segments.json file.
-2. By using the --prompt option, you will be prompted to include (y) or exclude (anything but 'y') a segment in your segment includes list.
-3. The Strava *description* field is parsed. Any key/value pairs, represented by a line containing a string of the form *Tires=Knobbies* will result in a separate line being added to the description output.
-
-For segments, using *--more* will add some basic information about the segment _and_ add an ordered list of efforts
+1. The Strava *description* field is parsed. Any key/value pairs, represented by a line containing a string of
+the form *Tires=Knobbies*, will result in a separate line being added to the description output.
+2. For segments, using *--more* will add some basic information about the segment _and_ add an ordered list of efforts
 you've made for that segment during the specified date range.
 
-
-PDF Reports
------------
-
-I started working on a PDF report generator, however I have barely begun this
-effort and may or may not ever complete it. It is at _bin/pdfgen.js_.
-
-
-Credits
--------
+## Credits
 
 The stravaV3api.js file is originally from [mojodna](https://github.com/mojodna/node-strav3/blob/master/index.js) and has
 been modified.
 
-ToDo
-----
+## ToDo
 
 * Handle paginated data, in other words, requests that exceed 200 activities.
-* Handle unit conversions for the less than 5% of the planet that isn't using metric.
+* I started working on a PDF report generator, however I have barely begun this
+effort and may or may not ever complete it. It is at _bin/pdfgen.js_.

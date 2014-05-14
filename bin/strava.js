@@ -55,8 +55,6 @@ program
 
 
 var opts = {
-//    start: program.start !== undefined ? parseInt(program.start, 10) : 7,
-//    end: program.end !== undefined ? parseInt(program.end, 10) : 0,
     athleteId: parseInt(program.id, 10) || config.athleteId,
     athlete: program.athlete,
     bikes: program.bikes,
@@ -69,27 +67,28 @@ var opts = {
     commuteOnly: (program.filter || []).indexOf('commute') >= 0 ? true : false,
     nonCommuteOnly: (program.filter || []).indexOf('nocommute') >= 0 ? true : false,
     imperial: program.imperial,
-    segments: program.segments          // Will be true or 'flat'
+    segments: program.segments,          // Will be true or 'flat'
+    verbose: program.verbose
 };
 
 
 if (program.start) {
     var t1 = (new Date()).getTime();
-    var t0 = t1 - parseInt(program.start, 10) * DAY;
+    var t0 = t1 - Number(program.start) * DAY;
     if (program.end) {
-        t1 = t1 - parseInt(program.end, 10) * DAY;
+        t1 = t1 - Number(program.end) * DAY;
     }
     opts.dates.push({ after: t0 / 1000, before: t1 / 1000 });
 }
 
 var dateRanges = [];        // used for kml file
-if( opts.dates && opts.dates.length ) {
+if (opts.dates && opts.dates.length) {
     console.log("Date ranges: ");
     _u.each(opts.dates, function (range) {
         var tAfter = dateutil.toSortableString(1000 * range.after).replace(/\//g, '-');
         var tBefore = dateutil.toSortableString(1000 * range.before).replace(/\//g, '-');
         console.log("  From " + tAfter + " to " + tBefore);
-        dateRanges.push({ after: tAfter.slice(0,10), before: tBefore.slice(0,10) });
+        dateRanges.push({ after: tAfter.slice(0, 10), before: tBefore.slice(0, 10) });
     });
 }
 
@@ -140,14 +139,14 @@ function run(options) {
 
     if (options.kml) {
         // Run this first to validate line styles before pinging strava APIs
-        kml = new Kml();
+        kml = new Kml( { verbose: options.verbose });
         if (config.lineStyles) {
             kml.setLineStyles(config.lineStyles);
         }
     }
 
     var funcs = [];
-    var global = {
+    var gdata = {
         activities: [],
         segments: []
     };
@@ -225,14 +224,14 @@ function run(options) {
             } else if (data && data.errors) {
                 callback(new Error(JSON.stringify(data)));
             } else {
-                global.segments = data;
+                gdata.segments = data;
                 console.log("Found %s starred segments:", data ? data.length : 0);
                 if (data && data.length && options.dates && options.dates.length) {
-                    async.each(global.segments, getSegmentEfforts, function (err) {
+                    async.each(gdata.segments, getSegmentEfforts, function (err) {
                         if (err) {
                             callback(err);
                         } else {
-                            // async.each(global.segments, getSegmentDetails, callback);
+                            // async.each(gdata.segments, getSegmentDetails, callback);
                             callback();
                         }
                     });
@@ -312,8 +311,8 @@ function run(options) {
                 }
             });
         }, function (err) {
-            global.activities = _u.sortBy(results, 'start_date');
-            console.log("Found total of %s activities (from %s retrieved)", global.activities.length, count);
+            gdata.activities = _u.sortBy(results, 'start_date');
+            console.log("Found total of %s activities (from %s retrieved)", gdata.activities.length, count);
             callback(err);
         });
 
@@ -335,9 +334,9 @@ function run(options) {
     }
 
     function addActivitiesDetails(callback) {
-        console.log("Found %s activities:", global.activities ? global.activities.length : 0);
-        if (global.activities && global.activities.length) {
-            async.each(global.activities, function (item, callback) {
+        console.log("Found %s activities:", gdata.activities ? gdata.activities.length : 0);
+        if (gdata.activities && gdata.activities.length) {
+            async.each(gdata.activities, function (item, callback) {
                 addActivityDetails(item, callback);
             }, callback);
         }
@@ -387,11 +386,11 @@ function run(options) {
                         if (value.match(/^y/i)) {
                             console.log("Including segment '%s'", segment.name);
                             addDetailSegment(segment);
-                            global.segments.include.push({ id: segment.id, name: segment.name });
+                            gdata.segments.include.push({ id: segment.id, name: segment.name });
                             segmentsDirty = true;
                         } else {
                             console.log("Excluding segment '%s'", segment.name);
-                            global.segments.exclude.push({ id: segment.id, name: segment.name });
+                            gdata.segments.exclude.push({ id: segment.id, name: segment.name });
                             segmentsDirty = true;
                         }
                         callback();
@@ -424,18 +423,18 @@ function run(options) {
                 // Add effort to list of efforts for this segment, if not already there
                 var effortId = segment.id;
                 var segId = segment.segment.id;
-                if (!global.segments.data[segId] || !global.segments.data[segId].efforts[effortId]) {
-                    global.segments.data[segId] = global.segments.data[segId] || { efforts: {} };
+                if (!gdata.segments.data[segId] || !gdata.segments.data[segId].efforts[effortId]) {
+                    gdata.segments.data[segId] = gdata.segments.data[segId] || { efforts: {} };
                     _u.each(['name', 'distance', 'average_grade', 'elevation_high', 'elevation_low', 'start_latlng', 'end_latlng'], function (prop) {
-                        global.segments.data[segId][prop] = segment.segment[prop];
+                        gdata.segments.data[segId][prop] = segment.segment[prop];
                     });
-                    global.segments.data[segId].efforts[effortId] = {id: effortId, elapsed_time: segment.elapsed_time, moving_time: segment.moving_time};
+                    gdata.segments.data[segId].efforts[effortId] = {id: effortId, elapsed_time: segment.elapsed_time, moving_time: segment.moving_time};
                     segmentsDirty = true;
                 }
             }
 
             function isInList(listName, id) {
-                var segment = _u.find(global.segments[listName], function (entry) {
+                var segment = _u.find(gdata.segments[listName], function (entry) {
                     return (id == entry.id) ? true : false;
                 });
                 return segment ? true : false;
@@ -477,7 +476,7 @@ function run(options) {
     }
 
     function addCoordinates(type, callback) {
-        var obj = global[type];
+        var obj = gdata[type];
         console.log("Found %s %s:", obj ? obj.length : 0, type);
         async.each(obj, function (item, callback) {
             addCoordinates(item, callback);
@@ -504,37 +503,22 @@ function run(options) {
     }
 
     function saveKml(callback) {
-        fs.exists(options.kml,function(bExists) {
-            if( bExists ) {
-                fs.unlink(options.kml,function(err) {
-                    if(err) {
-                        callback(err);
-                    } else {
-                        proceed();
-                    }
-                });
-            } else {
-                proceed();
-            }
-        });
-        function proceed() {
-            var opts = {
-                more: options.more,
-                dates: dateRanges,
-                imperial: options.imperial
-            };
-            if( options.segments === 'flat' ) {
-                opts.segmentsFlatFolder = true;
-            }
-            kml.outputData(global.activities, global.segments, options.kml, opts, callback);
-            // kml.save(options.kml)
+        var opts = {
+            more: options.more,
+            dates: dateRanges,
+            imperial: options.imperial
+        };
+        if (options.segments === 'flat') {
+            opts.segmentsFlatFolder = true;
         }
+        kml.outputData(gdata.activities, gdata.segments, options.kml, opts, callback);
+        // kml.save(options.kml)
     }
 
     function listActivities(callback) {
         var distance = 0;
         var elevationGain = 0;
-        _u.each(global.activities, function (activity) {
+        _u.each(gdata.activities, function (activity) {
             var t0 = activity.start_date_local.substr(0, 10);
             console.log(t0 + " - " + activity.name +
                 " (distance " + Math.round(activity.distance / 10) / 100 +
@@ -547,52 +531,52 @@ function run(options) {
     }
 
     /*
-    function readSegmentsFile(callback) {
-        if (fs.existsSync(segmentsFile)) {
-            fs.stat(segmentsFile, function (err, stats) {
-                if (err) {
-                    callback(err);
-                } else {
-                    segmentsFileLastModified = stats.mtime;
-                    fs.readFile(segmentsFile, 'utf8', function (err, data) {
-                        if (err) {
-                            callback(err);
-                        } else {
-                            try {
-                                segments = JSON.parse(data);
-                                segments.include = segments.include || [];
-                                segments.exclude = segments.exclude || [];
-                                segments.data = segments.data || {};
-                                callback();
-                            } catch (e) {
-                                callback(e);
-                            }
-                        }
-                    });
-                }
-            });
-        } else {
-            segments = { description: "Strava segments", include: [], exclude: [], data: {} };
-            callback();
-        }
-    }
+     function readSegmentsFile(callback) {
+     if (fs.existsSync(segmentsFile)) {
+     fs.stat(segmentsFile, function (err, stats) {
+     if (err) {
+     callback(err);
+     } else {
+     segmentsFileLastModified = stats.mtime;
+     fs.readFile(segmentsFile, 'utf8', function (err, data) {
+     if (err) {
+     callback(err);
+     } else {
+     try {
+     segments = JSON.parse(data);
+     segments.include = segments.include || [];
+     segments.exclude = segments.exclude || [];
+     segments.data = segments.data || {};
+     callback();
+     } catch (e) {
+     callback(e);
+     }
+     }
+     });
+     }
+     });
+     } else {
+     segments = { description: "Strava segments", include: [], exclude: [], data: {} };
+     callback();
+     }
+     }
 
-    function writeSegmentsFile(callback) {
-        if (segmentsDirty === true) {
-            console.log("Writing segments file");
-            // Make a backup before overwriting the file
-            fs.createReadStream(segmentsFile).pipe(fs.createWriteStream(segmentsFile + '_' + dateutil.toFileString(segmentsFileLastModified)));
-            fs.writeFile(segmentsFile, JSON.stringify(segments, null, 4), function (err) {
-                if (err) {
-                    callback(err);
-                } else {
-                    console.log("Segments saved to " + segmentsFile);
-                    callback();
-                }
-            });
-        }
-    }
-    */
+     function writeSegmentsFile(callback) {
+     if (segmentsDirty === true) {
+     console.log("Writing segments file");
+     // Make a backup before overwriting the file
+     fs.createReadStream(segmentsFile).pipe(fs.createWriteStream(segmentsFile + '_' + dateutil.toFileString(segmentsFileLastModified)));
+     fs.writeFile(segmentsFile, JSON.stringify(segments, null, 4), function (err) {
+     if (err) {
+     callback(err);
+     } else {
+     console.log("Segments saved to " + segmentsFile);
+     callback();
+     }
+     });
+     }
+     }
+     */
 
 }
 
