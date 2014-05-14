@@ -47,7 +47,7 @@ program
     .option('-a, --activities [filter]', "Output activities to kml file, optionally filtering by activity type (as defined by Strava, 'Ride', 'Hike', 'Walk', etc), plus 'commute' and 'nocommute')", commaList)
     //.option('-f, --filter <types>', "Filter based on comma-separated list of activity types (as defined by Strava, 'Ride', 'Hike', 'Walk', etc), plus 'commute' and 'nocommute'", commaList)
     //.option('-p, --prompt', "With --show, when adding segments, prompt user whether to include or exclude a segment.")
-    .option('-s, --segments', "Output starred segments to KML, adding efforts within date range to description if --more.")
+    .option('-s, --segments [opts]', "Output starred segments to KML, adding efforts within date range to description if --more. Segments are grouped into folders by location unless opts is set to 'flat'.")
     .option('-m, --more', "When generating KML file, include additional detail info in KML description field")
     .option('-v, --verbose', "Verbose messages")
     .parse(process.argv);
@@ -67,8 +67,9 @@ var opts = {
     activityFilter: _u.without(program.filter || [], 'commute', 'nocommute'),
     commuteOnly: (program.filter || []).indexOf('commute') >= 0 ? true : false,
     nonCommuteOnly: (program.filter || []).indexOf('nocommute') >= 0 ? true : false,
-    segments: program.segments
+    segments: program.segments          // Will be true or 'flat'
 };
+
 
 if (program.start) {
     var t1 = (new Date()).getTime();
@@ -80,13 +81,15 @@ if (program.start) {
 }
 
 var dateRanges = [];        // used for kml file
-console.log("Date ranges: ");
-_u.each(opts.dates, function (range) {
-    var tAfter = dateutil.toSortableString(1000 * range.after).replace(/\//g, '-');
-    var tBefore = dateutil.toSortableString(1000 * range.before).replace(/\//g, '-');
-    console.log("  after: " + tAfter + ", before: " + tBefore);
-    dateRanges.push({ after: tAfter.slice(0,10), before: tBefore.slice(0,10) });
-});
+if( opts.dates && opts.dates.length ) {
+    console.log("Date ranges: ");
+    _u.each(opts.dates, function (range) {
+        var tAfter = dateutil.toSortableString(1000 * range.after).replace(/\//g, '-');
+        var tBefore = dateutil.toSortableString(1000 * range.before).replace(/\//g, '-');
+        console.log("  From " + tAfter + " to " + tBefore);
+        dateRanges.push({ after: tAfter.slice(0,10), before: tBefore.slice(0,10) });
+    });
+}
 
 function commaList(val) {
     return val.split(',');
@@ -208,7 +211,7 @@ function run(options) {
 
     /**
      * Retrieve all the starred segments for the user, including the efforts made by that user on each segment,
-     * and the coordinates for the segment.
+     * and the coordinates for the segment. Efforts will be retrieved for the specified date range.
      * @param callback
      */
     function getStarredSegments(callback) {
@@ -220,7 +223,7 @@ function run(options) {
                 callback(new Error(JSON.stringify(data)));
             } else {
                 global.segments = data;
-                console.log("Found %s starred segments", data ? data.length : 0);
+                console.log("Found %s starred segments:", data ? data.length : 0);
                 if (data && data.length && options.dates && options.dates.length) {
                     async.each(global.segments, getSegmentEfforts, function (err) {
                         if (err) {
@@ -261,7 +264,7 @@ function run(options) {
                     callback(err);
                 } else {
                     segment.efforts = _u.sortBy(results, 'elapsed_time');
-                    console.log("Found %s efforts for %s", segment.efforts.length, segment.name);
+                    console.log("  Found %s efforts for %s", segment.efforts.length, segment.name);
                     callback();
                 }
             });
@@ -329,7 +332,7 @@ function run(options) {
     }
 
     function addActivitiesDetails(callback) {
-        console.log("Found %s activities", global.activities ? global.activities.length : 0);
+        console.log("Found %s activities:", global.activities ? global.activities.length : 0);
         if (global.activities && global.activities.length) {
             async.each(global.activities, function (item, callback) {
                 addActivityDetails(item, callback);
@@ -341,7 +344,7 @@ function run(options) {
                 if (err) {
                     callback(err);
                 } else {
-                    console.log("Adding activity details for " + activity.start_date_local + " " + activity.name);
+                    console.log("  Adding activity details for " + activity.start_date_local + " " + activity.name);
                     // console.log(data);
                     if (false && data && data.segment_efforts) {
                         addDetailSegments(activity, data, function (err) {
@@ -364,7 +367,7 @@ function run(options) {
             });
         }
 
-        // Don't use this anymore. Instead we use the --segements option.
+        // Don't use this anymore. Instead we use the --segments option.
         function addDetailSegments(activity, data, callback) {
             var ignore = [];
             activity.segments = [];
@@ -472,7 +475,7 @@ function run(options) {
 
     function addCoordinates(type, callback) {
         var obj = global[type];
-        console.log("Found %s %s", obj ? obj.length : 0, type);
+        console.log("Found %s %s:", obj ? obj.length : 0, type);
         async.each(obj, function (item, callback) {
             addCoordinates(item, callback);
         }, callback);
@@ -482,7 +485,7 @@ function run(options) {
                 if (err) {
                     callback(err);
                 } else {
-                    console.log("Processing coordinates for " + ( type === 'activities' ? objItem.start_date_local + " " : "" ) + objItem.name);
+                    console.log("  Processing coordinates for " + ( type === 'activities' ? objItem.start_date_local + " " : "" ) + objItem.name);
                     objItem.coordinates = [];
                     _u.each(data, function (item) {
                         if (item && item.type === 'latlng' && item.data) {
@@ -498,8 +501,14 @@ function run(options) {
     }
 
     function saveKml(callback) {
-        console.log('saving')
-        kml.outputActivities(global.activities, global.segments, options.kml, { more: options.more, dates: dateRanges }, callback);
+        var opts = {
+            more: options.more,
+            dates: dateRanges
+        };
+        if( options.segments === 'flat' ) {
+            opts.segmentsFlatFolder = true;
+        }
+        kml.outputActivities(global.activities, global.segments, options.kml, opts, callback);
         // kml.save(options.kml)
     }
 
@@ -518,6 +527,7 @@ function run(options) {
         callback();
     }
 
+    /*
     function readSegmentsFile(callback) {
         if (fs.existsSync(segmentsFile)) {
             fs.stat(segmentsFile, function (err, stats) {
@@ -563,7 +573,7 @@ function run(options) {
             });
         }
     }
-
+    */
 
 }
 

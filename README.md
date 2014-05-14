@@ -1,14 +1,18 @@
-Strava Report Generator
+Strava KML File Generator
 =======================
 
 Overview
 --------
 
-This project contains a command line utility that will generate a single KML file that is suitable for import
-into Google Earth. The utility talks directly with the Strava V3 APIs.
+This project contains a command line application bin/strava.js that will generate KML files suitable for import
+into Google Earth. The application uses the Strava V3 APIs to retrieve your personal ride and segment effort information from Strava.
 
 Installation
 ------------
+
+bin/strava.js is a node application, written in javascript, requiring that you install nodejs, this application
+and dependent libraries on your computer. You will also need to obtain your own Strava ID, secret and access token
+from Strava, then add these to a JSON-encoded settings file.
 
 * [Install node](http://nodejs.org/download/).
 * [Install and use git](http://git-scm.com/downloads) to clone or download a zip of [this project](https://github.com/jpravetz/strava)
@@ -39,12 +43,13 @@ Your ID will be shown in the address bar.
 
 Notes:
 
-1. $HOME is resolved by trying, in order, the ENV variables HOME, HOMEPATH and USERPROFILE.
-2. athleteId may alternatively be specified as a command line parameter
-3. The lineStyles object allows you to customize colors. The keys are
+1. bin/strava.js will try to resolve the location of .strava/settings.json by resolving $HOME.
+$HOME is resolved by trying, in order, the ENV variables HOME, HOMEPATH and USERPROFILE.
+2. athleteId may be specified in the settings file or on the command line.
+3. The settings file's lineStyles object allows you to customize colors for segments and routes. The keys in this object are
 Strava [Activity types](http://strava.github.io/api/v3/activities/), and the values include KML line
-color ('aabbggrr', alpha, blue, green, red hex values) and width.
-4. The *segments* list is a list of segments that will be added to the KML activity description (see details below).
+color ('aabbggrr', alpha, blue, green, red hex values) and width. There are additional keys for 'Segment' and 'Commute' that
+are not in the list of Strava activity types.
 
 Strava Command Line Application
 -------------------------------
@@ -56,34 +61,37 @@ Strava Command Line Application
 
    Options:
 
-       -h, --help            output usage information
-       -V, --version         output the version number
-       -i, --id <athleteId>  Athlete ID. Defaults to value of athleteId in $HOME/.strava/settings.json (this value is 6355)
-       -a, --athlete         Show athlete details
-       -b, --bikes           Show list of bikes
-       -g, --friends [opt]   Show athlete friends list (set opt to 'detailed' for a complete summary, otherwise id and name are returned)
-       -d, --dates <dates>   Comma separated list of activity date or date ranges in format '20141231-20150105',20150107
-       -s, --start <days>    Add activities from this many days ago (alternate way to specify date ranges)
-       -e, --end <days>      End day, used with --start
-       -k, --kml <file>      Create KML file for specified dates
-       -f, --filter <types>  Filter based on comma-separated list of activity types (as defined by Strava, 'Ride', 'Hike', 'Walk', etc), plus 'commute' and 'nocommute'
-       -s, --show            When generating KML file, include additional info in KML description field
-       -p, --prompt          With show, when adding segments, prompt user whether to include or exclude a segment.
-       -v, --verbose         Verbose messages
+  Options:
+
+    -h, --help                 output usage information
+    -V, --version              output the version number
+    -i, --id <athleteId>       Athlete ID. Defaults to value of athleteId in $HOME/.strava/settings.json (this value is 6355)
+    -u, --athlete              Show athlete details
+    -b, --bikes                Show list of bikes
+    -g, --friends [opt]        Show athlete friends list (set opt to 'detailed' for a complete summary, otherwise id and name are returned)
+    -d, --dates <dates>        Comma separated list of activity date or date ranges in format '20141231-20150105',20150107
+    -s, --start <days>         Add activities from this many days ago (alternate way to specify date ranges)
+    -e, --end <days>           End day, used with --start
+    -k, --kml <file>           Create KML file for specified date range
+    -a, --activities [filter]  Output activities to kml file, optionally filtering by activity type (as defined by Strava, 'Ride', 'Hike', 'Walk', etc), plus 'commute' and 'nocommute')
+    -s, --segments             Output starred segments to KML, adding efforts within date range to description if --more.
+    -m, --more                 When generating KML file, include additional detail info in KML description field
+    -v, --verbose              Verbose messages
 ```
 
 This command line application can be used to query Strava and:
 
 * Return details for an athlete
 * Return your list of bikes (currently not working)
-* Generate a single KML file for the range of dates
+* Generate a KML file that contains activity routes for the range of dates and/or starred segements and corresponding
+segment efforts with the date range.
 
 Notes:
 
-* Different activity types are rendered using different colors
+* Different activity types are rendered using different colors, using the colors defined by lineStyle in the settings file.
+A default set of colors is defined in _defaultLineStyles_ in the file lib/kml.js.
 * There is a Strava limit of 200 activities per call, so for date ranges that include more than 200 activities, only
-the first 200 activities are returned (yes I could make multiple calls, but haven't implemented this yet).
-* The --show field currently doesn't do unit conversion for the less than 5% of the planet that isn't using metric, and yes reluctantly I should fix this.
+the first 200 activities are returned.
 
 ### KML Description
 
@@ -115,3 +123,9 @@ Credits
 
 The stravaV3api.js file is originally from [mojodna](https://github.com/mojodna/node-strav3/blob/master/index.js) and has
 been modified.
+
+ToDo
+----
+
+* Handle paginated data, in other words, requests that exceed 200 activities.
+* Handle unit conversions for the less than 5% of the planet that isn't using metric.
