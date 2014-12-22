@@ -1,23 +1,24 @@
 {
-    "name": "strava",
-    "version": "1.0.1",
-    "description": "Strava v3 API application outputs kml files for Google Earth",
-    "main": "index.js",
-    "scripts": {
-        "start": "node bin/strava.js",
-        "test": "echo \"Error: no test specified\" && exit 1"
-    },
-    "repository": "",
-    "author": "Jim Pravetz",
-    "license": "BSD",
-    "dependencies": {
-        "underscore": "~1.5.2",
-        "request": "~2.27.0",
-        "assert": "~1.0.0",
-        "crequest": "~0.1.2",
-        "async": "~0.2.9",
-        "pdfkit": "~0.2.6",
-        "dateutil": "git+ssh://git@github.com:jpravetz/dateutil.git#v1.0.2",
-        "commander": "^2.1.0"
-    }
+  "name": "strava",
+  "version": "1.0.1",
+  "description": "Strava v3 API application outputs kml files for Google Earth",
+  "main": "index.js",
+  "scripts": {
+    "start": "node bin/strava.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": "",
+  "author": "Jim Pravetz",
+  "license": "BSD",
+  "dependencies": {
+    "underscore": "~1.5.2",
+    "request": "~2.27.0",
+    "assert": "~1.0.0",
+    "crequest": "~0.1.2",
+    "async": "~0.2.9",
+    "pdfkit": "~0.2.6",
+    "dateutil": "git+ssh://git@github.com:jpravetz/dateutil.git#v1.0.2",
+    "commander": "^2.1.0",
+    "xmlbuilder": "^2.4.5"
+  }
 }
