@@ -1,4 +1,6 @@
 node_modules
+bower_components
+dist
 .idea
 *.log
 *~
@@ -8,3 +10,4 @@ x-*
 *.gpx
 *.pdf
 tmp.*
+tmp/*

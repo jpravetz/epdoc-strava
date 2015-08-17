@@ -1,0 +1,74 @@
+.navigation-region(role="navigation")
+    .navbar.navbar-default.navbar-static-top
+        .container-fluid
+            .navbar-header
+                button.navbar-toggle(type="button" data-toggle="collapse" data-target=".navbar-collapse")
+                    span.sr-only Toggle navigation
+                    span.icon-bar
+                    span.icon-bar
+                    span.icon-bar
+                a.navbar-brand.dcms-navbar-brand(href="/")
+                    .dcms-navbar-brand-upper dCMS
+                    .dcms-navbar-brand-lower #{env}
+                    // img(alt="dCMS" src="/img/dcms_logo.png")
+            .navbar-collapse.collapse#app-navbar-collapse(if-user-state-known)
+                ul.nav.navbar-nav#menu-region
+                    li(if-user if-service)
+                        a(ui-sref=".adbreaks") Ad Breaks
+                    li(if-user if-service)
+                        a(ui-sref=".barkers") Barkers
+                    li(if-user if-service)
+                        a(ui-sref=".channels") Channels
+                    li(if-user if-service)
+                        a(ui-sref=".contents") Content
+                    li(if-user if-service)
+                        a(ui-sref=".episodes") Episodes
+                    li(if-user if-service)
+                        a(ui-sref=".menus") Menus
+                    li(if-user if-service)
+                        a(ui-sref=".playlists") Playlists
+                    li.dropdown
+                        a.dropdown-toggle(data-toggle="dropdown" role="button" aria-expanded="false")
+                            span.glyphicon.glyphicon-cog
+                            span.caret
+                        ul.dropdown-menu(role="menu")
+                            li.dropdown-header System Admin
+                            li(if-user)
+                                a(ui-sref="app.tenants") Tenants
+                            li(if-user)
+                                a(ui-sref="app.services") Select Service
+                            li(if-user)
+                                a(ui-sref="app.groups") Groups
+                            li(if-user)
+                                a(ui-sref="app.accounts") Accounts (Users)
+
+                            li.divider
+                            li.dropdown-header User
+                            li(if-user)
+                                a(ui-sref="app.profile") Profile
+                            li(if-user)
+                                a(logout ui-sref="reg.login") Logout
+                            li(if-not-user)
+                                a(ui-sref="reg.login") Login
+                            li(if-not-user)
+                                a(ui-sref="reg.register") Register
+                            li.divider
+                            li
+                                a(ui-sref=".about") About
+
+                .nav.navbar-nav.dcms-navbar-right(if-user)
+                    .row
+                        span.pull-right Logged in as:&nbsp;
+                            a.profile-name#profile(if-user ui-sref=".profile" ng-class="{active: isActive('/profile')}") {{user.fullName}}
+                            span &nbsp;|&nbsp;
+                            a.profile-logout#logout(if-user sp-logout ui-sref="reg.login" ng-class="{active: isActive('/logout')}") Logout
+                    .row
+                        .small.org-name.pull-right(if-service)
+                            a(href="/tenants/{{service.tenant.id}}/edit") {{service.tenant.cn}}&ensp;/&ensp;
+                            a(href="/services/{{service.id}}/edit") {{service.cn}}
+                        .small.org-name.text-warning.pull-right(if-no-service) <i class="fa fa-exclamation-triangle"></i> No <a href="/services">service</a> selected
+                .nav.navbar-nav.dcms-navbar-right(if-not-user)
+                    .row
+                        a.profile-login#login(if-not-user ui-sref="reg.login" ng-class="{active: isActive('/login')}") Login
+                        span &nbsp;|&nbsp;
+                        a.profile-register#register(if-not-user ui-sref="register" ng-class="{active: isActive('/register')}") Register

@@ -1,0 +1,44 @@
+{
+    "name": "epdoc-strava",
+    "version": "1.1.0-alpha.1",
+    "homepage": "https://github.com/jpravetz/strava",
+    "authors": [
+        "Jim Pravetz <jpravetz@epdoc.com>"
+    ],
+    "description": "Strava data processor with KML output support",
+    "keywords": [
+        "strava",
+        "kml"
+    ],
+    "license": "MIT",
+    "private": true,
+    "ignore": [
+        "**/.*",
+        "node_modules",
+        "bower_components",
+        "test",
+        "tests"
+    ],
+    "dependencies": {
+        "angular": "1.4.4",
+        "angular-animate": "1.3.15",
+        "angular-resource": "~1.3.14",
+        "angular-cookies": "~1.3.14",
+        "angular-ui-router": "~0.2.13",
+        "angular-route": "~1.3.14",
+        "angular-ui-sortable": "0.13.1",
+        "bootstrap": "3.3.1",
+        "font-awesome": "~4.2.0",
+        "moment": "~2.8.3",
+        "ngQuickDate": "~1.3.0",
+        "ngstorage": "~0.3.0",
+        "underscore": "~1.7.0",
+        "angular-strap": "~2.2.1",
+        "angular-motion": "~0.3.4",
+        "angular-progress-arc": "~1.0.0",
+        "angular-schema-form": "~0.8.2"
+    },
+    "resolutions": {
+        "angular": "1.4.4"
+    }
+}

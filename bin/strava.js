@@ -4,7 +4,7 @@
  * May be freely distributed under the MIT license.
  **************************************************************************/
 
-var env = process.env['NODE_ENV'] || 'development';
+var env = process.env.NODE_ENV || 'development';
 
 var Path = require('path');
 var fs = require('fs');

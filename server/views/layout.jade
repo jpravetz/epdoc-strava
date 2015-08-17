@@ -1,0 +1,29 @@
+doctype html
+html(ng-app="dcms")
+    head
+        meta(charset='utf8')
+        base(href='/')
+        title Home - Epdoc Strava
+        link(rel='stylesheet', href='css/app.css')
+        link(rel='shortcut icon', href='/favicon.ico')
+    body(flow-prevent-drop)
+
+        div(ui-view)
+
+        script( src='js/main.js' )
+        script.
+            //        function fix_menu_tab(tabName) {
+            //            // this code moves focus from one tab to another by name
+            //            $('.panel-tabs li').removeClass('active');
+            //            $('#' + tabName + '-tab').addClass('active');
+            //        }
+            // Use this section to set config
+            angular.module('AppConfig').config(function (AppConfigProvider) {
+                console.log("setting app config from layout.jade");
+                AppConfigProvider.set({
+                    adBreakDuration: #{adBreakDuration},
+                    episodeThreshold: #{episodeThreshold},
+                    iconPlaceholder: "#{iconPlaceholder}",
+                    last: true
+                });
+            });
