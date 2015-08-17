@@ -14,19 +14,9 @@
             .navbar-collapse.collapse#app-navbar-collapse(if-user-state-known)
                 ul.nav.navbar-nav#menu-region
                     li(if-user if-service)
-                        a(ui-sref=".adbreaks") Ad Breaks
+                        a(ui-sref=".kml") KML
                     li(if-user if-service)
-                        a(ui-sref=".barkers") Barkers
-                    li(if-user if-service)
-                        a(ui-sref=".channels") Channels
-                    li(if-user if-service)
-                        a(ui-sref=".contents") Content
-                    li(if-user if-service)
-                        a(ui-sref=".episodes") Episodes
-                    li(if-user if-service)
-                        a(ui-sref=".menus") Menus
-                    li(if-user if-service)
-                        a(ui-sref=".playlists") Playlists
+                        a(ui-sref=".activities") Activities
                     li.dropdown
                         a.dropdown-toggle(data-toggle="dropdown" role="button" aria-expanded="false")
                             span.glyphicon.glyphicon-cog
@@ -34,11 +24,7 @@
                         ul.dropdown-menu(role="menu")
                             li.dropdown-header System Admin
                             li(if-user)
-                                a(ui-sref="app.tenants") Tenants
-                            li(if-user)
-                                a(ui-sref="app.services") Select Service
-                            li(if-user)
-                                a(ui-sref="app.groups") Groups
+                                a(ui-sref="app.orgs") Orgs
                             li(if-user)
                                 a(ui-sref="app.accounts") Accounts (Users)
 
