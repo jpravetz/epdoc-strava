@@ -32,6 +32,13 @@ module.exports = function (grunt) {
                 options: {
                     spawn: false
                 }
+            },
+            jade: {
+                files: ["<%= config.viewsdir %>/*.jade", "<%= config.viewsdir %>/**/*.jade"],
+                tasks: [ 'jade' ],
+                options: {
+                    spawn: false
+                }
             }
         },
         jshint: {
@@ -102,10 +109,11 @@ module.exports = function (grunt) {
                 options: {
                     data: {
                         debug: false
-                    }
+                    },
+                    pretty: true
                 },
                 files: {
-                    "<%= config.distdir %>/index.html": ["<%= config.viewsdir %>/*.jade", "<%= config.viewsdir %>/partials/*.jade"]
+                    "<%= config.distdir %>/index.html": ["<%= config.viewsdir %>/*.jade", "<%= config.viewsdir %>/**/*.jade"]
                 }
             }
         },
@@ -129,6 +137,7 @@ module.exports = function (grunt) {
             "strava-prod": {
                 files: {
                     '<%= config.distdir %>/js/<%= config.name %>.min.js': [
+                        '<%= config.bowerdir %>/jquery/dist/jquery.min.js',
                         '<%= config.bowerdir %>/moment/moment.js',
                         '<%= config.bowerdir %>/bootstrap/dist/js/bootstrap.min.js',
                         '<%= config.bowerdir %>/angular/angular.min.js',
@@ -142,6 +151,8 @@ module.exports = function (grunt) {
                         '<%= config.bowerdir %>/angular-strap/dist/angular-strap.tpl.min.js',
                         '<%= config.bowerdir %>/ngQuickDate/dist/*.min.js',
                         '<%= config.bowerdir %>/ngstorage/*.min.js',
+                        '<%= config.bowerdir %>/firebase/firebase.js',
+                        '<%= config.bowerdir %>/angularfire/dist/angularfire.min.js',
                         '<%= config.bowerdir %>/bootstrap/dist/js/bootstrap.min.js',
                         '<%= config.bowerdir %>/underscore/underscore-min.js'
                     ]
@@ -151,6 +162,7 @@ module.exports = function (grunt) {
                 options: {mangle: false, beautify: true},
                 files: {
                     '<%= config.distdir %>/js/<%= config.name %>.js': [
+                        '<%= config.bowerdir %>/jquery/dist/jquery.js',
                         '<%= config.bowerdir %>/moment/moment.js',
                         '<%= config.bowerdir %>/bootstrap/dist/js/bootstrap.js',
                         '<%= config.bowerdir %>/angular/angular.js',
@@ -164,6 +176,8 @@ module.exports = function (grunt) {
                         '<%= config.bowerdir %>/angular-strap/dist/angular-strap.tpl.js',
                         '<%= config.bowerdir %>/ngQuickDate/dist/ng-quick-date.js',
                         '<%= config.bowerdir %>/ngstorage/ngStorage.js',
+                        '<%= config.bowerdir %>/firebase/firebase-debug.js',
+                        '<%= config.bowerdir %>/angularfire/dist/angularfire.js',
                         '<%= config.bowerdir %>/bootstrap/dist/js/bootstrap.js',
                         '<%= config.bowerdir %>/underscore/underscore.js'
                     ]

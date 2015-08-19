@@ -8,13 +8,15 @@
                     span.icon-bar
                     span.icon-bar
                 a.navbar-brand.dcms-navbar-brand(href="/")
-                    .dcms-navbar-brand-upper dCMS
+                    .dcms-navbar-brand-upper EPDoc Strava
                     .dcms-navbar-brand-lower #{env}
                     // img(alt="dCMS" src="/img/dcms_logo.png")
             .navbar-collapse.collapse#app-navbar-collapse(if-user-state-known)
                 ul.nav.navbar-nav#menu-region
                     li(if-user if-service)
                         a(ui-sref=".kml") KML
+                    li(if-user if-service)
+                        a(ui-sref=".sample") sample
                     li(if-user if-service)
                         a(ui-sref=".activities") Activities
                     li.dropdown

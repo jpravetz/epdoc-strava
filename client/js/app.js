@@ -3,7 +3,7 @@
  * If user is not authenticated, they are redirected to "/" which will server the public 'login' app.
  */
 
-var app = angular.module('dcms', ["ngResource", "ngCookies", "ngStorage", "ngAnimate", "ui.router", "ui.sortable", "mgcrea.ngStrap"])
+var app = angular.module('strava', ["ngResource", "ngCookies", "ngStorage",  "ui.router", "ui.sortable", "firebase"])
     .run(function( $rootScope ) {
         $rootScope.underscore = _;
         $rootScope.showPagination = false;
@@ -19,7 +19,8 @@ var app = angular.module('dcms', ["ngResource", "ngCookies", "ngStorage", "ngAni
 
         $stateProvider
             .state("app", {url: '/app', abstract: true, templateUrl: "partials/navigation/app.jade"})
-            .state("app.adbreaks", {url: '^/adbreaks', templateUrl: "partials/adbreaks/index.jade", controller: "AdBreakIndexCtrl"})
+            .state("app.sample", {url: '^/sample', templateUrl: "partials/sample/index.jade", controller: "SampleCtrl"})
+            .state("app.kml", {url: '^/kml', templateUrl: "partials/kml/index.jade", controller: "KmlCtrl"})
             .state("app.profile", {url: '^/profile', templateUrl: "partials/accounts/edit.jade", controller: "AccountEditCtrl", sp: {authenticate: true}})
             .state("app.about", {url: '^/about', templateUrl: "partials/about/index.jade", controller: "AboutCtrl"})
             .state("app.help", {url: '^/help', templateUrl: "partials/navigation/mainhelp.jade", controller: "MainHelpCtrl"})
@@ -37,14 +38,8 @@ var app = angular.module('dcms', ["ngResource", "ngCookies", "ngStorage", "ngAni
         //.state("reg.emailverify", {url: '^/register/verify?sptoken', templateUrl: "public/registration/verify.jade"}); //, controller: "RegVerifyCtrl" })
 
         // Sets URL scheme to use '/contents' rather than '#/contents'. This is also compatible with nodejs page serving.
-        $locationProvider.html5Mode(true);
+        //$locationProvider.html5Mode(true);
 
-    })
-    .run(function( $stormpath ) {
-        $stormpath.uiRouter({
-            loginState: 'reg.login',
-            defaultPostLoginState: 'app.main'
-        });
     });
 
 
