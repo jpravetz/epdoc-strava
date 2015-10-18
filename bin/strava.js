@@ -41,7 +41,8 @@ program
     .option('-i, --id <athleteId>', "Athlete ID. Defaults to value of athleteId in $HOME/.strava/settings.json (this value is " + config.athleteId + ")")
     .option('-u, --athlete', "Show athlete details including list of bikes")
     .option('-g, --friends [opt]', "Show athlete friends list (Use --more a complete summary, otherwise id and name are displayed)")
-    .option('-d, --dates <dates>', "Comma separated list of activity date or date ranges in format '20141231-20150105',20150107", dateList)
+    .option('-d, --dates <dates>', "Comma separated list of activity date or date ranges in format '20141231-20150105,20150107'. " +
+    "If the last entry in the list is a single date then everything from that date until today will be included.", dateList)
     .option('-s, --start <days>', "Add activities from this many days ago (alternate way to specify date ranges)")
     .option('-e, --end <days>', "End day, used with --start")
     .option('-k, --kml <file>', "Create KML file for specified date range")
@@ -105,7 +106,8 @@ function commaList( val ) {
 function dateList( val ) {
     var result = [];
     var ranges = val.split(',');
-    _.each(ranges, function( range ) {
+    for( var idx = 0; idx < ranges.length; ++idx ) {
+        var range = ranges[idx];
         var p = range.split('-');
         var t0;
         var t1;
@@ -113,6 +115,9 @@ function dateList( val ) {
             if( p && p.length > 1 ) {
                 t0 = dateStringToDate(p[0]);
                 t1 = dateStringToDate(p[1]) + DAY;
+            } else if( idx === (ranges.length - 1 ) ) {
+                t0 = dateStringToDate(range);
+                t1 = (new Date()).getTime();    // now
             } else {
                 t0 = dateStringToDate(range);
                 t1 = t0 + DAY;
@@ -122,7 +127,7 @@ function dateList( val ) {
             process.exit(1);
         }
         result.push({after: t0 / 1000, before: t1 / 1000});
-    });
+    }
     return result;
 }
 
@@ -136,7 +141,7 @@ function dateStringToDate( s ) {
 }
 
 var main = new Main(opts);
-main.run( function(err) {
+main.run(function( err ) {
     if( err ) {
         console.log("Error: " + err.message);
     } else {
@@ -144,7 +149,6 @@ main.run( function(err) {
     }
     // process.exit(0);     // don't do this else files will not be saved
 });
-
 
 
 //function promptSingleLine(str, fn) {
