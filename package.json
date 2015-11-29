@@ -1,6 +1,6 @@
 {
   "name": "strava",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Strava v3 API application outputs kml files for Google Earth",
   "main": "index.js",
   "scripts": {
@@ -17,7 +17,7 @@
     "crequest": "~0.1.2",
     "async": "~0.2.9",
     "pdfkit": "~0.2.6",
-    "dateutil": "git+ssh://git@github.com:jpravetz/dateutil.git#v1.0.2",
+    "dateutil": "git+ssh://git@github.com:jpravetz/dateutil.git#v1.0.3",
     "commander": "^2.1.0",
     "xmlbuilder": "^2.4.5"
   }
