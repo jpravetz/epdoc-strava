@@ -1,0 +1,8 @@
+#!/bin/bash
+echo $PWD
+cwd=$PWD
+parent_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
+echo $parent_path
+cd "$parent_path"
+# npx tsc && node ../dist/src/cli.js --path $cwd "$@"
+node ../dist/src/cli.js --path $cwd "$@"
