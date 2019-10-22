@@ -1,8 +1,9 @@
+import { StravaCreds } from './strava-creds';
 import { Athelete } from './models/athlete';
 import { Activity } from './models/activity';
+import { StravaApiOpts } from './strava-api';
 import { Kml, LineStyle } from './kml';
 import { Dict, EpochSeconds } from './util/file';
-import { StravaApiOpts } from './strava-api';
 export declare type SegmentConfig = {
     description: string;
     alias: Dict;
@@ -12,7 +13,6 @@ export declare type StravaConfig = {
     description: string;
     client: StravaApiOpts;
     athleteId: number;
-    accessToken: string;
     cachePath?: string;
     lineStyles: Record<string, LineStyle>;
 };
@@ -24,7 +24,9 @@ export declare type MainOpts = {
     home: string;
     cwd: string;
     config?: StravaConfig;
+    auth?: boolean;
     segmentsFile?: string;
+    credentialsFile?: string;
     athlete?: string;
     athleteId?: number;
     bikes?: string[];
@@ -45,6 +47,7 @@ export declare type MainOpts = {
 export declare class Main {
     options: MainOpts;
     strava: any;
+    stravaCreds: StravaCreds;
     kml: Kml;
     athlete: Athelete;
     activities: any[];

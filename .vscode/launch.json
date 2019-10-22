@@ -33,6 +33,16 @@
       "console": "integratedTerminal",
       "preLaunchTask": "tsc: build - tsconfig.json",
       "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "strava --auth",
+      "program": "${workspaceFolder}/dist/src/cli.js",
+      "args": ["--auth"],
+      "console": "integratedTerminal",
+      "preLaunchTask": "tsc: build - tsconfig.json",
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
     }
   ]
 }

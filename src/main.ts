@@ -1,10 +1,11 @@
+import { StravaCreds } from './strava-creds';
 import { Athelete } from './models/athlete';
 import { Activity } from './models/activity';
-import { StravaActivityOpts } from './strava-api';
-import { Kml, LineStyle } from './kml';
 import fs from 'fs';
+import { StravaActivityOpts, StravaApi, StravaApiOpts } from './strava-api';
+import { Kml, LineStyle } from './kml';
 import { readJson, Dict, EpochSeconds } from './util/file';
-import { StravaApi, StravaApiOpts } from './strava-api';
+import { Server } from './server';
 // let _ = require('underscore');
 // let async = require('async');
 // let dateutil = require('dateutil');
@@ -21,7 +22,7 @@ export type StravaConfig = {
   description: string;
   client: StravaApiOpts;
   athleteId: number;
-  accessToken: string;
+  // accessToken: string;
   cachePath?: string;
   lineStyles: Record<string, LineStyle>;
 };
@@ -35,7 +36,9 @@ export type MainOpts = {
   home: string;
   cwd: string;
   config?: StravaConfig;
+  auth?: boolean;
   segmentsFile?: string;
+  credentialsFile?: string;
   athlete?: string;
   athleteId?: number;
   bikes?: string[];
@@ -57,6 +60,7 @@ export type MainOpts = {
 export class Main {
   options: MainOpts;
   strava: any;
+  stravaCreds: StravaCreds;
   kml: Kml;
   athlete: Athelete;
   activities: any[];
@@ -73,21 +77,26 @@ export class Main {
 
   init(): Promise<void> {
     if (this.options.config && this.options.config.client) {
-      this.strava = new StravaApi(this.options.config.client);
+      this.strava = new StravaApi(this.options.config.client, this.options.credentialsFile);
+      return Promise.resolve()
+        .then(resp => {
+          if (this.options.kml) {
+            // Run this first to validate line styles before pinging strava APIs
+            this.kml = new Kml({ verbose: this.options.verbose });
+            if (this.options.config.lineStyles) {
+              this.kml.setLineStyles(this.options.config.lineStyles);
+            }
+          }
 
-      if (this.options.kml) {
-        // Run this first to validate line styles before pinging strava APIs
-        this.kml = new Kml({ verbose: this.options.verbose });
-        if (this.options.config.lineStyles) {
-          this.kml.setLineStyles(this.options.config.lineStyles);
-        }
-      }
-
-      if (this.options.segmentsFile) {
-        return this.readSegmentsFile(this.options.segmentsFile);
-      } else {
-        return Promise.resolve();
-      }
+          if (this.options.segmentsFile) {
+            return this.readSegmentsFile(this.options.segmentsFile);
+          } else {
+            return Promise.resolve();
+          }
+        })
+        .then(resp => {
+          return this.strava.initCreds();
+        });
     } else {
       return Promise.reject(new Error('No config file specified'));
     }
@@ -95,6 +104,18 @@ export class Main {
 
   run(): Promise<void> {
     return this.init()
+      .then(resp => {
+        if (!this.strava.creds.areValid()) {
+          console.log('Authorization required. Opening web authorization page');
+          let authServer = new Server(this.strava);
+          return authServer.run();
+        }
+      })
+      .then(resp => {
+        if (!this.strava.creds.areValid()) {
+          throw new Error('Invalid credentials');
+        }
+      })
       .then(resp => {
         if (this.options.kml && !this.options.activities && !this.options.segments) {
           throw new Error('When writing kml select either segments, activities or both');
@@ -157,7 +178,7 @@ export class Main {
   getActivities(): Promise<Activity[]> {
     let results: Activity[] = [];
     let count = 0;
-    let dateRanges: DateRange[] = []; //this.options.dates;
+    let dateRanges: DateRange[] = Array.isArray(this.options.dates) ? this.options.dates : [];
 
     return dateRanges
       .reduce((promiseChain, dateRange) => {

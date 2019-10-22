@@ -1,4 +1,5 @@
 import { Dict, EpochSeconds } from './util/file';
+import { StravaCreds } from './strava-creds';
 export declare type StravaApiOpts = {
     id: number;
     secret: string;
@@ -9,6 +10,9 @@ export declare type AuthorizationUrlOpts = {
     scope?: string;
     state?: string;
     approvalPrompt?: string;
+};
+export declare type TokenUrlOpts = {
+    code?: string;
 };
 export declare type StravaActivityOpts = {
     athleteId: number;
@@ -23,9 +27,14 @@ export declare class StravaApi {
     id: number;
     secret: string;
     token: string;
-    constructor(opts: StravaApiOpts);
+    private _credsFile;
+    private _creds;
+    constructor(opts: StravaApiOpts, credsFile: string);
     toString(): string;
-    getAuthorizationUrl(options: AuthorizationUrlOpts): string;
+    initCreds(): Promise<void>;
+    readonly creds: StravaCreds;
+    getAuthorizationUrl(options?: AuthorizationUrlOpts): string;
+    getTokenUrl(options?: TokenUrlOpts): string;
     acquireToken(code: string): Promise<string>;
     authHeaders: () => Record<string, any>;
     getAthlete(athleteId?: number): Dict;

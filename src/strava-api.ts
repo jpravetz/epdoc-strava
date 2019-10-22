@@ -2,6 +2,7 @@ import { Dict, EpochSeconds } from './util/file';
 import * as assert from 'assert';
 import request = require('superagent');
 import { isNumber } from 'epdoc-util';
+import { StravaCreds } from './strava-creds';
 
 const STRAVA_URL_PREFIX = process.env.STRAVA_URL_PREFIX || 'https://www.strava.com/';
 const STRAVA_URL = {
@@ -26,9 +27,14 @@ export type AuthorizationUrlOpts = {
 };
 
 const defaultAuthOpts: AuthorizationUrlOpts = {
-  scope: '',
+  scope: 'read_all,activity:read_all',
   state: '',
-  approvalPrompt: 'force'
+  approvalPrompt: 'auto',
+  redirectUri: 'https://localhost'
+};
+
+export type TokenUrlOpts = {
+  code?: string;
 };
 
 export type StravaActivityOpts = {
@@ -45,18 +51,30 @@ export class StravaApi {
   id: number;
   secret: string;
   token: string;
+  private _credsFile: string;
+  private _creds: StravaCreds;
 
-  constructor(opts: StravaApiOpts) {
+  constructor(opts: StravaApiOpts, credsFile: string) {
     this.id = opts.id || parseInt(process.env.STRAVA_CLIENT_ID, 10);
     this.secret = opts.secret || process.env.STRAVA_CLIENT_SECRET;
-    this.token = opts.token || process.env.STRAVA_ACCESS_TOKEN;
+    // this.token = opts.token || process.env.STRAVA_ACCESS_TOKEN;
+    this._credsFile = credsFile;
   }
 
   toString() {
     return '[Strava]';
   }
 
-  getAuthorizationUrl(options: AuthorizationUrlOpts): string {
+  initCreds(): Promise<void> {
+    this._creds = new StravaCreds(this._credsFile);
+    return this._creds.read();
+  }
+
+  get creds() {
+    return this._creds;
+  }
+
+  getAuthorizationUrl(options: AuthorizationUrlOpts = {}): string {
     assert.ok(this.id, 'A client ID is required.');
 
     let opts = Object.assign(defaultAuthOpts, options);
@@ -68,6 +86,17 @@ export class StravaApi {
       `&state=${opts.state}` +
       `&approval_prompt=${opts.approvalPrompt}` +
       `&response_type=code`
+    );
+  }
+
+  getTokenUrl(options: TokenUrlOpts = {}): string {
+    let opts = Object.assign(defaultAuthOpts, options);
+
+    return (
+      `${STRAVA_URL.token}?client_id=${this.id}` +
+      `&secret=${this.secret}` +
+      `&code=${opts.code}` +
+      `&grant_type=authorization_code`
     );
   }
 

@@ -20,6 +20,7 @@ const home = process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE
 function run() {
     const segmentsFile = path_1.default.resolve(home, '.strava', 'segments.json');
     const configFile = path_1.default.resolve(home, '.strava', 'settings.json');
+    const credentialsFile = path_1.default.resolve(home, '.strava', 'credentials.json');
     if (!fs_1.default.existsSync(configFile)) {
         console.log('Error: config file does not exist: %s', configFile);
         process.exit(1);
@@ -55,13 +56,16 @@ function run() {
             .option('-m, --more', 'When generating KML file, include additional detail info in KML description field')
             .option('-y, --imperial', 'Use imperial units')
             .option('-p, --path <cwd>', 'Current folder')
+            .option('--auth', 'Return authorization URL that can be used in a browser to authorize this application')
             .option('-v, --verbose', 'Verbose messages')
             .parse(process.argv);
         let opts = {
             home: home,
             cwd: program.cwd,
             config: config,
+            auth: program.auth,
             segmentsFile: segmentsFile,
+            credentialsFile: credentialsFile,
             athleteId: parseInt(program.id, 10) || config.athleteId,
             athlete: program.athlete,
             bikes: program.bikes,

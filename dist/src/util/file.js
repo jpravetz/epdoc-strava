@@ -25,4 +25,18 @@ function readJson(path) {
     });
 }
 exports.readJson = readJson;
+function writeJson(path, data) {
+    return new Promise((resolve, reject) => {
+        let buf = new Buffer(JSON.stringify(data, null, '  '));
+        fs_1.default.writeFile(path, buf, err => {
+            if (err) {
+                reject(err);
+            }
+            else {
+                resolve();
+            }
+        });
+    });
+}
+exports.writeJson = writeJson;
 //# sourceMappingURL=file.js.map

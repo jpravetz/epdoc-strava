@@ -10,6 +10,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const assert = __importStar(require("assert"));
 const request = require("superagent");
 const epdoc_util_1 = require("epdoc-util");
+const strava_creds_1 = require("./strava-creds");
 const STRAVA_URL_PREFIX = process.env.STRAVA_URL_PREFIX || 'https://www.strava.com/';
 const STRAVA_URL = {
     authorize: STRAVA_URL_PREFIX + 'oauth/authorize',
@@ -19,12 +20,13 @@ const STRAVA_URL = {
     activities: STRAVA_URL_PREFIX + 'api/v3/activities'
 };
 const defaultAuthOpts = {
-    scope: '',
+    scope: 'read_all,activity:read_all',
     state: '',
-    approvalPrompt: 'force'
+    approvalPrompt: 'auto',
+    redirectUri: 'https://localhost'
 };
 class StravaApi {
-    constructor(opts) {
+    constructor(opts, credsFile) {
         this.authHeaders = function () {
             assert.ok(this.secret, 'An access token is required.');
             return {
@@ -33,12 +35,20 @@ class StravaApi {
         };
         this.id = opts.id || parseInt(process.env.STRAVA_CLIENT_ID, 10);
         this.secret = opts.secret || process.env.STRAVA_CLIENT_SECRET;
-        this.token = opts.token || process.env.STRAVA_ACCESS_TOKEN;
+        // this.token = opts.token || process.env.STRAVA_ACCESS_TOKEN;
+        this._credsFile = credsFile;
     }
     toString() {
         return '[Strava]';
     }
-    getAuthorizationUrl(options) {
+    initCreds() {
+        this._creds = new strava_creds_1.StravaCreds(this._credsFile);
+        return this._creds.read();
+    }
+    get creds() {
+        return this._creds;
+    }
+    getAuthorizationUrl(options = {}) {
         assert.ok(this.id, 'A client ID is required.');
         let opts = Object.assign(defaultAuthOpts, options);
         return (`${STRAVA_URL.authorize}?client_id=${this.id}` +
@@ -47,6 +57,13 @@ class StravaApi {
             `&state=${opts.state}` +
             `&approval_prompt=${opts.approvalPrompt}` +
             `&response_type=code`);
+    }
+    getTokenUrl(options = {}) {
+        let opts = Object.assign(defaultAuthOpts, options);
+        return (`${STRAVA_URL.token}?client_id=${this.id}` +
+            `&secret=${this.secret}` +
+            `&code=${opts.code}` +
+            `&grant_type=authorization_code`);
     }
     acquireToken(code) {
         assert.ok(this.id, 'A client ID is required.');
