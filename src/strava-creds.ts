@@ -44,10 +44,14 @@ export class StravaCreds {
     return this.data && this.data.token_type === 'Bearer' && this.data.expires_at > tLimit;
   }
 
+  static validCredData(val: any): val is StravaCredsData {
+    return val && val.token_type === 'Bearer' && isNumber(val.expires_at);
+  }
+
   read(): Promise<void> {
     return readJson(this.path)
       .then(resp => {
-        if (resp && resp.token_type === 'Bearer' && isNumber(resp.expires_at)) {
+        if (StravaCreds.validCredData(resp)) {
           this.data = resp;
         } else {
           console.log('Invalid token auth response');
@@ -59,8 +63,8 @@ export class StravaCreds {
       });
   }
 
-  write(data: StravaCredsData): Promise<void> {
-    if (data && data.token_type === 'Bearer') {
+  write(data: any): Promise<void> {
+    if (StravaCreds.validCredData(data)) {
       this.data = data;
       return writeJson(this.path, this.data);
     } else {

@@ -65,6 +65,32 @@ class StravaApi {
             `&code=${opts.code}` +
             `&grant_type=authorization_code`);
     }
+    getTokens(code) {
+        let payload = {
+            code: code,
+            client_id: this.id,
+            client_secret: this.secret,
+            grant_type: 'authorization_code'
+        };
+        console.log('getTokens request', payload);
+        return request
+            .post(STRAVA_URL.token)
+            .send(payload)
+            .then(resp => {
+            console.log('getTokens response', resp.res.body);
+            return this.creds.write(resp.res.body);
+        })
+            .then(resp => {
+            console.log('Credentials written to local storage');
+        });
+    }
+    getTokenPayload(options = {}) {
+        let opts = Object.assign(defaultAuthOpts, options);
+        return (`${STRAVA_URL.token}?client_id=${this.id}` +
+            `&secret=${this.secret}` +
+            `&code=${opts.code}` +
+            `&grant_type=authorization_code`);
+    }
     acquireToken(code) {
         assert.ok(this.id, 'A client ID is required.');
         assert.ok(this.secret, 'A client secret is required.');

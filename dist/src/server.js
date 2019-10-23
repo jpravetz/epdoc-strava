@@ -15,7 +15,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const koa_1 = __importDefault(require("koa"));
 const koa_router_1 = __importDefault(require("koa-router"));
 const open_1 = __importDefault(require("open"));
-const request = require("superagent");
 class Server {
     constructor(strava) {
         this.strava = strava;
@@ -43,7 +42,8 @@ class Server {
                 else {
                     s += `<p>Authorization code: ${code}</p>`;
                     s += '<p>Retrieving session tokens ...</p>';
-                    return this.getTokens(code)
+                    return this.strava
+                        .getTokens(code)
                         .then(resp => {
                         s += '<p>Tokens retrieved. Please return to command line.</p>';
                     })
@@ -65,20 +65,6 @@ class Server {
         console.log('Server running on port 3000');
         open_1.default(authUrl, { wait: true }).then(resp => {
             console.log('browser is open');
-        });
-    }
-    getTokens(code) {
-        let tokenOpts = {
-            code: code
-        };
-        let tokenUrl = this.strava.getTokenUrl(tokenOpts);
-        return request
-            .post(tokenUrl)
-            .then(resp => {
-            return this.strava.creds.write(resp);
-        })
-            .then(resp => {
-            console.log('Credentials written to local storage');
         });
     }
 }

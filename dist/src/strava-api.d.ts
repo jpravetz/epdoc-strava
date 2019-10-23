@@ -11,6 +11,7 @@ export declare type AuthorizationUrlOpts = {
     state?: string;
     approvalPrompt?: string;
 };
+export declare type StravaCode = string;
 export declare type TokenUrlOpts = {
     code?: string;
 };
@@ -35,6 +36,8 @@ export declare class StravaApi {
     readonly creds: StravaCreds;
     getAuthorizationUrl(options?: AuthorizationUrlOpts): string;
     getTokenUrl(options?: TokenUrlOpts): string;
+    getTokens(code: StravaCode): Promise<void>;
+    getTokenPayload(options?: TokenUrlOpts): string;
     acquireToken(code: string): Promise<string>;
     authHeaders: () => Record<string, any>;
     getAthlete(athleteId?: number): Dict;

@@ -28,10 +28,13 @@ class StravaCreds {
         let tLimit = Date.now() / 1000 + t;
         return this.data && this.data.token_type === 'Bearer' && this.data.expires_at > tLimit;
     }
+    static validCredData(val) {
+        return val && val.token_type === 'Bearer' && epdoc_util_1.isNumber(val.expires_at);
+    }
     read() {
         return file_1.readJson(this.path)
             .then(resp => {
-            if (resp && resp.token_type === 'Bearer' && epdoc_util_1.isNumber(resp.expires_at)) {
+            if (StravaCreds.validCredData(resp)) {
                 this.data = resp;
             }
             else {
@@ -44,7 +47,7 @@ class StravaCreds {
         });
     }
     write(data) {
-        if (data && data.token_type === 'Bearer') {
+        if (StravaCreds.validCredData(data)) {
             this.data = data;
             return file_1.writeJson(this.path, this.data);
         }

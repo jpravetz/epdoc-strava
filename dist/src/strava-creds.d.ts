@@ -15,6 +15,7 @@ export declare class StravaCreds {
     readonly refreshToken: string;
     readonly accessToken: string;
     areValid(t?: Seconds): boolean;
+    static validCredData(val: any): val is StravaCredsData;
     read(): Promise<void>;
-    write(data: StravaCredsData): Promise<void>;
+    write(data: any): Promise<void>;
 }
