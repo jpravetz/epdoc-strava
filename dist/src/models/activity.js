@@ -9,7 +9,7 @@ class Activity {
         if ((!opts.commuteOnly && !opts.nonCommuteOnly) ||
             (opts.commuteOnly && data.commute) ||
             (opts.nonCommuteOnly && !data.commute)) {
-            if (opts.activityFilter.length) {
+            if (opts.activityFilter && Array.isArray(opts.activityFilter)) {
                 if (opts.activityFilter.indexOf(data.type) >= 0) {
                     return new Activity(data);
                 }

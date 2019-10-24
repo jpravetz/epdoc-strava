@@ -126,10 +126,10 @@ class StravaApi {
             .set('Authorization', 'access_token ' + this.creds.accessToken)
             .query(options.query)
             .then(resp => {
-            if (!Array.isArray(resp)) {
-                throw new Error(JSON.stringify(resp));
+            if (!resp || !Array.isArray(resp.body)) {
+                throw new Error(JSON.stringify(resp.body));
             }
-            return Promise.resolve(resp);
+            return Promise.resolve(resp.body);
         })
             .catch(err => {
             err.message = 'Activities - ' + err.message;

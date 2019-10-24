@@ -1,11 +1,13 @@
 import { StravaCreds } from './strava-creds';
 import { Athelete } from './models/athlete';
-import { Activity } from './models/activity';
+import { Activity, ActivityFilter } from './models/activity';
 import fs from 'fs';
 import { StravaActivityOpts, StravaApi, StravaApiOpts, StravaSecret, StravaClientConfig } from './strava-api';
 import { Kml, LineStyle } from './kml';
-import { readJson, Dict, EpochSeconds } from './util/file';
+import { readJson, Dict, EpochSeconds } from './util';
 import { Server } from './server';
+import { Bikelog, BikelogOutputOpts } from './bikelog';
+
 // let _ = require('underscore');
 // let async = require('async');
 // let dateutil = require('dateutil');
@@ -124,17 +126,38 @@ export class Main {
         }
       })
       .then(resp => {
-        if (this.options.athlete) {
+        if (this.options.athlete || this.options.xml) {
           return this.getAthlete().then(resp => {
-            this.logAthlete();
+            this.athlete = Athelete.newFromResponseData(resp);
+            if (this.options.athlete) {
+              this.logAthlete();
+            }
           });
         }
       })
       .then(resp => {
-        if (this.options.activities) {
+        if (this.options.activities || this.options.xml) {
           return this.getActivities().then(resp => {
-            console.log('Activities', JSON.stringify(resp, null, '  '));
+            this.activities = resp;
+            if (this.options.activities) {
+              console.log('Activities', JSON.stringify(resp, null, '  '));
+            }
           });
+        }
+      })
+      .then(resp => {
+        if (this.options.xml) {
+          return this.getStarredSegmentList();
+        }
+      })
+      .then(resp => {
+        if (this.options.xml || this.options.activities) {
+          return this.addActivitiesDetails();
+        }
+      })
+      .then(resp => {
+        if (this.options.xml) {
+          return this.saveXml();
         }
       });
   }
@@ -192,6 +215,7 @@ export class Main {
         });
       }, Promise.resolve())
       .then(resp => {
+        results = this.filterActivities(results);
         results = results.sort(Activity.compareStartDate);
         return Promise.resolve(results);
       });
@@ -217,5 +241,58 @@ export class Main {
       });
       return Promise.resolve(results);
     });
+  }
+
+  filterActivities(activities: Activity[]): Activity[] {
+    let filter: ActivityFilter = {
+      commuteOnly: this.options.commuteOnly,
+      nonCommuteOnly: this.options.nonCommuteOnly,
+      include: this.options.activityFilter
+    };
+    let results: Activity[] = this.activities.filter(activity => {
+      return activity.include(filter);
+    });
+    return results;
+  }
+
+  getStarredSegmentList(): Promise<void> {
+    this.starredSegment = [];
+    return this.strava.getStarredSegments().then(resp => {
+      this.segments = resp;
+      console.log('Found %s starred segments:', resp ? resp.length : 0);
+      this.segments.forEach(seg => {
+        // @ts-ignore
+        this.starredSegment.push(seg.name);
+      });
+    });
+  }
+
+  addActivitiesDetails(): Promise<any> {
+    let jobs = [];
+    this.activities.forEach(activity => {
+      let job = this.addActivityDetail(activity);
+      jobs.push(job);
+    });
+    return Promise.all(jobs);
+  }
+
+  addActivityDetail(activity: Activity): Promise<void> {
+    return this.strava.getActivity(activity.id).then(data => {
+      console.log('  Adding activity details for ' + activity.start_date_local + ' ' + activity.name);
+      activity.addDetailFromActivityData(data);
+    });
+  }
+
+  saveXml() {
+    let opts: BikelogOutputOpts = {
+      more: this.options.more,
+      dates: this.options.dateRanges,
+      imperial: this.options.imperial
+    };
+    if (this.options.segments === 'flat') {
+      opts.segmentsFlatFolder = true;
+    }
+    let bikelog = new Bikelog(opts);
+    return bikelog.outputData(this.activities, this.athlete.bikes, this.options.xml);
   }
 }

@@ -1,12 +1,37 @@
 import fs from 'fs';
 
+export function sortBy() {}
+
 export type Dict = Record<string, any>;
 
 export type EpochMilliseconds = number;
 export type EpochSeconds = number;
 export type Seconds = number;
 
-export function sortBy() {}
+export type formatHMSOpts = {
+  seconds?: boolean;
+};
+
+export function formatHMS(s: Seconds, options?: formatHMSOpts): string {
+  options || (options = {});
+  let seconds = s % 60;
+  let minutes = Math.floor(s / 60) % 60;
+  let hours = Math.floor(s / (60 * 60));
+  let result = this.pad(hours) + ':';
+  result += this.pad(minutes);
+  if (options.seconds !== false) {
+    result += ':' + this.pad(seconds);
+  }
+  return result;
+}
+
+export function formatMS(s: Seconds, options?): string {
+  let seconds = s % 60;
+  let minutes = Math.floor(s / 60);
+  let result = minutes + ':';
+  result += this.pad(seconds);
+  return result;
+}
 
 export function readJson(path: string): Promise<any> {
   return new Promise((resolve, reject) => {
@@ -36,4 +61,8 @@ export function writeJson(path: string, data): Promise<void> {
       }
     });
   });
+}
+
+export function julianDate(d: Date): number {
+  return Math.floor(d.getTime() / 86400000 - d.getTimezoneOffset() / 1440 + 2440587.5) + 1;
 }

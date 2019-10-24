@@ -1,4 +1,4 @@
-import { Dict, EpochSeconds } from './util/file';
+import { Dict, EpochSeconds } from './util';
 import * as assert from 'assert';
 import request = require('superagent');
 import { isNumber } from 'epdoc-util';
@@ -10,7 +10,9 @@ const STRAVA_URL = {
   token: STRAVA_URL_PREFIX + 'oauth/token',
   athlete: STRAVA_URL_PREFIX + 'api/v3/athlete',
   picture: STRAVA_URL_PREFIX + 'api/v3/athlete/picture',
-  activities: STRAVA_URL_PREFIX + 'api/v3/activities'
+  activities: STRAVA_URL_PREFIX + 'api/v3/activities',
+  activity: STRAVA_URL_PREFIX + 'api/v3/activity',
+  starred: STRAVA_URL_PREFIX + 'api/v3/segments/starred'
 };
 
 export type StravaCode = string;
@@ -186,14 +188,39 @@ export class StravaApi {
       .set('Authorization', 'access_token ' + this.creds.accessToken)
       .query(options.query)
       .then(resp => {
-        if (!Array.isArray(resp)) {
-          throw new Error(JSON.stringify(resp));
+        if (!resp || !Array.isArray(resp.body)) {
+          throw new Error(JSON.stringify(resp.body));
         }
-        return Promise.resolve(resp);
+        return Promise.resolve(resp.body);
       })
       .catch(err => {
         err.message = 'Activities - ' + err.message;
         throw err;
+      });
+  }
+
+  getStarredSegments() {
+    return request
+      .get(STRAVA_URL.starred)
+      .query({ per_page: 200 })
+      .set('Authorization', 'access_token ' + this.creds.accessToken)
+      .then(resp => {
+        if (resp && Array.isArray(resp.body)) {
+          return Promise.resolve(resp.body);
+        }
+        throw new Error('Invalid starred segments return value');
+      });
+  }
+
+  getActivity(activityId: any) {
+    return request
+      .get(STRAVA_URL.activity + '/' + activityId)
+      .set('Authorization', 'access_token ' + this.creds.accessToken)
+      .then(resp => {
+        if (resp && Array.isArray(resp.body)) {
+          return Promise.resolve(resp.body);
+        }
+        throw new Error('Invalid starred segments return value');
       });
   }
 }

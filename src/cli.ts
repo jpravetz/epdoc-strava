@@ -6,7 +6,7 @@ import { Command } from 'commander';
 import pkg from '../package.json';
 import config from './config/settings.json';
 import { Main, MainOpts, DateRange, StravaConfig } from './main';
-import { readJson, Dict, EpochMilliseconds } from './util/file';
+import { readJson, Dict, EpochMilliseconds } from './util';
 import { runCLI } from 'jest-runtime';
 
 let dateutil = require('dateutil');
