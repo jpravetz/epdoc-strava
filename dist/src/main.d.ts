@@ -3,7 +3,7 @@ import { Athelete } from './models/athlete';
 import { Activity } from './models/activity';
 import { StravaClientConfig } from './strava-api';
 import { Kml, LineStyle } from './kml';
-import { Dict, EpochSeconds } from './util/file';
+import { Dict, EpochSeconds } from './util';
 export declare type SegmentConfig = {
     description: string;
     alias: Dict;
@@ -65,4 +65,9 @@ export declare class Main {
     logAthlete(): void;
     getActivities(): Promise<Activity[]>;
     getActivitiesForDateRange(dateRange: DateRange): Promise<Activity[]>;
+    filterActivities(activities: Activity[]): Activity[];
+    getStarredSegmentList(): Promise<void>;
+    addActivitiesDetails(): Promise<any>;
+    addActivityDetail(activity: Activity): Promise<void>;
+    saveXml(): Promise<void>;
 }

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const file_1 = require("./util/file");
+const util_1 = require("./util");
 const epdoc_util_1 = require("epdoc-util");
 const defaultStravaToken = {
     token_type: null,
@@ -32,7 +32,7 @@ class StravaCreds {
         return val && val.token_type === 'Bearer' && epdoc_util_1.isNumber(val.expires_at);
     }
     read() {
-        return file_1.readJson(this.path)
+        return util_1.readJson(this.path)
             .then(resp => {
             if (StravaCreds.validCredData(resp)) {
                 this.data = resp;
@@ -49,7 +49,7 @@ class StravaCreds {
     write(data) {
         if (StravaCreds.validCredData(data)) {
             this.data = data;
-            return file_1.writeJson(this.path, this.data);
+            return util_1.writeJson(this.path, this.data);
         }
         else {
             throw new Error('No token data to write');

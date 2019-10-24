@@ -3,13 +3,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const athlete_1 = require("./models/athlete");
 const activity_1 = require("./models/activity");
 const fs_1 = __importDefault(require("fs"));
 const strava_api_1 = require("./strava-api");
 const kml_1 = require("./kml");
-const file_1 = require("./util/file");
+const util_1 = require("./util");
 const server_1 = require("./server");
+const bikelog_1 = require("./bikelog");
 class Main {
     constructor(options) {
         this.options = options;
@@ -47,7 +47,9 @@ class Main {
             if (!this.strava.creds.areValid()) {
                 console.log('Authorization required. Opening web authorization page');
                 let authServer = new server_1.Server(this.strava);
-                return authServer.run();
+                return authServer.run().then(resp => {
+                    authServer.close();
+                });
             }
             else {
                 console.log('Authorization not required');
@@ -64,17 +66,40 @@ class Main {
             }
         })
             .then(resp => {
-            if (this.options.athlete) {
+            if (this.options.athlete || this.options.xml) {
                 return this.getAthlete().then(resp => {
-                    this.logAthlete();
+                    if (!this.options.xml) {
+                        this.logAthlete();
+                    }
                 });
             }
         })
             .then(resp => {
-            if (this.options.activities) {
+            if (this.options.activities || this.options.xml) {
                 return this.getActivities().then(resp => {
-                    console.log('Activities', JSON.stringify(resp, null, '  '));
+                    this.activities = resp;
+                    console.log(`Found ${resp.length} Activities`);
+                    if (!this.options.xml) {
+                        resp.forEach(i => {
+                            console.log('  ' + i.toString());
+                        });
+                    }
                 });
+            }
+        })
+            .then(resp => {
+            if (this.options.xml) {
+                return this.getStarredSegmentList();
+            }
+        })
+            .then(resp => {
+            if (this.options.xml) {
+                return this.addActivitiesDetails();
+            }
+        })
+            .then(resp => {
+            if (this.options.xml) {
+                return this.saveXml();
             }
         });
     }
@@ -87,7 +112,7 @@ class Main {
                     }
                     else {
                         this.segmentsFileLastModified = stats.mtime;
-                        this.segmentConfig = file_1.readJson(segmentsFile);
+                        this.segmentConfig = util_1.readJson(segmentsFile);
                         this.segmentConfig || (this.segmentConfig = {});
                         this.segmentConfig.alias || (this.segmentConfig.alias = {});
                         this.segmentConfig.data || (this.segmentConfig.data = {});
@@ -105,10 +130,10 @@ class Main {
         return this.strava
             .getAthlete(this.options.athleteId)
             .then(resp => {
-            this.athlete = athlete_1.Athelete.newFromResponseData(resp);
+            this.athlete = resp;
         })
             .catch(err => {
-            err.message = 'Athlete - ' + err.message;
+            err.message = 'Athlete ' + err.message;
             throw err;
         });
     }
@@ -129,6 +154,7 @@ class Main {
             });
         }, Promise.resolve())
             .then(resp => {
+            results = this.filterActivities(results);
             results = results.sort(activity_1.Activity.compareStartDate);
             return Promise.resolve(results);
         });
@@ -146,13 +172,60 @@ class Main {
             let activities = resp;
             let results = [];
             resp.forEach(data => {
-                let activity = activity_1.Activity.newFromResponseData(data, this.options);
+                let activity = activity_1.Activity.newFromResponseData(data, this);
                 if (activity) {
                     results.push(activity);
                 }
             });
             return Promise.resolve(results);
         });
+    }
+    filterActivities(activities) {
+        let filter = {
+            commuteOnly: this.options.commuteOnly,
+            nonCommuteOnly: this.options.nonCommuteOnly,
+            include: this.options.activityFilter
+        };
+        let results = activities.filter(activity => {
+            return activity.include(filter);
+        });
+        return results;
+    }
+    getStarredSegmentList() {
+        this.starredSegment = [];
+        return this.strava.getStarredSegments().then(resp => {
+            this.segments = resp;
+            console.log('Found %s starred segments', resp ? resp.length : 0);
+            this.segments.forEach(seg => {
+                // @ts-ignore
+                this.starredSegment.push(seg.name);
+            });
+        });
+    }
+    addActivitiesDetails() {
+        let jobs = [];
+        this.activities.forEach(activity => {
+            let job = this.addActivityDetail(activity);
+            jobs.push(job);
+        });
+        return Promise.all(jobs);
+    }
+    addActivityDetail(activity) {
+        return this.strava.getDetailedActivity(activity).then(data => {
+            activity.addFromDetailedActivity(data);
+        });
+    }
+    saveXml() {
+        let opts = {
+            more: this.options.more,
+            dates: this.options.dateRanges,
+            imperial: this.options.imperial
+        };
+        if (this.options.segments === 'flat') {
+            opts.segmentsFlatFolder = true;
+        }
+        let bikelog = new bikelog_1.Bikelog(opts);
+        return bikelog.outputData(this.activities, this.athlete.bikes, this.options.xml);
     }
 }
 exports.Main = Main;

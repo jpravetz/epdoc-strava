@@ -6,6 +6,27 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const fs_1 = __importDefault(require("fs"));
 function sortBy() { }
 exports.sortBy = sortBy;
+function formatHMS(s, options) {
+    options || (options = {});
+    let seconds = s % 60;
+    let minutes = Math.floor(s / 60) % 60;
+    let hours = Math.floor(s / (60 * 60));
+    let result = this.pad(hours) + ':';
+    result += this.pad(minutes);
+    if (options.seconds !== false) {
+        result += ':' + this.pad(seconds);
+    }
+    return result;
+}
+exports.formatHMS = formatHMS;
+function formatMS(s, options) {
+    let seconds = s % 60;
+    let minutes = Math.floor(s / 60);
+    let result = minutes + ':';
+    result += this.pad(seconds);
+    return result;
+}
+exports.formatMS = formatMS;
 function readJson(path) {
     return new Promise((resolve, reject) => {
         fs_1.default.readFile(path, 'utf8', (err, data) => {
@@ -39,4 +60,8 @@ function writeJson(path, data) {
     });
 }
 exports.writeJson = writeJson;
-//# sourceMappingURL=file.js.map
+function julianDate(d) {
+    return Math.floor(d.getTime() / 86400000 - d.getTimezoneOffset() / 1440 + 2440587.5) + 1;
+}
+exports.julianDate = julianDate;
+//# sourceMappingURL=util.js.map

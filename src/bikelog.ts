@@ -106,8 +106,8 @@ export class Bikelog {
     }
   }
 
-  outputData(stravaActivities: Activity[], bikes, file: string): Promise<void> {
-    file = file ? file : 'bikelog.xml';
+  outputData(stravaActivities: Activity[], bikes, filepath: string): Promise<void> {
+    filepath = filepath ? filepath : 'bikelog.xml';
     let dateString;
     if (this.outputOptions.dates instanceof Array && this.outputOptions.dates.length) {
       let ad = [];
@@ -118,7 +118,7 @@ export class Bikelog {
     }
 
     this.buffer = ''; // new Buffer(8*1024);
-    this.stream = fs.createWriteStream(file);
+    this.stream = fs.createWriteStream(filepath);
 
     this.registerBikes(bikes);
     let activities = this.combineActivities(stravaActivities);
@@ -134,11 +134,13 @@ export class Bikelog {
           let item = doc.ele('group').att('xfdf:original', activity.jd);
           for (let idx = 0; idx < Math.min(activity.events.length, 2); ++idx) {
             let event = activity.events[idx];
-            let group = item.ele('group').att('xfdf:original', idx);
-            group.ele('bike', event.bike);
-            group.ele('dist', event.distance);
-            group.ele('el', event.el);
-            group.ele('t', event.t);
+            if (event) {
+              let group = item.ele('group').att('xfdf:original', idx);
+              group.ele('bike', event.bike);
+              group.ele('dist', event.distance);
+              group.ele('el', event.el);
+              group.ele('t', event.t);
+            }
           }
           if (activity.note0) {
             item.ele('note0', activity.note0);
@@ -150,11 +152,13 @@ export class Bikelog {
         let s = doc.doc().end({ pretty: true });
         this.stream.write(s);
         this.stream.end();
+        console.log(`Created ${filepath}`);
         resolve();
       });
 
       this.stream.once('error', function(err) {
         this.stream.end();
+        err.message = 'Stream ' + err.message;
         reject(err);
       });
     });

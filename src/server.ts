@@ -5,6 +5,7 @@ import { StravaApi, StravaCode } from './strava-api';
 
 export class Server {
   strava: any;
+  server: any;
 
   constructor(strava: StravaApi) {
     this.strava = strava;
@@ -58,7 +59,7 @@ export class Server {
 
       app.use(router.routes());
 
-      app.listen(3000);
+      let server = app.listen(3000);
 
       console.log('Server running on port 3000');
 
@@ -66,5 +67,12 @@ export class Server {
         console.log('browser is open');
       });
     });
+  }
+
+  close() {
+    if (this.server) {
+      this.server.close();
+    }
+    this.server = undefined;
   }
 }

@@ -1,4 +1,4 @@
-import { EpochSeconds, Seconds } from './util/file';
+import { EpochSeconds, Seconds } from './util';
 export declare type StravaCredsData = {
     token_type: string;
     expires_at: EpochSeconds;

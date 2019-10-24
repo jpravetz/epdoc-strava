@@ -28,8 +28,7 @@
     "open": "^7.0.0",
     "pdfkit": "~0.2.6",
     "superagent": "^5.1.0",
-    "underscore": "~1.5.2",
-    "xmlbuilder": "^2.4.5"
+    "xmlbuilder": "^13.0.2"
   },
   "devDependencies": {
     "@types/jest": "^24.0.19",

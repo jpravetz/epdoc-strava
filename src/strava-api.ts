@@ -1,8 +1,11 @@
+import { Athelete } from './models/athlete';
+import { Activity } from './models/activity';
 import { Dict, EpochSeconds } from './util';
 import * as assert from 'assert';
 import request = require('superagent');
 import { isNumber } from 'epdoc-util';
 import { StravaCreds } from './strava-creds';
+import { DetailedActivity } from './models/detailed-activity';
 
 const STRAVA_URL_PREFIX = process.env.STRAVA_URL_PREFIX || 'https://www.strava.com/';
 const STRAVA_URL = {
@@ -11,7 +14,6 @@ const STRAVA_URL = {
   athlete: STRAVA_URL_PREFIX + 'api/v3/athlete',
   picture: STRAVA_URL_PREFIX + 'api/v3/athlete/picture',
   activities: STRAVA_URL_PREFIX + 'api/v3/activities',
-  activity: STRAVA_URL_PREFIX + 'api/v3/activity',
   starred: STRAVA_URL_PREFIX + 'api/v3/segments/starred'
 };
 
@@ -38,7 +40,7 @@ export type AuthorizationUrlOpts = {
 };
 
 const defaultAuthOpts: AuthorizationUrlOpts = {
-  scope: 'read_all,activity:read_all',
+  scope: 'read_all,activity:read_all,profile:read_all',
   state: '',
   approvalPrompt: 'auto',
   redirectUri: 'https://localhost'
@@ -110,6 +112,11 @@ export class StravaApi {
     );
   }
 
+  /**
+   * Exchanges code for refresh and access tokens from Strava. Writes these
+   * tokens to ~/.strava/credentials.json.
+   * @param code
+   */
   getTokens(code: StravaCode) {
     let payload = {
       code: code,
@@ -122,23 +129,12 @@ export class StravaApi {
       .post(STRAVA_URL.token)
       .send(payload)
       .then(resp => {
-        console.log('getTokens response', resp);
-        return this.creds.write(resp);
+        console.log('getTokens response', resp.body);
+        return this.creds.write(resp.body);
       })
       .then(resp => {
         console.log('Credentials written to local storage');
       });
-  }
-
-  getTokenPayload(options: TokenUrlOpts = {}): string {
-    let opts = Object.assign(defaultAuthOpts, options);
-
-    return (
-      `${STRAVA_URL.token}?client_id=${this.id}` +
-      `&secret=${this.secret}` +
-      `&code=${opts.code}` +
-      `&grant_type=authorization_code`
-    );
   }
 
   acquireToken(code: string): Promise<string> {
@@ -170,12 +166,20 @@ export class StravaApi {
     };
   };
 
-  getAthlete(athleteId?: number): Dict {
+  getAthlete(athleteId?: number): Promise<Athelete> {
     let url = STRAVA_URL.athlete;
     if (isNumber(athleteId)) {
       url = url + '/' + athleteId;
     }
-    return request.get(url).set('Authorization', 'access_token ' + this.creds.accessToken);
+    return request
+      .get(url)
+      .set('Authorization', 'access_token ' + this.creds.accessToken)
+      .then(resp => {
+        if (resp && Athelete.isInstance(resp.body)) {
+          return Promise.resolve(Athelete.newFromResponseData(resp.body));
+        }
+        throw new Error('Invalid Athelete return value');
+      });
   }
 
   getActivities(options: StravaActivityOpts, callback): Promise<Dict[]> {
@@ -212,15 +216,19 @@ export class StravaApi {
       });
   }
 
-  getActivity(activityId: any) {
+  getDetailedActivity(activity: Activity) {
     return request
-      .get(STRAVA_URL.activity + '/' + activityId)
+      .get(STRAVA_URL.activities + '/' + activity.id)
       .set('Authorization', 'access_token ' + this.creds.accessToken)
       .then(resp => {
-        if (resp && Array.isArray(resp.body)) {
-          return Promise.resolve(resp.body);
+        if (resp && DetailedActivity.isInstance(resp.body)) {
+          return Promise.resolve(DetailedActivity.newFromResponseData(resp.body));
         }
-        throw new Error('Invalid starred segments return value');
+        throw new Error('Invalid DetailedActivity return value');
+      })
+      .catch(err => {
+        err.message = `getActivity ${activity.id} ${err.message} (${activity.toString()})`;
+        throw err;
       });
   }
 }

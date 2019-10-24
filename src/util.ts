@@ -7,6 +7,9 @@ export type Dict = Record<string, any>;
 export type EpochMilliseconds = number;
 export type EpochSeconds = number;
 export type Seconds = number;
+export type Metres = number;
+export type Kilometres = number;
+export type IsoDateString = string;
 
 export type formatHMSOpts = {
   seconds?: boolean;

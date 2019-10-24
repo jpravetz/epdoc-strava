@@ -10,7 +10,7 @@ const commander_1 = require("commander");
 const package_json_1 = __importDefault(require("../package.json"));
 const settings_json_1 = __importDefault(require("./config/settings.json"));
 const main_1 = require("./main");
-const file_1 = require("./util/file");
+const util_1 = require("./util");
 let dateutil = require('dateutil');
 const DAY = 24 * 3600 * 1000;
 // let root = Path.resolve(__dirname, '..');
@@ -28,7 +28,7 @@ function run() {
     return Promise.resolve()
         .then(resp => {
         if (fs_1.default.existsSync(segmentsFile)) {
-            return file_1.readJson(segmentsFile);
+            return util_1.readJson(segmentsFile);
         }
         return Promise.resolve({});
     })
@@ -51,14 +51,12 @@ function run() {
             .option('-m, --more', 'When generating KML file, include additional detail info in KML description field')
             .option('-y, --imperial', 'Use imperial units')
             .option('-p, --path <cwd>', 'Current folder')
-            .option('--auth', 'Return authorization URL that can be used in a browser to authorize this application')
             .option('-v, --verbose', 'Verbose messages')
             .parse(process.argv);
         let opts = {
             home: home,
             cwd: program.cwd,
             config: settings_json_1.default,
-            auth: program.auth,
             segmentsFile: segmentsFile,
             credentialsFile: credentialsFile,
             athleteId: parseInt(program.id, 10) || settings_json_1.default.athleteId,
@@ -68,7 +66,7 @@ function run() {
             dates: program.dates || [],
             more: program.more,
             kml: program.kml,
-            xml: program.xxml,
+            xml: program.xml,
             activities: program.activities,
             // activityFilter: _.without(program.filter || [], 'commute', 'nocommute'),
             commuteOnly: (program.filter || []).indexOf('commute') >= 0 ? true : false,

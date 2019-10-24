@@ -73,7 +73,6 @@ function run(): Promise<void> {
         .option('-m, --more', 'When generating KML file, include additional detail info in KML description field')
         .option('-y, --imperial', 'Use imperial units')
         .option('-p, --path <cwd>', 'Current folder')
-        .option('--auth', 'Return authorization URL that can be used in a browser to authorize this application')
         .option('-v, --verbose', 'Verbose messages')
         .parse(process.argv);
 
@@ -81,7 +80,6 @@ function run(): Promise<void> {
         home: home,
         cwd: program.cwd,
         config: config,
-        auth: program.auth,
         segmentsFile: segmentsFile,
         credentialsFile: credentialsFile,
         athleteId: parseInt(program.id, 10) || (config as StravaConfig).athleteId,
@@ -91,7 +89,7 @@ function run(): Promise<void> {
         dates: program.dates || [], // array of date ranges, in seconds (not milliseconds)
         more: program.more,
         kml: program.kml,
-        xml: program.xxml,
+        xml: program.xml,
         activities: program.activities,
         // activityFilter: _.without(program.filter || [], 'commute', 'nocommute'),
         commuteOnly: (program.filter || []).indexOf('commute') >= 0 ? true : false,

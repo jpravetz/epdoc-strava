@@ -1,5 +1,8 @@
-import { Dict, EpochSeconds } from './util/file';
+import { Athelete } from './models/athlete';
+import { Activity } from './models/activity';
+import { Dict, EpochSeconds } from './util';
 import { StravaCreds } from './strava-creds';
+import { DetailedActivity } from './models/detailed-activity';
 export declare type StravaCode = string;
 export declare type StravaSecret = string;
 export declare type StravaAccessToken = string;
@@ -41,10 +44,16 @@ export declare class StravaApi {
     readonly creds: StravaCreds;
     getAuthorizationUrl(options?: AuthorizationUrlOpts): string;
     getTokenUrl(options?: TokenUrlOpts): string;
+    /**
+     * Exchanges code for refresh and access tokens from Strava. Writes these
+     * tokens to ~/.strava/credentials.json.
+     * @param code
+     */
     getTokens(code: StravaCode): Promise<void>;
-    getTokenPayload(options?: TokenUrlOpts): string;
     acquireToken(code: string): Promise<string>;
     authHeaders: () => Record<string, any>;
-    getAthlete(athleteId?: number): Dict;
+    getAthlete(athleteId?: number): Promise<Athelete>;
     getActivities(options: StravaActivityOpts, callback: any): Promise<Dict[]>;
+    getStarredSegments(): Promise<any[]>;
+    getDetailedActivity(activity: Activity): Promise<DetailedActivity>;
 }

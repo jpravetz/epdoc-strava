@@ -110,7 +110,9 @@ export class Main {
         if (!this.strava.creds.areValid()) {
           console.log('Authorization required. Opening web authorization page');
           let authServer = new Server(this.strava);
-          return authServer.run();
+          return authServer.run().then(resp => {
+            authServer.close();
+          });
         } else {
           console.log('Authorization not required');
         }
@@ -128,8 +130,7 @@ export class Main {
       .then(resp => {
         if (this.options.athlete || this.options.xml) {
           return this.getAthlete().then(resp => {
-            this.athlete = Athelete.newFromResponseData(resp);
-            if (this.options.athlete) {
+            if (!this.options.xml) {
               this.logAthlete();
             }
           });
@@ -139,8 +140,11 @@ export class Main {
         if (this.options.activities || this.options.xml) {
           return this.getActivities().then(resp => {
             this.activities = resp;
-            if (this.options.activities) {
-              console.log('Activities', JSON.stringify(resp, null, '  '));
+            console.log(`Found ${resp.length} Activities`);
+            if (!this.options.xml) {
+              resp.forEach(i => {
+                console.log('  ' + i.toString());
+              });
             }
           });
         }
@@ -151,7 +155,7 @@ export class Main {
         }
       })
       .then(resp => {
-        if (this.options.xml || this.options.activities) {
+        if (this.options.xml) {
           return this.addActivitiesDetails();
         }
       })
@@ -188,10 +192,10 @@ export class Main {
     return this.strava
       .getAthlete(this.options.athleteId)
       .then(resp => {
-        this.athlete = Athelete.newFromResponseData(resp);
+        this.athlete = resp;
       })
       .catch(err => {
-        err.message = 'Athlete - ' + err.message;
+        err.message = 'Athlete ' + err.message;
         throw err;
       });
   }
@@ -234,7 +238,7 @@ export class Main {
       let activities = resp as Activity[];
       let results: Activity[] = [];
       resp.forEach(data => {
-        let activity = Activity.newFromResponseData(data, this.options);
+        let activity = Activity.newFromResponseData(data, this);
         if (activity) {
           results.push(activity);
         }
@@ -249,7 +253,7 @@ export class Main {
       nonCommuteOnly: this.options.nonCommuteOnly,
       include: this.options.activityFilter
     };
-    let results: Activity[] = this.activities.filter(activity => {
+    let results: Activity[] = activities.filter(activity => {
       return activity.include(filter);
     });
     return results;
@@ -259,7 +263,7 @@ export class Main {
     this.starredSegment = [];
     return this.strava.getStarredSegments().then(resp => {
       this.segments = resp;
-      console.log('Found %s starred segments:', resp ? resp.length : 0);
+      console.log('Found %s starred segments', resp ? resp.length : 0);
       this.segments.forEach(seg => {
         // @ts-ignore
         this.starredSegment.push(seg.name);
@@ -277,9 +281,8 @@ export class Main {
   }
 
   addActivityDetail(activity: Activity): Promise<void> {
-    return this.strava.getActivity(activity.id).then(data => {
-      console.log('  Adding activity details for ' + activity.start_date_local + ' ' + activity.name);
-      activity.addDetailFromActivityData(data);
+    return this.strava.getDetailedActivity(activity).then(data => {
+      activity.addFromDetailedActivity(data);
     });
   }
 

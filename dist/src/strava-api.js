@@ -7,20 +7,23 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const athlete_1 = require("./models/athlete");
 const assert = __importStar(require("assert"));
 const request = require("superagent");
 const epdoc_util_1 = require("epdoc-util");
 const strava_creds_1 = require("./strava-creds");
+const detailed_activity_1 = require("./models/detailed-activity");
 const STRAVA_URL_PREFIX = process.env.STRAVA_URL_PREFIX || 'https://www.strava.com/';
 const STRAVA_URL = {
     authorize: STRAVA_URL_PREFIX + 'oauth/authorize',
     token: STRAVA_URL_PREFIX + 'oauth/token',
     athlete: STRAVA_URL_PREFIX + 'api/v3/athlete',
     picture: STRAVA_URL_PREFIX + 'api/v3/athlete/picture',
-    activities: STRAVA_URL_PREFIX + 'api/v3/activities'
+    activities: STRAVA_URL_PREFIX + 'api/v3/activities',
+    starred: STRAVA_URL_PREFIX + 'api/v3/segments/starred'
 };
 const defaultAuthOpts = {
-    scope: 'read_all,activity:read_all',
+    scope: 'read_all,activity:read_all,profile:read_all',
     state: '',
     approvalPrompt: 'auto',
     redirectUri: 'https://localhost'
@@ -65,6 +68,11 @@ class StravaApi {
             `&code=${opts.code}` +
             `&grant_type=authorization_code`);
     }
+    /**
+     * Exchanges code for refresh and access tokens from Strava. Writes these
+     * tokens to ~/.strava/credentials.json.
+     * @param code
+     */
     getTokens(code) {
         let payload = {
             code: code,
@@ -77,19 +85,12 @@ class StravaApi {
             .post(STRAVA_URL.token)
             .send(payload)
             .then(resp => {
-            console.log('getTokens response', resp);
-            return this.creds.write(resp);
+            console.log('getTokens response', resp.body);
+            return this.creds.write(resp.body);
         })
             .then(resp => {
             console.log('Credentials written to local storage');
         });
-    }
-    getTokenPayload(options = {}) {
-        let opts = Object.assign(defaultAuthOpts, options);
-        return (`${STRAVA_URL.token}?client_id=${this.id}` +
-            `&secret=${this.secret}` +
-            `&code=${opts.code}` +
-            `&grant_type=authorization_code`);
     }
     acquireToken(code) {
         assert.ok(this.id, 'A client ID is required.');
@@ -114,7 +115,15 @@ class StravaApi {
         if (epdoc_util_1.isNumber(athleteId)) {
             url = url + '/' + athleteId;
         }
-        return request.get(url).set('Authorization', 'access_token ' + this.creds.accessToken);
+        return request
+            .get(url)
+            .set('Authorization', 'access_token ' + this.creds.accessToken)
+            .then(resp => {
+            if (resp && athlete_1.Athelete.isInstance(resp.body)) {
+                return Promise.resolve(athlete_1.Athelete.newFromResponseData(resp.body));
+            }
+            throw new Error('Invalid Athelete return value');
+        });
     }
     getActivities(options, callback) {
         let url = STRAVA_URL.activities;
@@ -133,6 +142,33 @@ class StravaApi {
         })
             .catch(err => {
             err.message = 'Activities - ' + err.message;
+            throw err;
+        });
+    }
+    getStarredSegments() {
+        return request
+            .get(STRAVA_URL.starred)
+            .query({ per_page: 200 })
+            .set('Authorization', 'access_token ' + this.creds.accessToken)
+            .then(resp => {
+            if (resp && Array.isArray(resp.body)) {
+                return Promise.resolve(resp.body);
+            }
+            throw new Error('Invalid starred segments return value');
+        });
+    }
+    getDetailedActivity(activity) {
+        return request
+            .get(STRAVA_URL.activities + '/' + activity.id)
+            .set('Authorization', 'access_token ' + this.creds.accessToken)
+            .then(resp => {
+            if (resp && detailed_activity_1.DetailedActivity.isInstance(resp.body)) {
+                return Promise.resolve(detailed_activity_1.DetailedActivity.newFromResponseData(resp.body));
+            }
+            throw new Error('Invalid DetailedActivity return value');
+        })
+            .catch(err => {
+            err.message = `getActivity ${activity.id} ${err.message} (${activity.toString()})`;
             throw err;
         });
     }

@@ -63,12 +63,18 @@ class Server {
                 ctx.body = `<html><body><a href="${authUrl}">Click to authenticate</a></body></html>`;
             }));
             app.use(router.routes());
-            app.listen(3000);
+            let server = app.listen(3000);
             console.log('Server running on port 3000');
             open_1.default(authUrl, { wait: true }).then(resp => {
                 console.log('browser is open');
             });
         });
+    }
+    close() {
+        if (this.server) {
+            this.server.close();
+        }
+        this.server = undefined;
     }
 }
 exports.Server = Server;
