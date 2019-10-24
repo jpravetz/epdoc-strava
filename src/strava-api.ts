@@ -13,10 +13,19 @@ const STRAVA_URL = {
   activities: STRAVA_URL_PREFIX + 'api/v3/activities'
 };
 
-export type StravaApiOpts = {
-  id: number;
-  secret: string;
-  token: string;
+export type StravaCode = string;
+export type StravaSecret = string;
+export type StravaAccessToken = string;
+export type StravaRefreshToken = string;
+export type StravaClientId = number;
+
+export type StravaClientConfig = {
+  id: StravaClientId;
+  secret: StravaSecret;
+};
+
+export type StravaApiOpts = StravaClientConfig & {
+  token: StravaAccessToken;
 };
 
 export type AuthorizationUrlOpts = {
@@ -25,8 +34,6 @@ export type AuthorizationUrlOpts = {
   state?: string;
   approvalPrompt?: string;
 };
-
-export type StravaCode = string;
 
 const defaultAuthOpts: AuthorizationUrlOpts = {
   scope: 'read_all,activity:read_all',
@@ -50,15 +57,14 @@ export type StravaActivityOpts = {
 };
 
 export class StravaApi {
-  id: number;
-  secret: string;
-  token: string;
+  id: StravaClientId;
+  secret: StravaSecret;
   private _credsFile: string;
   private _creds: StravaCreds;
 
-  constructor(opts: StravaApiOpts, credsFile: string) {
-    this.id = opts.id || parseInt(process.env.STRAVA_CLIENT_ID, 10);
-    this.secret = opts.secret || process.env.STRAVA_CLIENT_SECRET;
+  constructor(clientConfig: StravaClientConfig, credsFile: string) {
+    this.id = clientConfig.id || parseInt(process.env.STRAVA_CLIENT_ID, 10);
+    this.secret = clientConfig.secret || process.env.STRAVA_CLIENT_SECRET;
     // this.token = opts.token || process.env.STRAVA_ACCESS_TOKEN;
     this._credsFile = credsFile;
   }
@@ -114,8 +120,8 @@ export class StravaApi {
       .post(STRAVA_URL.token)
       .send(payload)
       .then(resp => {
-        console.log('getTokens response', resp.res.body);
-        return this.creds.write(resp.res.body);
+        console.log('getTokens response', resp);
+        return this.creds.write(resp);
       })
       .then(resp => {
         console.log('Credentials written to local storage');
@@ -158,7 +164,7 @@ export class StravaApi {
     assert.ok(this.secret, 'An access token is required.');
 
     return {
-      Authorization: 'access_token ' + this.token
+      Authorization: 'access_token ' + this.creds.accessToken
     };
   };
 
@@ -167,7 +173,7 @@ export class StravaApi {
     if (isNumber(athleteId)) {
       url = url + '/' + athleteId;
     }
-    return request.get(url).set('Authorization', 'access_token ' + this.token);
+    return request.get(url).set('Authorization', 'access_token ' + this.creds.accessToken);
   }
 
   getActivities(options: StravaActivityOpts, callback): Promise<Dict[]> {
@@ -177,7 +183,7 @@ export class StravaApi {
     }
     return request
       .get(url)
-      .set('Authorization', 'access_token ' + this.token)
+      .set('Authorization', 'access_token ' + this.creds.accessToken)
       .query(options.query)
       .then(resp => {
         if (!Array.isArray(resp)) {

@@ -1,7 +1,7 @@
 import { StravaCreds } from './strava-creds';
 import { Athelete } from './models/athlete';
 import { Activity } from './models/activity';
-import { StravaApiOpts } from './strava-api';
+import { StravaClientConfig } from './strava-api';
 import { Kml, LineStyle } from './kml';
 import { Dict, EpochSeconds } from './util/file';
 export declare type SegmentConfig = {
@@ -11,10 +11,10 @@ export declare type SegmentConfig = {
 };
 export declare type StravaConfig = {
     description: string;
-    client: StravaApiOpts;
-    athleteId: number;
+    client: StravaClientConfig;
+    athleteId?: number;
     cachePath?: string;
-    lineStyles: Record<string, LineStyle>;
+    lineStyles?: Record<string, LineStyle>;
 };
 export declare type DateRange = {
     before: EpochSeconds;

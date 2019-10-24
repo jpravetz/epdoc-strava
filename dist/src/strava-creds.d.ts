@@ -1,11 +1,15 @@
-import { EpochSeconds, Dict, Seconds } from './util/file';
+import { EpochSeconds, Seconds } from './util/file';
 export declare type StravaCredsData = {
     token_type: string;
     expires_at: EpochSeconds;
     expires_in: EpochSeconds;
     refresh_token: string;
     access_token: string;
-    athlete: Dict;
+    athlete: {
+        id?: string;
+        username?: string;
+        [key: string]: any;
+    };
 };
 export declare class StravaCreds {
     data: StravaCredsData;

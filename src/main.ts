@@ -2,7 +2,7 @@ import { StravaCreds } from './strava-creds';
 import { Athelete } from './models/athlete';
 import { Activity } from './models/activity';
 import fs from 'fs';
-import { StravaActivityOpts, StravaApi, StravaApiOpts } from './strava-api';
+import { StravaActivityOpts, StravaApi, StravaApiOpts, StravaSecret, StravaClientConfig } from './strava-api';
 import { Kml, LineStyle } from './kml';
 import { readJson, Dict, EpochSeconds } from './util/file';
 import { Server } from './server';
@@ -20,11 +20,11 @@ export type SegmentConfig = {
 
 export type StravaConfig = {
   description: string;
-  client: StravaApiOpts;
-  athleteId: number;
+  client: StravaClientConfig;
+  athleteId?: number;
   // accessToken: string;
   cachePath?: string;
-  lineStyles: Record<string, LineStyle>;
+  lineStyles?: Record<string, LineStyle>;
 };
 
 export type DateRange = {
@@ -109,6 +109,8 @@ export class Main {
           console.log('Authorization required. Opening web authorization page');
           let authServer = new Server(this.strava);
           return authServer.run();
+        } else {
+          console.log('Authorization not required');
         }
       })
       .then(resp => {

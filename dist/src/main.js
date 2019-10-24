@@ -49,6 +49,9 @@ class Main {
                 let authServer = new server_1.Server(this.strava);
                 return authServer.run();
             }
+            else {
+                console.log('Authorization not required');
+            }
         })
             .then(resp => {
             if (!this.strava.creds.areValid()) {

@@ -26,15 +26,15 @@ const defaultAuthOpts = {
     redirectUri: 'https://localhost'
 };
 class StravaApi {
-    constructor(opts, credsFile) {
+    constructor(clientConfig, credsFile) {
         this.authHeaders = function () {
             assert.ok(this.secret, 'An access token is required.');
             return {
-                Authorization: 'access_token ' + this.token
+                Authorization: 'access_token ' + this.creds.accessToken
             };
         };
-        this.id = opts.id || parseInt(process.env.STRAVA_CLIENT_ID, 10);
-        this.secret = opts.secret || process.env.STRAVA_CLIENT_SECRET;
+        this.id = clientConfig.id || parseInt(process.env.STRAVA_CLIENT_ID, 10);
+        this.secret = clientConfig.secret || process.env.STRAVA_CLIENT_SECRET;
         // this.token = opts.token || process.env.STRAVA_ACCESS_TOKEN;
         this._credsFile = credsFile;
     }
@@ -77,8 +77,8 @@ class StravaApi {
             .post(STRAVA_URL.token)
             .send(payload)
             .then(resp => {
-            console.log('getTokens response', resp.res.body);
-            return this.creds.write(resp.res.body);
+            console.log('getTokens response', resp);
+            return this.creds.write(resp);
         })
             .then(resp => {
             console.log('Credentials written to local storage');
@@ -114,7 +114,7 @@ class StravaApi {
         if (epdoc_util_1.isNumber(athleteId)) {
             url = url + '/' + athleteId;
         }
-        return request.get(url).set('Authorization', 'access_token ' + this.token);
+        return request.get(url).set('Authorization', 'access_token ' + this.creds.accessToken);
     }
     getActivities(options, callback) {
         let url = STRAVA_URL.activities;
@@ -123,7 +123,7 @@ class StravaApi {
         }
         return request
             .get(url)
-            .set('Authorization', 'access_token ' + this.token)
+            .set('Authorization', 'access_token ' + this.creds.accessToken)
             .query(options.query)
             .then(resp => {
             if (!Array.isArray(resp)) {

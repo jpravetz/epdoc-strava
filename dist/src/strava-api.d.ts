@@ -1,9 +1,16 @@
 import { Dict, EpochSeconds } from './util/file';
 import { StravaCreds } from './strava-creds';
-export declare type StravaApiOpts = {
-    id: number;
-    secret: string;
-    token: string;
+export declare type StravaCode = string;
+export declare type StravaSecret = string;
+export declare type StravaAccessToken = string;
+export declare type StravaRefreshToken = string;
+export declare type StravaClientId = number;
+export declare type StravaClientConfig = {
+    id: StravaClientId;
+    secret: StravaSecret;
+};
+export declare type StravaApiOpts = StravaClientConfig & {
+    token: StravaAccessToken;
 };
 export declare type AuthorizationUrlOpts = {
     redirectUri?: string;
@@ -11,7 +18,6 @@ export declare type AuthorizationUrlOpts = {
     state?: string;
     approvalPrompt?: string;
 };
-export declare type StravaCode = string;
 export declare type TokenUrlOpts = {
     code?: string;
 };
@@ -25,12 +31,11 @@ export declare type StravaActivityOpts = {
     };
 };
 export declare class StravaApi {
-    id: number;
-    secret: string;
-    token: string;
+    id: StravaClientId;
+    secret: StravaSecret;
     private _credsFile;
     private _creds;
-    constructor(opts: StravaApiOpts, credsFile: string);
+    constructor(clientConfig: StravaClientConfig, credsFile: string);
     toString(): string;
     initCreds(): Promise<void>;
     readonly creds: StravaCreds;

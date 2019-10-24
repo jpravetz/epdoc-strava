@@ -8,9 +8,9 @@ const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
 const commander_1 = require("commander");
 const package_json_1 = __importDefault(require("../package.json"));
+const settings_json_1 = __importDefault(require("./config/settings.json"));
 const main_1 = require("./main");
 const file_1 = require("./util/file");
-let _ = require('underscore');
 let dateutil = require('dateutil');
 const DAY = 24 * 3600 * 1000;
 // let root = Path.resolve(__dirname, '..');
@@ -19,17 +19,14 @@ const home = process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE
 //let config = Config.get();
 function run() {
     const segmentsFile = path_1.default.resolve(home, '.strava', 'segments.json');
-    const configFile = path_1.default.resolve(home, '.strava', 'settings.json');
     const credentialsFile = path_1.default.resolve(home, '.strava', 'credentials.json');
-    if (!fs_1.default.existsSync(configFile)) {
-        console.log('Error: config file does not exist: %s', configFile);
-        process.exit(1);
-    }
-    let config;
+    // if (!fs.existsSync(configFile)) {
+    //   console.log('Error: config file does not exist: %s', configFile);
+    //   process.exit(1);
+    // }
     let segments;
-    return file_1.readJson(configFile)
+    return Promise.resolve()
         .then(resp => {
-        config = resp;
         if (fs_1.default.existsSync(segmentsFile)) {
             return file_1.readJson(segmentsFile);
         }
@@ -42,9 +39,7 @@ function run() {
             .version(package_json_1.default.version)
             .option('-d, --dates <dates>', "Comma separated list of activity date or date ranges in format '20141231-20150105,20150107'. " +
             'If the last entry in the list is a single date then everything from that date until today will be included.', dateList)
-            .option('-i, --id <athleteId>', 'Athlete ID. Defaults to value of athleteId in $HOME/.strava/settings.json (this value is ' +
-            config.athleteId +
-            ')')
+            .option('-i, --id <athleteId>', 'Athlete ID. Defaults to your login')
             .option('-u, --athlete', 'Show athlete details including list of bikes')
             .option('-g, --friends [opt]', 'Show athlete friends list (Use --more a complete summary, otherwise id and name are displayed)')
             .option('-k, --kml <file>', 'Create KML file for specified date range')
@@ -62,11 +57,11 @@ function run() {
         let opts = {
             home: home,
             cwd: program.cwd,
-            config: config,
+            config: settings_json_1.default,
             auth: program.auth,
             segmentsFile: segmentsFile,
             credentialsFile: credentialsFile,
-            athleteId: parseInt(program.id, 10) || config.athleteId,
+            athleteId: parseInt(program.id, 10) || settings_json_1.default.athleteId,
             athlete: program.athlete,
             bikes: program.bikes,
             friends: program.friends,
@@ -75,12 +70,12 @@ function run() {
             kml: program.kml,
             xml: program.xxml,
             activities: program.activities,
-            activityFilter: _.without(program.filter || [], 'commute', 'nocommute'),
+            // activityFilter: _.without(program.filter || [], 'commute', 'nocommute'),
             commuteOnly: (program.filter || []).indexOf('commute') >= 0 ? true : false,
             nonCommuteOnly: (program.filter || []).indexOf('nocommute') >= 0 ? true : false,
             imperial: program.imperial,
             segments: program.segments,
-            verbose: program.verbose
+            verbose: program.verbose || 9
         };
         opts.dateRanges = []; // used for kml file
         if (opts.dates && opts.dates.length) {
@@ -93,15 +88,14 @@ function run() {
             });
         }
         let main = new main_1.Main(opts);
-        main
-            .run()
-            .then(resp => {
-            console.log('done');
-            // process.exit(0);     // don't do this else files will not be saved
-        })
-            .catch(err => {
-            console.log('Error: ' + err.message);
-        });
+        return main.run();
+    })
+        .then(resp => {
+        console.log('done');
+        // process.exit(0);     // don't do this else files will not be saved
+    })
+        .catch(err => {
+        console.log('Error: ' + err.message);
     });
 }
 function commaList(val) {

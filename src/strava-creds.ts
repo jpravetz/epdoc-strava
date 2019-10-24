@@ -7,7 +7,11 @@ export type StravaCredsData = {
   expires_in: EpochSeconds;
   refresh_token: string;
   access_token: string;
-  athlete: Dict;
+  athlete: {
+    id?: string;
+    username?: string;
+    [key: string]: any;
+  };
 };
 
 const defaultStravaToken: StravaCredsData = {

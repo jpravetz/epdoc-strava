@@ -20,51 +20,54 @@ class Server {
         this.strava = strava;
     }
     run() {
-        const app = new koa_1.default();
-        const router = new koa_router_1.default();
-        let authOpts = {
-            redirectUri: 'http://localhost:3000/token'
-        };
-        const authUrl = this.strava.getAuthorizationUrl(authOpts);
-        router.get('/token', (ctx) => __awaiter(this, void 0, void 0, function* () {
-            const code = ctx.query.code;
-            const err = ctx.query.error;
-            let tokenOpts = {
-                code: ctx.query.code
+        return new Promise((resolve, reject) => {
+            const app = new koa_1.default();
+            const router = new koa_router_1.default();
+            let authOpts = {
+                redirectUri: 'http://localhost:3000/token'
             };
-            let tokenUrl = this.strava.getTokenUrl(tokenOpts);
-            let s = '<html><body><h1>Credential Exchange</h1>';
-            return Promise.resolve()
-                .then(resp => {
-                if (err === 'access_denied') {
-                    s += '<p>Error, access denied</p>';
-                }
-                else {
-                    s += `<p>Authorization code: ${code}</p>`;
-                    s += '<p>Retrieving session tokens ...</p>';
-                    return this.strava
-                        .getTokens(code)
-                        .then(resp => {
-                        s += '<p>Tokens retrieved. Please return to command line.</p>';
-                    })
-                        .catch(err => {
-                        s += `<p>Error retrieving tokens: ${err.message}</p>`;
-                    });
-                }
-            })
-                .then(resp => {
-                s += '</body></html>';
-                ctx.body = s;
+            const authUrl = this.strava.getAuthorizationUrl(authOpts);
+            router.get('/token', (ctx) => __awaiter(this, void 0, void 0, function* () {
+                const code = ctx.query.code;
+                const err = ctx.query.error;
+                let s = '<html><body><h1>Credential Exchange</h1>';
+                return Promise.resolve()
+                    .then(resp => {
+                    if (err === 'access_denied') {
+                        s += '<p>Error, access denied</p>';
+                    }
+                    else {
+                        s += `<p>Authorization code: ${code}</p>`;
+                        return this.strava
+                            .getTokens(code)
+                            .then(resp => {
+                            s += '<p>Tokens retrieved. Please return to command line.</p>';
+                            s += '</body></html>';
+                            ctx.body = s;
+                            resolve('Tokens retrieved and saved to file');
+                        })
+                            .catch(err => {
+                            s += `<p>Error retrieving tokens: ${err.message}</p>`;
+                            s += '</body></html>';
+                            ctx.body = s;
+                            reject(new Error('Could not retrieve tokens: ' + err.message));
+                        });
+                    }
+                })
+                    .then(resp => {
+                    s += '</body></html>';
+                    ctx.body = s;
+                });
+            }));
+            router.get('/*', (ctx) => __awaiter(this, void 0, void 0, function* () {
+                ctx.body = `<html><body><a href="${authUrl}">Click to authenticate</a></body></html>`;
+            }));
+            app.use(router.routes());
+            app.listen(3000);
+            console.log('Server running on port 3000');
+            open_1.default(authUrl, { wait: true }).then(resp => {
+                console.log('browser is open');
             });
-        }));
-        router.get('/*', (ctx) => __awaiter(this, void 0, void 0, function* () {
-            ctx.body = `<html><body><a href="${authUrl}">Click to authenticate</a></body></html>`;
-        }));
-        app.use(router.routes());
-        app.listen(3000);
-        console.log('Server running on port 3000');
-        open_1.default(authUrl, { wait: true }).then(resp => {
-            console.log('browser is open');
         });
     }
 }

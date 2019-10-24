@@ -4,11 +4,11 @@ import path from 'path';
 import fs from 'fs';
 import { Command } from 'commander';
 import pkg from '../package.json';
-import { Main, MainOpts, DateRange } from './main';
+import config from './config/settings.json';
+import { Main, MainOpts, DateRange, StravaConfig } from './main';
 import { readJson, Dict, EpochMilliseconds } from './util/file';
 import { runCLI } from 'jest-runtime';
 
-let _ = require('underscore');
 let dateutil = require('dateutil');
 
 const DAY = 24 * 3600 * 1000;
@@ -21,19 +21,16 @@ const home = process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE
 
 function run(): Promise<void> {
   const segmentsFile = path.resolve(home, '.strava', 'segments.json');
-  const configFile = path.resolve(home, '.strava', 'settings.json');
   const credentialsFile = path.resolve(home, '.strava', 'credentials.json');
-  if (!fs.existsSync(configFile)) {
-    console.log('Error: config file does not exist: %s', configFile);
-    process.exit(1);
-  }
+  // if (!fs.existsSync(configFile)) {
+  //   console.log('Error: config file does not exist: %s', configFile);
+  //   process.exit(1);
+  // }
 
-  let config;
   let segments: Dict;
 
-  return readJson(configFile)
+  return Promise.resolve()
     .then(resp => {
-      config = resp;
       if (fs.existsSync(segmentsFile)) {
         return readJson(segmentsFile);
       }
@@ -51,12 +48,7 @@ function run(): Promise<void> {
             'If the last entry in the list is a single date then everything from that date until today will be included.',
           dateList
         )
-        .option(
-          '-i, --id <athleteId>',
-          'Athlete ID. Defaults to value of athleteId in $HOME/.strava/settings.json (this value is ' +
-            config.athleteId +
-            ')'
-        )
+        .option('-i, --id <athleteId>', 'Athlete ID. Defaults to your login')
         .option('-u, --athlete', 'Show athlete details including list of bikes')
         .option(
           '-g, --friends [opt]',
@@ -92,7 +84,7 @@ function run(): Promise<void> {
         auth: program.auth,
         segmentsFile: segmentsFile,
         credentialsFile: credentialsFile,
-        athleteId: parseInt(program.id, 10) || config.athleteId,
+        athleteId: parseInt(program.id, 10) || (config as StravaConfig).athleteId,
         athlete: program.athlete,
         bikes: program.bikes,
         friends: program.friends,
@@ -101,12 +93,12 @@ function run(): Promise<void> {
         kml: program.kml,
         xml: program.xxml,
         activities: program.activities,
-        activityFilter: _.without(program.filter || [], 'commute', 'nocommute'),
+        // activityFilter: _.without(program.filter || [], 'commute', 'nocommute'),
         commuteOnly: (program.filter || []).indexOf('commute') >= 0 ? true : false,
         nonCommuteOnly: (program.filter || []).indexOf('nocommute') >= 0 ? true : false,
         imperial: program.imperial,
         segments: program.segments, // Will be true or 'flat'
-        verbose: program.verbose
+        verbose: program.verbose || 9
       };
 
       opts.dateRanges = []; // used for kml file
@@ -121,15 +113,14 @@ function run(): Promise<void> {
       }
 
       let main = new Main(opts);
-      main
-        .run()
-        .then(resp => {
-          console.log('done');
-          // process.exit(0);     // don't do this else files will not be saved
-        })
-        .catch(err => {
-          console.log('Error: ' + err.message);
-        });
+      return main.run();
+    })
+    .then(resp => {
+      console.log('done');
+      // process.exit(0);     // don't do this else files will not be saved
+    })
+    .catch(err => {
+      console.log('Error: ' + err.message);
     });
 }
 
