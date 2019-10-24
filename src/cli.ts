@@ -4,7 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { Command } from 'commander';
 import pkg from '../package.json';
-import config from './config/settings.json';
+import projectConfig from './config/project.settings.json';
 import { Main, MainOpts, DateRange, StravaConfig } from './main';
 import { readJson, Dict, EpochMilliseconds } from './util';
 import { runCLI } from 'jest-runtime';
@@ -22,6 +22,7 @@ const home = process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE
 function run(): Promise<void> {
   const segmentsFile = path.resolve(home, '.strava', 'segments.json');
   const credentialsFile = path.resolve(home, '.strava', 'credentials.json');
+  const userConfigFile = path.resolve(home, '.strava', 'user.settings.json');
   // if (!fs.existsSync(configFile)) {
   //   console.log('Error: config file does not exist: %s', configFile);
   //   process.exit(1);
@@ -38,6 +39,14 @@ function run(): Promise<void> {
     })
     .then(resp => {
       segments = resp;
+      if (fs.existsSync(userConfigFile)) {
+        return readJson(userConfigFile);
+      }
+      return Promise.resolve({});
+    })
+    .then(resp => {
+      let userConfig = resp;
+      let config = Object.assign({}, projectConfig, userConfig);
 
       let program: Dict = new Command('strava');
       program

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<fields xmlns:xfdf="http://ns.adobe.com/xfdf-transition/">
+  <day>
+    <group xfdf:original="2458773">
+      <group xfdf:original="0">
+        <bike>TG</bike>
+        <dist>2.38</dist>
+        <el>12</el>
+        <t>0.15</t>
+      </group>
+      <note0>Spanish class</note0>
+    </group>
+    <group xfdf:original="2458775">
+      <group xfdf:original="0">
+        <bike>HB1</bike>
+        <dist>56.95</dist>
+        <el>1093</el>
+        <t>3.46</t>
+      </group>
+      <note0>3 Deer w/ 30 km Real Dirt™
+Start at Stevens Creek Reservoir, Stevens Canyon, Ancient Oak, up Hawk Trail, Razorback, Arastradero, home.
+Sleepy tired for first hour, then start getting into the rhythm.
+Up Up Hawk Ridge Trail [6:16], up Arastradero, Alpine to top. [3:34], up Arastradero Rd / Page Mill Junction to Stirrup Stop Sign [1:56]
+</note0>
+    </group>
+    <group xfdf:original="2458776">
+      <group xfdf:original="0">
+        <bike>TG</bike>
+        <dist>17.97</dist>
+        <el>73</el>
+        <t>0.87</t>
+      </group>
+      <group xfdf:original="1">
+        <bike>HB1</bike>
+        <dist>89.66</dist>
+        <el>2594</el>
+        <t>6.05</t>
+      </group>
+      <note0>Commute: San Antonio Road and return
+
+That was easy ...
+Or, How to find the worst microclimate in the Bay Area
+Up Hawk Hill Saddle [7:20], up Miwok Trail: Bobcat to summit [13:24], up Miwok Trail  (TV towards Coyote Tr) [11:45], up Westbound Climb out of Muir Beach [8:28], up True Coastal View climb [23:43], up Green Gulch Climb to Coyote Ridge [24:45]
+</note0>
+    </group>
+    <group xfdf:original="2458779">
+      <group xfdf:original="0">
+        <bike>HB1</bike>
+        <dist>16.99</dist>
+        <el>184</el>
+        <t>0.78</t>
+      </group>
+      <group xfdf:original="1">
+        <bike>HB1</bike>
+        <dist>85.03</dist>
+        <el>1780</el>
+        <t>5.5</t>
+      </group>
+      <note0>Afternoon Ride
+Up Terrace Drive - Loyola Corners Bump [1:00]
+Inversionfest w/ 51 km Real Dirt ™
+Up Grizzly Flat Fire Road [23:39]
+</note0>
+    </group>
+  </day>
+</fields>

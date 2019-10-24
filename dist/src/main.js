@@ -219,7 +219,8 @@ class Main {
         let opts = {
             more: this.options.more,
             dates: this.options.dateRanges,
-            imperial: this.options.imperial
+            imperial: this.options.imperial,
+            bikes: this.options.config.bikes
         };
         if (this.options.segments === 'flat') {
             opts.segmentsFlatFolder = true;

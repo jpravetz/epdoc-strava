@@ -1,26 +1,36 @@
+import { isNumber } from 'epdoc-util';
 import { Activity } from './models/activity';
 import { DateRange } from './main';
 import { Dict, Seconds, julianDate } from './util';
 import * as builder from 'xmlbuilder';
 import fs from 'fs';
 
+export type BikeDef = {
+  name: string;
+  pattern: string;
+};
+
 export type BikelogOutputOpts = {
   more?: boolean;
   dates?: DateRange[];
   imperial?: boolean;
   segmentsFlatFolder?: boolean;
+  bikes?: BikeDef[];
+  verbose?: number;
 };
 
 export class Bikelog {
+  opts: BikelogOutputOpts = {};
   stream: fs.WriteStream;
   buffer: string = '';
   bikes: Dict = {};
-  options: BikelogOutputOpts = {};
   verbose: number = 9;
-  outputOptions: Dict;
 
   constructor(options: BikelogOutputOpts) {
-    this.outputOptions = options;
+    this.opts = options;
+    if (isNumber(options.verbose)) {
+      this.verbose = options.verbose;
+    }
   }
 
   /**
@@ -31,17 +41,18 @@ export class Bikelog {
   combineActivities(activities) {
     let result = {};
     activities.forEach(activity => {
-      let d = new Date(activity.start_date);
+      let d = new Date(activity.start_date_local);
       let jd = julianDate(d);
-      let entry = result[jd] || { jd: jd, date: new Date(activity.start_date), events: [] };
+      let entry = result[jd] || { jd: jd, date: new Date(activity.start_date_local), events: [] };
       if (activity.type === 'Ride') {
-        let note = 'Ascend ' + Math.round(activity.total_elevation_gain) + 'm, time ';
-        note += this.formatHMS(activity.moving_time, { seconds: false });
-        note += ' (' + this.formatHMS(activity.elapsed_time, { seconds: false }) + ')';
+        let note = '';
+        // note += 'Ascend ' + Math.round(activity.total_elevation_gain) + 'm, time ';
+        // note += this.formatHMS(activity.moving_time, { seconds: false });
+        // note += ' (' + this.formatHMS(activity.elapsed_time, { seconds: false }) + ')';
         if (activity.commute) {
-          note += '\nCommute: ' + activity.name;
+          note += 'Commute: ' + activity.name;
         } else {
-          note += '\n' + activity.name;
+          note += activity.name;
         }
         if (activity.description) {
           note += '\n' + activity.description;
@@ -107,24 +118,28 @@ export class Bikelog {
   }
 
   outputData(stravaActivities: Activity[], bikes, filepath: string): Promise<void> {
+    let self = this;
     filepath = filepath ? filepath : 'bikelog.xml';
     let dateString;
-    if (this.outputOptions.dates instanceof Array && this.outputOptions.dates.length) {
+    if (Array.isArray(this.opts.dates)) {
       let ad = [];
-      this.outputOptions.dates.forEach(range => {
+      this.opts.dates.forEach(range => {
         ad.push(range.after + ' to ' + range.before);
       });
       dateString = ad.join(', ');
     }
 
     this.buffer = ''; // new Buffer(8*1024);
-    this.stream = fs.createWriteStream(filepath);
 
     this.registerBikes(bikes);
     let activities = this.combineActivities(stravaActivities);
 
     return new Promise((resolve, reject) => {
-      this.stream.once('open', fd => {
+      // @ts-ignore
+      self.stream = fs.createWriteStream(filepath);
+      // self.stream = fs.createWriteStream('xxx.xml');
+      self.stream.once('open', fd => {
+        console.log('Open ' + filepath);
         let doc = builder
           .create('fields', { version: '1.0', encoding: 'UTF-8' })
           .att('xmlns:xfdf', 'http://ns.adobe.com/xfdf-transition/')
@@ -150,16 +165,22 @@ export class Bikelog {
           }
         });
         let s = doc.doc().end({ pretty: true });
-        this.stream.write(s);
-        this.stream.end();
-        console.log(`Created ${filepath}`);
-        resolve();
+        self.stream.write(s);
+        self.stream.end();
+        console.log(`Wrote ${s.length} bytes to ${filepath}`);
       });
 
-      this.stream.once('error', function(err) {
-        this.stream.end();
-        err.message = 'Stream ' + err.message;
+      self.stream.once('error', err => {
+        self.stream.end();
+        err.message = 'Stream error ' + err.message;
         reject(err);
+      });
+      self.stream.once('close', () => {
+        console.log('Close ' + filepath);
+        resolve();
+      });
+      self.stream.on('finish', () => {
+        console.log('Finish ' + filepath);
       });
     });
   }
@@ -208,26 +229,16 @@ export class Bikelog {
     });
   }
 
-  bikeMap(param: string): string {
-    if (param.match(/serott/i)) {
-      return 'S1';
-    } else if (param.match(/SP1/i)) {
-      return 'SP1';
-    } else if (param.match(/MTB Thorogood/i)) {
-      return 'TG';
-    } else if (param.match(/MTB2/i)) {
-      return 'MTB2';
-    } else if (param.match(/T1/i)) {
-      return 'T1';
-    } else if (param.match(/tallboy/i)) {
-      return 'TB29';
-    } else if (param.match(/highball1/i)) {
-      return 'HB1';
-    } else if (param.match(/highball/i)) {
-      return 'HB1';
-    } else if (param.match(/orbea/i)) {
-      return 'ORB29';
+  bikeMap(stravaBikeName: string): string {
+    if (Array.isArray(this.opts.bikes)) {
+      for (let idx = 0; idx < this.opts.bikes.length; ++idx) {
+        const item = this.opts.bikes[idx];
+        if (item.pattern.toLowerCase() === stravaBikeName.toLowerCase()) {
+          return item.name;
+        }
+      }
     }
+    return stravaBikeName;
   }
 
   formatHMS(s: Seconds, options?): string {

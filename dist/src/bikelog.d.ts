@@ -3,19 +3,24 @@ import { Activity } from './models/activity';
 import { DateRange } from './main';
 import { Dict, Seconds } from './util';
 import fs from 'fs';
+export declare type BikeDef = {
+    name: string;
+    pattern: string;
+};
 export declare type BikelogOutputOpts = {
     more?: boolean;
     dates?: DateRange[];
     imperial?: boolean;
     segmentsFlatFolder?: boolean;
+    bikes?: BikeDef[];
+    verbose?: number;
 };
 export declare class Bikelog {
+    opts: BikelogOutputOpts;
     stream: fs.WriteStream;
     buffer: string;
     bikes: Dict;
-    options: BikelogOutputOpts;
     verbose: number;
-    outputOptions: Dict;
     constructor(options: BikelogOutputOpts);
     /**
      * Combine strava activities into per-day information that is suitable for Acroform bikelog.
@@ -29,7 +34,7 @@ export declare class Bikelog {
     writeln(indent: any, s: any): void;
     flush(): Promise<void>;
     _flush(): Promise<void>;
-    bikeMap(param: string): string;
+    bikeMap(stravaBikeName: string): string;
     formatHMS(s: Seconds, options?: any): string;
     formatMS(s: Seconds, options?: any): string;
     pad(n: any): any;

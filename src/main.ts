@@ -6,7 +6,7 @@ import { StravaActivityOpts, StravaApi, StravaApiOpts, StravaSecret, StravaClien
 import { Kml, LineStyle } from './kml';
 import { readJson, Dict, EpochSeconds } from './util';
 import { Server } from './server';
-import { Bikelog, BikelogOutputOpts } from './bikelog';
+import { Bikelog, BikelogOutputOpts, BikeDef } from './bikelog';
 
 // let _ = require('underscore');
 // let async = require('async');
@@ -27,6 +27,7 @@ export type StravaConfig = {
   // accessToken: string;
   cachePath?: string;
   lineStyles?: Record<string, LineStyle>;
+  bikes?: BikeDef[];
 };
 
 export type DateRange = {
@@ -290,7 +291,8 @@ export class Main {
     let opts: BikelogOutputOpts = {
       more: this.options.more,
       dates: this.options.dateRanges,
-      imperial: this.options.imperial
+      imperial: this.options.imperial,
+      bikes: this.options.config.bikes
     };
     if (this.options.segments === 'flat') {
       opts.segmentsFlatFolder = true;

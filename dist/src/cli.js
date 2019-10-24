@@ -8,7 +8,7 @@ const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
 const commander_1 = require("commander");
 const package_json_1 = __importDefault(require("../package.json"));
-const settings_json_1 = __importDefault(require("./config/settings.json"));
+const project_settings_json_1 = __importDefault(require("./config/project.settings.json"));
 const main_1 = require("./main");
 const util_1 = require("./util");
 let dateutil = require('dateutil');
@@ -20,6 +20,7 @@ const home = process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE
 function run() {
     const segmentsFile = path_1.default.resolve(home, '.strava', 'segments.json');
     const credentialsFile = path_1.default.resolve(home, '.strava', 'credentials.json');
+    const userConfigFile = path_1.default.resolve(home, '.strava', 'user.settings.json');
     // if (!fs.existsSync(configFile)) {
     //   console.log('Error: config file does not exist: %s', configFile);
     //   process.exit(1);
@@ -34,6 +35,14 @@ function run() {
     })
         .then(resp => {
         segments = resp;
+        if (fs_1.default.existsSync(userConfigFile)) {
+            return util_1.readJson(userConfigFile);
+        }
+        return Promise.resolve({});
+    })
+        .then(resp => {
+        let userConfig = resp;
+        let config = Object.assign({}, project_settings_json_1.default, userConfig);
         let program = new commander_1.Command('strava');
         program
             .version(package_json_1.default.version)
@@ -56,10 +65,10 @@ function run() {
         let opts = {
             home: home,
             cwd: program.cwd,
-            config: settings_json_1.default,
+            config: config,
             segmentsFile: segmentsFile,
             credentialsFile: credentialsFile,
-            athleteId: parseInt(program.id, 10) || settings_json_1.default.athleteId,
+            athleteId: parseInt(program.id, 10) || config.athleteId,
             athlete: program.athlete,
             bikes: program.bikes,
             friends: program.friends,

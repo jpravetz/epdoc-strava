@@ -4,6 +4,7 @@ import { Activity } from './models/activity';
 import { StravaClientConfig } from './strava-api';
 import { Kml, LineStyle } from './kml';
 import { Dict, EpochSeconds } from './util';
+import { BikeDef } from './bikelog';
 export declare type SegmentConfig = {
     description: string;
     alias: Dict;
@@ -15,6 +16,7 @@ export declare type StravaConfig = {
     athleteId?: number;
     cachePath?: string;
     lineStyles?: Record<string, LineStyle>;
+    bikes?: BikeDef[];
 };
 export declare type DateRange = {
     before: EpochSeconds;

@@ -10,16 +10,20 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const epdoc_util_1 = require("epdoc-util");
 const util_1 = require("./util");
 const builder = __importStar(require("xmlbuilder"));
 const fs_1 = __importDefault(require("fs"));
 class Bikelog {
     constructor(options) {
+        this.opts = {};
         this.buffer = '';
         this.bikes = {};
-        this.options = {};
         this.verbose = 9;
-        this.outputOptions = options;
+        this.opts = options;
+        if (epdoc_util_1.isNumber(options.verbose)) {
+            this.verbose = options.verbose;
+        }
     }
     /**
      * Combine strava activities into per-day information that is suitable for Acroform bikelog.
@@ -29,18 +33,19 @@ class Bikelog {
     combineActivities(activities) {
         let result = {};
         activities.forEach(activity => {
-            let d = new Date(activity.start_date);
+            let d = new Date(activity.start_date_local);
             let jd = util_1.julianDate(d);
-            let entry = result[jd] || { jd: jd, date: new Date(activity.start_date), events: [] };
+            let entry = result[jd] || { jd: jd, date: new Date(activity.start_date_local), events: [] };
             if (activity.type === 'Ride') {
-                let note = 'Ascend ' + Math.round(activity.total_elevation_gain) + 'm, time ';
-                note += this.formatHMS(activity.moving_time, { seconds: false });
-                note += ' (' + this.formatHMS(activity.elapsed_time, { seconds: false }) + ')';
+                let note = '';
+                // note += 'Ascend ' + Math.round(activity.total_elevation_gain) + 'm, time ';
+                // note += this.formatHMS(activity.moving_time, { seconds: false });
+                // note += ' (' + this.formatHMS(activity.elapsed_time, { seconds: false }) + ')';
                 if (activity.commute) {
-                    note += '\nCommute: ' + activity.name;
+                    note += 'Commute: ' + activity.name;
                 }
                 else {
-                    note += '\n' + activity.name;
+                    note += activity.name;
                 }
                 if (activity.description) {
                     note += '\n' + activity.description;
@@ -108,21 +113,25 @@ class Bikelog {
         }
     }
     outputData(stravaActivities, bikes, filepath) {
+        let self = this;
         filepath = filepath ? filepath : 'bikelog.xml';
         let dateString;
-        if (this.outputOptions.dates instanceof Array && this.outputOptions.dates.length) {
+        if (Array.isArray(this.opts.dates)) {
             let ad = [];
-            this.outputOptions.dates.forEach(range => {
+            this.opts.dates.forEach(range => {
                 ad.push(range.after + ' to ' + range.before);
             });
             dateString = ad.join(', ');
         }
         this.buffer = ''; // new Buffer(8*1024);
-        this.stream = fs_1.default.createWriteStream(filepath);
         this.registerBikes(bikes);
         let activities = this.combineActivities(stravaActivities);
         return new Promise((resolve, reject) => {
-            this.stream.once('open', fd => {
+            // @ts-ignore
+            self.stream = fs_1.default.createWriteStream(filepath);
+            // self.stream = fs.createWriteStream('xxx.xml');
+            self.stream.once('open', fd => {
+                console.log('Open ' + filepath);
                 let doc = builder
                     .create('fields', { version: '1.0', encoding: 'UTF-8' })
                     .att('xmlns:xfdf', 'http://ns.adobe.com/xfdf-transition/')
@@ -148,15 +157,21 @@ class Bikelog {
                     }
                 });
                 let s = doc.doc().end({ pretty: true });
-                this.stream.write(s);
-                this.stream.end();
-                console.log(`Created ${filepath}`);
+                self.stream.write(s);
+                self.stream.end();
+                console.log(`Wrote ${s.length} bytes to ${filepath}`);
+            });
+            self.stream.once('error', err => {
+                self.stream.end();
+                err.message = 'Stream error ' + err.message;
+                reject(err);
+            });
+            self.stream.once('close', () => {
+                console.log('Close ' + filepath);
                 resolve();
             });
-            this.stream.once('error', function (err) {
-                this.stream.end();
-                err.message = 'Stream ' + err.message;
-                reject(err);
+            self.stream.on('finish', () => {
+                console.log('Finish ' + filepath);
             });
         });
     }
@@ -203,34 +218,16 @@ class Bikelog {
             }
         });
     }
-    bikeMap(param) {
-        if (param.match(/serott/i)) {
-            return 'S1';
+    bikeMap(stravaBikeName) {
+        if (Array.isArray(this.opts.bikes)) {
+            for (let idx = 0; idx < this.opts.bikes.length; ++idx) {
+                const item = this.opts.bikes[idx];
+                if (item.pattern.toLowerCase() === stravaBikeName.toLowerCase()) {
+                    return item.name;
+                }
+            }
         }
-        else if (param.match(/SP1/i)) {
-            return 'SP1';
-        }
-        else if (param.match(/MTB Thorogood/i)) {
-            return 'TG';
-        }
-        else if (param.match(/MTB2/i)) {
-            return 'MTB2';
-        }
-        else if (param.match(/T1/i)) {
-            return 'T1';
-        }
-        else if (param.match(/tallboy/i)) {
-            return 'TB29';
-        }
-        else if (param.match(/highball1/i)) {
-            return 'HB1';
-        }
-        else if (param.match(/highball/i)) {
-            return 'HB1';
-        }
-        else if (param.match(/orbea/i)) {
-            return 'ORB29';
-        }
+        return stravaBikeName;
     }
     formatHMS(s, options) {
         options || (options = {});
