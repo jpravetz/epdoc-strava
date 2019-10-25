@@ -30,6 +30,7 @@ export class Activity {
   start_date: IsoDateString;
   start_date_local: IsoDateString;
   _asString: string;
+  coordinates: any[];
 
   constructor(data) {
     Object.assign(this, data);

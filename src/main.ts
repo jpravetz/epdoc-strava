@@ -3,7 +3,7 @@ import { Athelete } from './models/athlete';
 import { Activity, ActivityFilter } from './models/activity';
 import fs from 'fs';
 import { StravaActivityOpts, StravaApi, StravaApiOpts, StravaSecret, StravaClientConfig } from './strava-api';
-import { Kml, LineStyle } from './kml';
+import { Kml, LineStyle, KmlOpts } from './kml';
 import { readJson, Dict, EpochSeconds } from './util';
 import { Server } from './server';
 import { Bikelog, BikelogOutputOpts, BikeDef } from './bikelog';
@@ -164,6 +164,21 @@ export class Main {
         if (this.options.xml) {
           return this.saveXml();
         }
+      })
+      .then(resp => {
+        if (this.options.kml && this.options.activities) {
+          return this.addActivitiesCoordinates();
+        }
+      })
+      .then(resp => {
+        if (this.options.kml && this.options.segments) {
+          return this.addSegmentsCoordinates();
+        }
+      })
+      .then(resp => {
+        if (this.options.kml) {
+          return this.saveKml();
+        }
       });
   }
 
@@ -299,5 +314,18 @@ export class Main {
     }
     let bikelog = new Bikelog(opts);
     return bikelog.outputData(this.activities, this.athlete.bikes, this.options.xml);
+  }
+
+  saveKml() {
+    let opts: KmlOpts = {
+      more: this.options.more,
+      dates: this.options.dateRanges,
+      imperial: this.options.imperial
+    };
+    if (this.options.segments === 'flat') {
+      opts.segmentsFlatFolder = true;
+    }
+    let kml = new Kml(opts);
+    return Kml.outputData(this.activities, this.athlete.bikes, this.options.xml);
   }
 }

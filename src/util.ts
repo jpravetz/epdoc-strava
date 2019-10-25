@@ -66,6 +66,29 @@ export function writeJson(path: string, data): Promise<void> {
   });
 }
 
+export function precision(num, r, unit) {
+  return String(Math.round(num * r) / r) + unit;
+}
+
 export function julianDate(d: Date): number {
   return Math.floor(d.getTime() / 86400000 - d.getTimezoneOffset() / 1440 + 2440587.5) + 1;
+}
+
+export function fieldCapitalize(name) {
+  return name
+    .replace(/^([a-z])/, function($1) {
+      return $1.toUpperCase();
+    })
+    .replace(/(\_[a-z])/g, function($1) {
+      return $1.toUpperCase().replace('_', ' ');
+    });
+}
+
+export function escapeHtml(unsafe) {
+  return unsafe
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
