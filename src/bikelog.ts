@@ -117,7 +117,7 @@ export class Bikelog {
     }
   }
 
-  outputData(stravaActivities: Activity[], bikes, filepath: string): Promise<void> {
+  outputData(filepath: string, stravaActivities: Activity[], bikes): Promise<void> {
     let self = this;
     filepath = filepath ? filepath : 'bikelog.xml';
     let dateString;

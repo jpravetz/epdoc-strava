@@ -1,10 +1,9 @@
+import { StravaCoord } from './../strava-api';
+import { DetailedActivity } from './detailed-activity';
 import { Metres, IsoDateString } from './../util';
 import { Main } from '../main';
-import { Dict } from '../util';
-export declare type DetailedActivity = {
-    description?: string;
-    segment_efforts?: Dict[];
-};
+import { SegmentEffort } from './segment-effort';
+import { SegmentData } from './segment-data';
 export declare type ActivityFilter = {
     commuteOnly?: boolean;
     nonCommuteOnly?: boolean;
@@ -16,7 +15,6 @@ export declare class Activity {
     id: number;
     name: string;
     description: string;
-    segments: Dict[];
     main: Main;
     commute: boolean;
     type: string;
@@ -25,13 +23,21 @@ export declare class Activity {
     start_date: IsoDateString;
     start_date_local: IsoDateString;
     _asString: string;
+    _segments: SegmentData[];
+    _coordinates: StravaCoord[];
     constructor(data: any);
     static newFromResponseData(data: any, main: Main): Activity;
+    static isInstance(val: any): val is Activity;
     toString(): string;
+    /**
+     * Get starred segment_efforts and descriptions from the DetailedActivity
+     * object and add to Acivity.
+     * @param data
+     */
     addFromDetailedActivity(data: DetailedActivity): void;
-    addDescription(data: DetailedActivity): void;
-    addDetailSegments(data: DetailedActivity): void;
-    addDetailSegment(segment: Dict): void;
+    _addDescriptionFromDetailedActivity(data: DetailedActivity): void;
+    _addDetailSegmentsFromDetailedActivity(data: DetailedActivity): void;
+    _addDetailSegment(segEffort: SegmentEffort): void;
     include(filter: ActivityFilter): boolean;
-    static compareStartDate(a: any, b: any): 1 | 0 | -1;
+    static compareStartDate(a: any, b: any): 1 | -1 | 0;
 }

@@ -29,7 +29,7 @@ export declare class Bikelog {
      */
     combineActivities(activities: any): {};
     registerBikes(bikes: any): void;
-    outputData(stravaActivities: Activity[], bikes: any, filepath: string): Promise<void>;
+    outputData(filepath: string, stravaActivities: Activity[], bikes: any): Promise<void>;
     write(indent: any, s: any): void;
     writeln(indent: any, s: any): void;
     flush(): Promise<void>;

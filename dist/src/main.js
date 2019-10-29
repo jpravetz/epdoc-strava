@@ -12,6 +12,7 @@ const server_1 = require("./server");
 const bikelog_1 = require("./bikelog");
 class Main {
     constructor(options) {
+        this.starredSegments = [];
         this.options = options;
     }
     init() {
@@ -27,7 +28,7 @@ class Main {
                     }
                 }
                 if (this.options.segmentsFile) {
-                    return this.readSegmentsFile(this.options.segmentsFile);
+                    return this.readSegmentsConfigFile(this.options.segmentsFile);
                 }
                 else {
                     return Promise.resolve();
@@ -101,9 +102,31 @@ class Main {
             if (this.options.xml) {
                 return this.saveXml();
             }
+        })
+            .then(resp => {
+            if (this.options.kml && this.options.activities) {
+                return this.addActivitiesCoordinates();
+            }
+        })
+            .then(resp => {
+            if (this.options.kml && this.options.segments) {
+                return this.addStarredSegmentsCoordinates();
+            }
+        })
+            .then(resp => {
+            if (this.options.kml) {
+                let opts = {
+                    activities: true,
+                    segments: this.options.segments ? true : false
+                };
+                return this.saveKml(opts);
+            }
         });
     }
-    readSegmentsFile(segmentsFile) {
+    /**
+     * Read a local file that contains segment name aliases
+     */
+    readSegmentsConfigFile(segmentsFile) {
         return new Promise((resolve, reject) => {
             if (fs_1.default.existsSync(segmentsFile)) {
                 fs_1.default.stat(segmentsFile, (err, stats) => {
@@ -192,16 +215,20 @@ class Main {
         return results;
     }
     getStarredSegmentList() {
-        this.starredSegment = [];
-        return this.strava.getStarredSegments().then(resp => {
-            this.segments = resp;
-            console.log('Found %s starred segments', resp ? resp.length : 0);
-            this.segments.forEach(seg => {
+        this.starredSegments = [];
+        return this.strava.getStarredSegments().then(summarySegments => {
+            // this.segments = resp;
+            console.log('Found %s starred segments', summarySegments.length);
+            summarySegments.forEach(seg => {
                 // @ts-ignore
-                this.starredSegment.push(seg.name);
+                this.starredSegments.push(seg.name);
             });
         });
     }
+    /**
+     * Read more information using the DetailedActivity object and add these
+     * details to the Activity object.
+     */
     addActivitiesDetails() {
         let jobs = [];
         this.activities.forEach(activity => {
@@ -215,6 +242,37 @@ class Main {
             activity.addFromDetailedActivity(data);
         });
     }
+    /**
+     * Add coordinates for the activity or segment.
+     */
+    addActivitiesCoordinates() {
+        console.log(`Retrieving coordinates for ${this.activities.length} Activities`);
+        return this.activities
+            .reduce((promiseChain, item) => {
+            return promiseChain.then(() => {
+                return this.strava.getStreamCoords(strava_api_1.StravaStreamSource.activities, item.id).then(resp => {
+                    item._coordinates = resp;
+                });
+            });
+        }, Promise.resolve())
+            .then(resp => {
+            return Promise.resolve();
+        });
+    }
+    addStarredSegmentsCoordinates() {
+        console.log(`Retrieving coordinates for ${this.starredSegments.length} Starred Segments`);
+        return this.starredSegments
+            .reduce((promiseChain, item) => {
+            return promiseChain.then(() => {
+                return this.strava.getStreamCoords(strava_api_1.StravaStreamSource.segments, item.id).then(resp => {
+                    item.coordinates = resp;
+                });
+            });
+        }, Promise.resolve())
+            .then(resp => {
+            return Promise.resolve();
+        });
+    }
     saveXml() {
         let opts = {
             more: this.options.more,
@@ -226,7 +284,21 @@ class Main {
             opts.segmentsFlatFolder = true;
         }
         let bikelog = new bikelog_1.Bikelog(opts);
-        return bikelog.outputData(this.activities, this.athlete.bikes, this.options.xml);
+        return bikelog.outputData(this.options.xml, this.activities, this.athlete.bikes);
+    }
+    saveKml(options = {}) {
+        let opts = {
+            more: this.options.more,
+            dates: this.options.dateRanges,
+            imperial: this.options.imperial,
+            activities: options.activities,
+            segments: options.segments
+        };
+        if (this.options.segments === 'flat') {
+            opts.segmentsFlatFolder = true;
+        }
+        let kml = new kml_1.Kml(opts);
+        return kml.outputData(this.options.kml, this.activities, this.starredSegments);
     }
 }
 exports.Main = Main;

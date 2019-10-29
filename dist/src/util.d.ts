@@ -1,4 +1,4 @@
-export declare function sortBy(): void;
+export declare function compare(a: Dict, b: Dict, key: string): 1 | -1 | 0;
 export declare type Dict = Record<string, any>;
 export declare type EpochMilliseconds = number;
 export declare type EpochSeconds = number;
@@ -13,4 +13,10 @@ export declare function formatHMS(s: Seconds, options?: formatHMSOpts): string;
 export declare function formatMS(s: Seconds, options?: any): string;
 export declare function readJson(path: string): Promise<any>;
 export declare function writeJson(path: string, data: any): Promise<void>;
+export declare function precision(num: any, r: any, unit: any): string;
 export declare function julianDate(d: Date): number;
+export declare function fieldCapitalize(name: any): any;
+export declare function escapeHtml(unsafe: any): any;
+export declare function getDistanceString(value: number, imperial?: boolean): string;
+export declare function getElevationString(value: number, imperial?: boolean): string;
+export declare function getTemperatureString(value: number, imperial?: boolean): string;

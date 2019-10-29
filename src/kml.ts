@@ -1,9 +1,19 @@
-import { DateRange } from './main';
+import { SegmentData } from './models/segment-data';
+import { DateRange, Main } from './main';
 import { Activity } from './models/activity';
 import { isString, isNumber } from 'epdoc-util';
 import * as fs from 'fs';
-import { precision, escapeHtml, fieldCapitalize } from './util';
+import {
+  precision,
+  escapeHtml,
+  fieldCapitalize,
+  compare,
+  getDistanceString,
+  getTemperatureString,
+  getElevationString
+} from './util';
 import * as dateutil from 'dateutil';
+import { Segment } from './models/segment';
 
 export type LineStyle = {
   color: string;
@@ -11,11 +21,13 @@ export type LineStyle = {
 };
 
 export type KmlOpts = {
-  more?: boolean;
-  dates?: DateRange[];
-  imperial?: boolean;
+  more?: boolean; // include additional description for each activity
+  dates?: DateRange[]; // date range for which to output data
+  imperial?: boolean; // use legacy imperial units
+  activities?: boolean; // output activities
+  segments?: boolean; // output segments
   segmentsFlatFolder?: boolean;
-  verbose?: number;
+  verbose?: number; // log level (0 for none)
 };
 
 export type PlacemarkParams = {
@@ -58,6 +70,7 @@ const defaultLineStyles = {
 };
 
 export class Kml {
+  main: Main;
   opts: KmlOpts;
   lineStyles: Record<string, LineStyle>;
   verbose: number = 9;
@@ -93,8 +106,8 @@ export class Kml {
     });
   }
 
-  outputData(filename: string, activities: Activity[], segments): Promise<void> {
-    let file = filename || 'Activities.kml';
+  outputData(filepath: string, activities: Activity[], segments: SegmentData[]): Promise<void> {
+    let file = filepath || 'Activities.kml';
 
     return new Promise((resolve, reject) => {
       this.detailedActivity = ''; // new Buffer(8*1024);
@@ -102,8 +115,12 @@ export class Kml {
 
       this.stream.once('open', function(fd) {
         this.header();
-        this.addActivities(activities);
-        this.addSegments();
+        if (this.opts.activities) {
+          this.addActivities(activities);
+        }
+        if (this.opts.segments) {
+          this.addSegments(segments);
+        }
         this.footer();
         this.stream.end();
         console.log('Wrote ' + file);
@@ -130,24 +147,23 @@ export class Kml {
 
       let indent = 2;
       this.writeln(indent, '<Folder><name>Activities' + (dateString ? ' ' + dateString : '') + '</name><open>1</open>');
-      async.eachSeries(
-        activities,
-        function(activity, cb2) {
-          this.outputActivity(indent + 1, activity);
-          this.flush(cb2);
-        },
-        function(err) {
-          if (err) {
-            cb(err);
-          } else {
-            this.writeln(indent, '</Folder>');
-            this.flush(cb);
-          }
-        }
-      );
-    } else {
-      cb();
+
+      return activities
+        .reduce((promiseChain, activity: Activity) => {
+          return promiseChain.then(() => {
+            let job = Promise.resolve().then(() => {
+              this.outputActivity(indent + 1, activity);
+              return this.flush();
+            });
+            return job;
+          });
+        }, Promise.resolve())
+        .then(resp => {
+          this.writeln(indent, '</Folder>');
+          return this.flush();
+        });
     }
+    return Promise.resolve();
   }
 
   _dateString() {
@@ -161,10 +177,12 @@ export class Kml {
     return '';
   }
 
-  addSegments(segments) {
+  addSegments(segments: SegmentData[]) {
     if (segments && segments.length) {
       let indent = 2;
-      let sortedSegments = _u.sortBy(segments, 'name');
+      let sortedSegments: SegmentData[] = segments.sort((a, b) => {
+        return compare(a, b, 'name');
+      });
       if (this.opts.segmentsFlatFolder === true) {
         this.outputSegments(indent, sortedSegments);
       } else {
@@ -180,8 +198,9 @@ export class Kml {
     return Promise.resolve();
   }
 
-  outputSegments(indent: number, segments, country?: string, state?: string) {
+  outputSegments(indent: number, segments: SegmentData[], country?: string, state?: string) {
     let title = 'Segments';
+    const dateString = this._dateString();
     if (country && state) {
       title += ' for ' + state + ', ' + country;
     } else if (country) {
@@ -262,7 +281,7 @@ export class Kml {
       name: t0 + ' - ' + escapeHtml(activity.name),
       description: this._buildActivityDescription(activity),
       styleName: styleName,
-      coordinates: activity.coordinates
+      coordinates: activity._coordinates
     };
     this.placemark(indent, params);
   }
@@ -278,15 +297,15 @@ export class Kml {
           let key = field;
           let value = activity[field];
           if (field === 'distance') {
-            value = this.getDistanceString(value);
+            value = getDistanceString(value, this.imperial);
           } else if (field === 'moving_time' || field === 'elapsed_time') {
             value = dateutil.formatMS(activity[field] * 1000, { ms: false, hours: true });
           } else if (field === 'total_elevation_gain') {
             key = 'elevation_gain';
-            value = this.getElevationString(value);
+            value = getElevationString(value, this.imperial);
           } else if (field === 'average_temp' && typeof value === 'number') {
-            value = this.getTemperatureString(value); //  escapeHtml("˚C");
-          } else if (field === 'segments' && activity[field].length) {
+            value = getTemperatureString(value, this.imperial); //  escapeHtml("˚C");
+          } else if (field === '_segments' && activity[field].length) {
             let segs = [];
             segs.push('<b>Segments:</b><br><ul>');
             activity[field].forEach(segment => {
@@ -294,7 +313,7 @@ export class Kml {
                 '<li><b>' +
                 segment.name +
                 ':</b> ' +
-                dateutil.formatMS(segment.elapsed_time * 1000, { ms: false, hours: true }) +
+                dateutil.formatMS(segment.elapsedTime * 1000, { ms: false, hours: true }) +
                 '</li>';
               segs.push(s);
             });
@@ -319,36 +338,19 @@ export class Kml {
    * @param segment
    * @returns {string}
    */
-  outputSegment(indent: number, segment) {
+  outputSegment(indent: number, segment: SegmentData) {
     let params = {
       placemarkId: 'StravaSegment' + ++this.trackIndex,
       name: escapeHtml(segment.name),
-      description: this._buildSegmentDescription(segment),
+      description: this.buildSegmentDescription(segment),
       styleName: 'Segment',
       coordinates: segment.coordinates
     };
     this.placemark(indent, params);
   }
 
-  _buildSegmentDescription(segment) {
-    //console.log(this.outputOptions)
-    //console.log(segment.keys)
-    if (this.more) {
-      let arr = [];
-      arr.push(Kml.kvString('Distance', this.getDistanceString(segment.distance)));
-      arr.push(Kml.kvString('Elevation', this.getElevationString(segment.elevation_high - segment.elevation_low)));
-      arr.push(Kml.kvString('Gradient', precision(segment.average_grade, 100, '%')));
-      segment.efforts.forEach(effort => {
-        let key = effort.start_date_local.replace(/T.*$/, '');
-        let value = Kml.timeString(effort.elapsed_time);
-        if (effort.elapsed_time !== effort.moving_time) {
-          value += ' (' + Kml.timeString(effort.moving_time) + ')';
-        }
-        arr.push(Kml.kvString(key, value));
-      });
-      //console.log(arr);
-      return '<![CDATA[' + arr.join('<br>\n') + ']]>';
-    }
+  buildSegmentDescription(segment: SegmentData) {
+    return '';
   }
 
   header(): Promise<void> {
@@ -398,36 +400,5 @@ export class Kml {
     }
     this.writeln(indent + 1, '</LineString>');
     this.writeln(indent, '</Placemark>');
-  }
-
-  getDistanceString(value) {
-    if (this.imperial) {
-      return precision(value / 1609.344, 100, ' miles');
-    } else {
-      return precision(value / 1000, 100, ' km');
-    }
-  }
-
-  getElevationString(value) {
-    if (this.imperial) {
-      return precision(value / 0.3048, 1, ' ft');
-    } else {
-      return precision(value, 1, ' m');
-    }
-  }
-  getTemperatureString(value) {
-    if (this.imperial) {
-      return precision((value * 9) / 5 + 32, 1, '&deg;F');
-    } else {
-      return value + '&deg;C';
-    }
-  }
-
-  static kvString(k, v) {
-    return '<b>' + k + ':</b> ' + v;
-  }
-
-  static timeString(seconds) {
-    return dateutil.formatMS(seconds * 1000, { ms: false, hours: true });
   }
 }

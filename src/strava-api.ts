@@ -1,20 +1,24 @@
+import { StravaCoord } from './strava-api';
 import { Athelete } from './models/athlete';
 import { Activity } from './models/activity';
-import { Dict, EpochSeconds } from './util';
+import { Dict, EpochSeconds, Metres } from './util';
 import * as assert from 'assert';
 import request = require('superagent');
 import { isNumber } from 'epdoc-util';
 import { StravaCreds } from './strava-creds';
 import { DetailedActivity } from './models/detailed-activity';
+import { SegmentId } from './models/segment';
+import { SummarySegment } from './models/summary-segment';
 
 const STRAVA_URL_PREFIX = process.env.STRAVA_URL_PREFIX || 'https://www.strava.com/';
+const STRAVA_API_PREFIX = STRAVA_URL_PREFIX + 'api/v3/';
 const STRAVA_URL = {
   authorize: STRAVA_URL_PREFIX + 'oauth/authorize',
   token: STRAVA_URL_PREFIX + 'oauth/token',
-  athlete: STRAVA_URL_PREFIX + 'api/v3/athlete',
-  picture: STRAVA_URL_PREFIX + 'api/v3/athlete/picture',
-  activities: STRAVA_URL_PREFIX + 'api/v3/activities',
-  starred: STRAVA_URL_PREFIX + 'api/v3/segments/starred'
+  athlete: STRAVA_API_PREFIX + 'athlete',
+  picture: STRAVA_API_PREFIX + 'athlete/picture',
+  activities: STRAVA_API_PREFIX + 'activities',
+  starred: STRAVA_API_PREFIX + 'segments/starred'
 };
 
 export type StravaCode = string;
@@ -22,6 +26,26 @@ export type StravaSecret = string;
 export type StravaAccessToken = string;
 export type StravaRefreshToken = string;
 export type StravaClientId = number;
+
+export enum StravaStreamSource {
+  activities = 'activities',
+  segments = 'segments',
+  routes = 'routes',
+  segmentEfforts = 'segment_efforts'
+}
+export enum StravaStreamType {
+  latlong = 'latlong',
+  distance = 'distance',
+  altitude = 'altitude'
+}
+export type StravaObjId = number;
+export type StravaSegmentId = StravaObjId;
+export type Query = Dict;
+export type StravaCoord = [number, number];
+export type StravaCoordData = {
+  type: string;
+  data: StravaCoord[];
+};
 
 export type StravaClientConfig = {
   id: StravaClientId;
@@ -203,16 +227,69 @@ export class StravaApi {
       });
   }
 
-  getStarredSegments() {
+  getStarredSegments(): Promise<SummarySegment[]> {
     return request
       .get(STRAVA_URL.starred)
       .query({ per_page: 200 })
       .set('Authorization', 'access_token ' + this.creds.accessToken)
       .then(resp => {
         if (resp && Array.isArray(resp.body)) {
-          return Promise.resolve(resp.body);
+          let result: SummarySegment[] = resp.body.map(item => {
+            return SummarySegment.newFromResponseData(item);
+          });
+          return Promise.resolve(result);
         }
         throw new Error('Invalid starred segments return value');
+      });
+  }
+
+  getSegmentCoords(segId: SegmentId) {
+    let result: StravaCoord[] = [];
+    let query = {
+      keys: StravaStreamType.latlong,
+      key_by_type: true
+    };
+    return this.getStream(StravaStreamSource.segments, segId, query)
+      .then(resp => {
+        if (Array.isArray(resp)) {
+          resp.forEach(item => {
+            if (item && item.type === 'latlng' && item.data) {
+              item.data.forEach(pt => {
+                result.push(pt);
+              });
+            }
+          });
+        }
+        return Promise.resolve(result);
+      })
+      .catch(err => {
+        err.message = `Get segment coordinates ` + err.message;
+        throw err;
+      });
+  }
+
+  getStreamCoords(source: StravaStreamSource, objId: StravaObjId) {
+    let result: StravaCoord[] = [];
+    let query = {
+      keys: StravaStreamType.latlong,
+      key_by_type: true
+    };
+    return this.getStream(source, objId, query)
+      .then(resp => {
+        if (Array.isArray(resp)) {
+          resp.forEach(item => {
+            if (item && item.type === 'latlng' && item.data) {
+              item.data.forEach(pt => {
+                result.push(pt);
+              });
+            }
+          });
+        }
+        return Promise.resolve(result);
+      })
+      .catch(err => {
+        err.message = `Get ${source} coordinates ` + err.message;
+        throw err;
       });
   }
 
@@ -230,5 +307,30 @@ export class StravaApi {
         err.message = `getActivity ${activity.id} ${err.message} (${activity.toString()})`;
         throw err;
       });
+  }
+
+  /**
+   * Retrieve data for the designated type of stream
+   * @param objId The activity or segement ID
+   * @param types An array, usually [ 'latlng' ]
+   * @param options Additional query string parameters, if any
+   * @param callback
+   * @returns {*}
+   */
+  getStream(type: StravaStreamSource, objId: StravaSegmentId, options: Query) {
+    return request
+      .get(`${STRAVA_API_PREFIX}/${type}/${objId}/streams`)
+      .set('Authorization', 'access_token ' + this.creds.accessToken)
+      .query(options);
+  }
+
+  getSegment(segmentId: StravaSegmentId) {
+    return request
+      .get(STRAVA_API_PREFIX + 'segments/' + segmentId)
+      .set('Authorization', 'access_token ' + this.creds.accessToken);
+  }
+
+  getSegmentEfforts(segmentId: StravaSegmentId, params: Query) {
+    return request.get(STRAVA_API_PREFIX + 'segments/' + segmentId + '/all_efforts').query(params);
   }
 }

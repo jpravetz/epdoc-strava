@@ -112,7 +112,7 @@ class Bikelog {
             });
         }
     }
-    outputData(stravaActivities, bikes, filepath) {
+    outputData(filepath, stravaActivities, bikes) {
         let self = this;
         filepath = filepath ? filepath : 'bikelog.xml';
         let dateString;

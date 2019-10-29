@@ -1,12 +1,15 @@
+import { SummarySegment } from './models/summary-segment';
 import { StravaCreds } from './strava-creds';
 import { Athelete } from './models/athlete';
 import { Activity, ActivityFilter } from './models/activity';
 import fs from 'fs';
-import { StravaActivityOpts, StravaApi, StravaApiOpts, StravaSecret, StravaClientConfig } from './strava-api';
+import { StravaActivityOpts, StravaApi, StravaClientConfig, StravaStreamSource } from './strava-api';
 import { Kml, LineStyle, KmlOpts } from './kml';
-import { readJson, Dict, EpochSeconds } from './util';
+import { readJson, Dict, EpochSeconds, Metres, Seconds } from './util';
 import { Server } from './server';
 import { Bikelog, BikelogOutputOpts, BikeDef } from './bikelog';
+import { Segment } from './models/segment';
+import { SegmentData } from './models/segment-data';
 
 // let _ = require('underscore');
 // let async = require('async');
@@ -66,13 +69,13 @@ export class Main {
   stravaCreds: StravaCreds;
   kml: Kml;
   athlete: Athelete;
-  activities: any[];
-  segments: any[];
+  activities: Activity[];
+  segments: SummarySegment[];
   segmentsFileLastModified: Date;
   segmentConfig: Record<string, any>;
   gear: any[];
   segmentEfforts: Record<string, any>;
-  starredSegment: [];
+  starredSegments: SegmentData[] = [];
 
   constructor(options: MainOpts) {
     this.options = options;
@@ -92,7 +95,7 @@ export class Main {
           }
 
           if (this.options.segmentsFile) {
-            return this.readSegmentsFile(this.options.segmentsFile);
+            return this.readSegmentsConfigFile(this.options.segmentsFile);
           } else {
             return Promise.resolve();
           }
@@ -172,17 +175,24 @@ export class Main {
       })
       .then(resp => {
         if (this.options.kml && this.options.segments) {
-          return this.addSegmentsCoordinates();
+          return this.addStarredSegmentsCoordinates();
         }
       })
       .then(resp => {
         if (this.options.kml) {
-          return this.saveKml();
+          let opts = {
+            activities: true,
+            segments: this.options.segments ? true : false
+          };
+          return this.saveKml(opts);
         }
       });
   }
 
-  readSegmentsFile(segmentsFile: string): Promise<void> {
+  /**
+   * Read a local file that contains segment name aliases
+   */
+  readSegmentsConfigFile(segmentsFile: string): Promise<void> {
     return new Promise((resolve, reject) => {
       if (fs.existsSync(segmentsFile)) {
         fs.stat(segmentsFile, (err, stats) => {
@@ -276,17 +286,21 @@ export class Main {
   }
 
   getStarredSegmentList(): Promise<void> {
-    this.starredSegment = [];
-    return this.strava.getStarredSegments().then(resp => {
-      this.segments = resp;
-      console.log('Found %s starred segments', resp ? resp.length : 0);
-      this.segments.forEach(seg => {
+    this.starredSegments = [];
+    return this.strava.getStarredSegments().then(summarySegments => {
+      // this.segments = resp;
+      console.log('Found %s starred segments', summarySegments.length);
+      summarySegments.forEach(seg => {
         // @ts-ignore
-        this.starredSegment.push(seg.name);
+        this.starredSegments.push(seg.name);
       });
     });
   }
 
+  /**
+   * Read more information using the DetailedActivity object and add these
+   * details to the Activity object.
+   */
   addActivitiesDetails(): Promise<any> {
     let jobs = [];
     this.activities.forEach(activity => {
@@ -302,6 +316,41 @@ export class Main {
     });
   }
 
+  /**
+   * Add coordinates for the activity or segment.
+   */
+  addActivitiesCoordinates() {
+    console.log(`Retrieving coordinates for ${this.activities.length} Activities`);
+
+    return this.activities
+      .reduce((promiseChain, item) => {
+        return promiseChain.then(() => {
+          return this.strava.getStreamCoords(StravaStreamSource.activities, item.id).then(resp => {
+            item._coordinates = resp;
+          });
+        });
+      }, Promise.resolve())
+      .then(resp => {
+        return Promise.resolve();
+      });
+  }
+
+  addStarredSegmentsCoordinates() {
+    console.log(`Retrieving coordinates for ${this.starredSegments.length} Starred Segments`);
+
+    return this.starredSegments
+      .reduce((promiseChain, item) => {
+        return promiseChain.then(() => {
+          return this.strava.getStreamCoords(StravaStreamSource.segments, item.id).then(resp => {
+            item.coordinates = resp;
+          });
+        });
+      }, Promise.resolve())
+      .then(resp => {
+        return Promise.resolve();
+      });
+  }
+
   saveXml() {
     let opts: BikelogOutputOpts = {
       more: this.options.more,
@@ -313,19 +362,21 @@ export class Main {
       opts.segmentsFlatFolder = true;
     }
     let bikelog = new Bikelog(opts);
-    return bikelog.outputData(this.activities, this.athlete.bikes, this.options.xml);
+    return bikelog.outputData(this.options.xml, this.activities, this.athlete.bikes);
   }
 
-  saveKml() {
+  saveKml(options: { activities?: boolean; segments?: boolean } = {}) {
     let opts: KmlOpts = {
       more: this.options.more,
       dates: this.options.dateRanges,
-      imperial: this.options.imperial
+      imperial: this.options.imperial,
+      activities: options.activities,
+      segments: options.segments
     };
     if (this.options.segments === 'flat') {
       opts.segmentsFlatFolder = true;
     }
     let kml = new Kml(opts);
-    return Kml.outputData(this.activities, this.athlete.bikes, this.options.xml);
+    return kml.outputData(this.options.kml, this.activities, this.starredSegments);
   }
 }

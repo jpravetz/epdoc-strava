@@ -7,8 +7,10 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const detailed_activity_1 = require("./detailed-activity");
 const dateutil = __importStar(require("dateutil"));
 const epdoc_util_1 = require("epdoc-util");
+const segment_data_1 = require("./segment-data");
 class Activity {
     constructor(data) {
         this.keys = ['distance', 'total_elevation_gain', 'moving_time', 'elapsed_time', 'average_temp', 'device_name'];
@@ -21,21 +23,29 @@ class Activity {
         result.main = main;
         return result;
     }
+    static isInstance(val) {
+        return val && epdoc_util_1.isNumber(val.id) && epdoc_util_1.isBoolean(val.commute);
+    }
     toString() {
         return this._asString;
     }
+    /**
+     * Get starred segment_efforts and descriptions from the DetailedActivity
+     * object and add to Acivity.
+     * @param data
+     */
     addFromDetailedActivity(data) {
         console.log('  Adding activity details for ' + this.toString());
-        // console.log(data);
-        if (data && data.segment_efforts && data.segment_efforts.length) {
-            this.addDescription(data);
-            return this.addDetailSegments(data);
-        }
-        else if (data && data.description) {
-            this.addDescription(data);
+        if (detailed_activity_1.DetailedActivity.isInstance(data)) {
+            if (epdoc_util_1.isString(data.description)) {
+                this._addDescriptionFromDetailedActivity(data);
+            }
+            if (Array.isArray(data.segment_efforts)) {
+                this._addDetailSegmentsFromDetailedActivity(data);
+            }
         }
     }
-    addDescription(data) {
+    _addDescriptionFromDetailedActivity(data) {
         if (epdoc_util_1.isString(data.description)) {
             let p = data.description.split(/\r\n/);
             //console.log(p)
@@ -62,31 +72,30 @@ class Activity {
             this.keys.push('description');
         }
     }
-    addDetailSegments(data) {
-        let ignore = [];
-        this.segments = [];
+    _addDetailSegmentsFromDetailedActivity(data) {
+        this._segments = [];
         data.segment_efforts.forEach(effort => {
             // @ts-ignore
             if (Array.isArray(this.main.starredSegment) && this.main.starredSegment.indexOf(effort.name) >= 0) {
-                this.addDetailSegment(effort);
+                this._addDetailSegment(effort);
             }
         });
     }
-    addDetailSegment(segment) {
-        let name = String(segment.name).trim();
+    _addDetailSegment(segEffort) {
+        let name = String(segEffort.name).trim();
         if (this.main.segmentConfig && this.main.segmentConfig.alias && this.main.segmentConfig.alias[name]) {
             name = this.main.segmentConfig.alias[name];
-            segment.name = name;
+            segEffort.name = name;
         }
         console.log("  Adding segment '" +
             name +
             "', elapsed time " +
-            dateutil.formatMS(segment.elapsed_time * 1000, {
+            dateutil.formatMS(segEffort.elapsed_time * 1000, {
                 ms: false,
                 hours: true
             }));
         // Add segment to this activity
-        this.segments.push(epdoc_util_1.pick(segment, 'id', 'name', 'elapsed_time', 'moving_time', 'distance'));
+        this._segments.push(new segment_data_1.SegmentData(segEffort));
     }
     include(filter) {
         if ((!filter.commuteOnly && !filter.nonCommuteOnly) ||
