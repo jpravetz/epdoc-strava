@@ -6,6 +6,6 @@
   },
   "cachePath": "$HOME$/.strava/cache",
   "lineStyles": {
-    "x-Commute": { "color": "C000A3FF", "width": 4 }
+    "Commute": { "color": "C000A3FF", "width": 4 }
   }
 }

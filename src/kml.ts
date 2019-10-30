@@ -72,7 +72,7 @@ const defaultLineStyles = {
 export class Kml {
   main: Main;
   opts: KmlOpts;
-  lineStyles: Record<string, LineStyle>;
+  lineStyles: Record<string, LineStyle> = {};
   verbose: number = 9;
   buffer: string = '';
   detailedActivity: string = '';
@@ -113,7 +113,7 @@ export class Kml {
       this.detailedActivity = ''; // new Buffer(8*1024);
       this.stream = fs.createWriteStream(file);
 
-      this.stream.once('open', function(fd) {
+      this.stream.once('open', fd => {
         this.header();
         if (this.opts.activities) {
           this.addActivities(activities);

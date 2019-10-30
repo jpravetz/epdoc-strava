@@ -14,15 +14,15 @@ const epdoc_util_1 = require("epdoc-util");
 const strava_creds_1 = require("./strava-creds");
 const detailed_activity_1 = require("./models/detailed-activity");
 const summary_segment_1 = require("./models/summary-segment");
-const STRAVA_URL_PREFIX = process.env.STRAVA_URL_PREFIX || 'https://www.strava.com/';
-const STRAVA_API_PREFIX = STRAVA_URL_PREFIX + 'api/v3/';
+const STRAVA_URL_PREFIX = process.env.STRAVA_URL_PREFIX || 'https://www.strava.com';
+const STRAVA_API_PREFIX = STRAVA_URL_PREFIX + '/api/v3';
 const STRAVA_URL = {
-    authorize: STRAVA_URL_PREFIX + 'oauth/authorize',
-    token: STRAVA_URL_PREFIX + 'oauth/token',
-    athlete: STRAVA_API_PREFIX + 'athlete',
-    picture: STRAVA_API_PREFIX + 'athlete/picture',
-    activities: STRAVA_API_PREFIX + 'activities',
-    starred: STRAVA_API_PREFIX + 'segments/starred'
+    authorize: STRAVA_URL_PREFIX + '/oauth/authorize',
+    token: STRAVA_URL_PREFIX + '/oauth/token',
+    athlete: STRAVA_API_PREFIX + '/athlete',
+    picture: STRAVA_API_PREFIX + '/athlete/picture',
+    activities: STRAVA_API_PREFIX + '/activities',
+    starred: STRAVA_API_PREFIX + '/segments/starred'
 };
 var StravaStreamSource;
 (function (StravaStreamSource) {
@@ -33,7 +33,7 @@ var StravaStreamSource;
 })(StravaStreamSource = exports.StravaStreamSource || (exports.StravaStreamSource = {}));
 var StravaStreamType;
 (function (StravaStreamType) {
-    StravaStreamType["latlong"] = "latlong";
+    StravaStreamType["latlng"] = "latlng";
     StravaStreamType["distance"] = "distance";
     StravaStreamType["altitude"] = "altitude";
 })(StravaStreamType = exports.StravaStreamType || (exports.StravaStreamType = {}));
@@ -175,52 +175,24 @@ class StravaApi {
             throw new Error('Invalid starred segments return value');
         });
     }
-    getSegmentCoords(segId) {
-        let result = [];
-        let query = {
-            keys: StravaStreamType.latlong,
-            key_by_type: true
-        };
-        return this.getStream(StravaStreamSource.segments, segId, query)
-            .then(resp => {
-            if (Array.isArray(resp)) {
-                resp.forEach(item => {
-                    if (item && item.type === 'latlng' && item.data) {
-                        item.data.forEach(pt => {
-                            result.push(pt);
-                        });
-                    }
-                });
-            }
-            return Promise.resolve(result);
-        })
-            .catch(err => {
-            err.message = `Get segment coordinates ` + err.message;
-            throw err;
-        });
-    }
     getStreamCoords(source, objId) {
         let result = [];
         let query = {
-            keys: StravaStreamType.latlong,
-            key_by_type: true
+            keys: StravaStreamType.latlng,
+            key_by_type: ''
         };
-        return this.getStream(source, objId, query)
+        return this.getStreams(source, objId, query)
             .then(resp => {
-            if (Array.isArray(resp)) {
-                resp.forEach(item => {
-                    if (item && item.type === 'latlng' && item.data) {
-                        item.data.forEach(pt => {
-                            result.push(pt);
-                        });
-                    }
-                });
+            if (Array.isArray(resp.latlng)) {
+                console.log(`Get ${source} ${objId} Found ${resp.latlng.length} coordinates`);
+                return Promise.resolve(resp.latlng);
             }
-            return Promise.resolve(result);
+            console.log(`Get ${source} ${objId} did not find any coordinates`);
+            return Promise.resolve([]);
         })
             .catch(err => {
-            err.message = `Get ${source} coordinates ` + err.message;
-            throw err;
+            console.log(`Get ${source} ${objId} coordinates ${err.message}`);
+            return Promise.resolve([]);
         });
     }
     getDetailedActivity(activity) {
@@ -246,19 +218,31 @@ class StravaApi {
      * @param callback
      * @returns {*}
      */
-    getStream(type, objId, options) {
+    getStreams(source, objId, options) {
         return request
-            .get(`${STRAVA_API_PREFIX}/${type}/${objId}/streams`)
+            .get(`${STRAVA_API_PREFIX}/${source}/${objId}/streams`)
             .set('Authorization', 'access_token ' + this.creds.accessToken)
-            .query(options);
+            .query(options)
+            .then(resp => {
+            if (resp && Array.isArray(resp.body)) {
+                let result = {};
+                resp.body.forEach(item => {
+                    if (Array.isArray(item.data)) {
+                        result[item.type] = item.data;
+                    }
+                });
+                return Promise.resolve(result);
+            }
+            throw new Error(`Invalid data returned for ${source}`);
+        });
     }
     getSegment(segmentId) {
         return request
-            .get(STRAVA_API_PREFIX + 'segments/' + segmentId)
+            .get(STRAVA_API_PREFIX + '/segments/' + segmentId)
             .set('Authorization', 'access_token ' + this.creds.accessToken);
     }
     getSegmentEfforts(segmentId, params) {
-        return request.get(STRAVA_API_PREFIX + 'segments/' + segmentId + '/all_efforts').query(params);
+        return request.get(STRAVA_API_PREFIX + '/segments/' + segmentId + '/all_efforts').query(params);
     }
 }
 exports.StravaApi = StravaApi;

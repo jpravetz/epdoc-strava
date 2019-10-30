@@ -43,6 +43,7 @@ const defaultLineStyles = {
 };
 class Kml {
     constructor(opts = {}) {
+        this.lineStyles = {};
         this.verbose = 9;
         this.buffer = '';
         this.detailedActivity = '';
@@ -71,7 +72,7 @@ class Kml {
         return new Promise((resolve, reject) => {
             this.detailedActivity = ''; // new Buffer(8*1024);
             this.stream = fs.createWriteStream(file);
-            this.stream.once('open', function (fd) {
+            this.stream.once('open', fd => {
                 this.header();
                 if (this.opts.activities) {
                     this.addActivities(activities);

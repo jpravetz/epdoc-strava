@@ -20,7 +20,7 @@ const home = process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE
 function run() {
     const segmentsFile = path_1.default.resolve(home, '.strava', 'segments.json');
     const credentialsFile = path_1.default.resolve(home, '.strava', 'credentials.json');
-    const userConfigFile = path_1.default.resolve(home, '.strava', 'user.settings.json');
+    const userSettingsFile = path_1.default.resolve(home, '.strava', 'user.settings.json');
     // if (!fs.existsSync(configFile)) {
     //   console.log('Error: config file does not exist: %s', configFile);
     //   process.exit(1);
@@ -35,8 +35,8 @@ function run() {
     })
         .then(resp => {
         segments = resp;
-        if (fs_1.default.existsSync(userConfigFile)) {
-            return util_1.readJson(userConfigFile);
+        if (fs_1.default.existsSync(userSettingsFile)) {
+            return util_1.readJson(userSettingsFile);
         }
         return Promise.resolve({});
     })

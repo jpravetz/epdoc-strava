@@ -5,7 +5,6 @@ import { Dict, EpochSeconds } from './util';
 import request = require('superagent');
 import { StravaCreds } from './strava-creds';
 import { DetailedActivity } from './models/detailed-activity';
-import { SegmentId } from './models/segment';
 import { SummarySegment } from './models/summary-segment';
 export declare type StravaCode = string;
 export declare type StravaSecret = string;
@@ -19,7 +18,7 @@ export declare enum StravaStreamSource {
     segmentEfforts = "segment_efforts"
 }
 export declare enum StravaStreamType {
-    latlong = "latlong",
+    latlng = "latlng",
     distance = "distance",
     altitude = "altitude"
 }
@@ -78,8 +77,7 @@ export declare class StravaApi {
     getAthlete(athleteId?: number): Promise<Athelete>;
     getActivities(options: StravaActivityOpts, callback: any): Promise<Dict[]>;
     getStarredSegments(): Promise<SummarySegment[]>;
-    getSegmentCoords(segId: SegmentId): Promise<[number, number][]>;
-    getStreamCoords(source: StravaStreamSource, objId: StravaObjId): Promise<[number, number][]>;
+    getStreamCoords(source: StravaStreamSource, objId: StravaObjId): Promise<any[]>;
     getDetailedActivity(activity: Activity): Promise<DetailedActivity>;
     /**
      * Retrieve data for the designated type of stream
@@ -89,7 +87,7 @@ export declare class StravaApi {
      * @param callback
      * @returns {*}
      */
-    getStream(type: StravaStreamSource, objId: StravaSegmentId, options: Query): request.SuperAgentRequest;
+    getStreams(source: StravaStreamSource, objId: StravaSegmentId, options: Query): Promise<Record<string, any>>;
     getSegment(segmentId: StravaSegmentId): request.SuperAgentRequest;
     getSegmentEfforts(segmentId: StravaSegmentId, params: Query): request.SuperAgentRequest;
 }

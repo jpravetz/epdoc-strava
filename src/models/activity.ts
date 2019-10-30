@@ -29,7 +29,7 @@ export class Activity {
 
   _asString: string;
   _segments: SegmentData[]; // list of starred segments for this Activity
-  _coordinates: StravaCoord[]; // will contain the latlong coordinates for the activity
+  _coordinates: StravaCoord[]; // will contain the latlng coordinates for the activity
 
   constructor(data) {
     Object.assign(this, data);
