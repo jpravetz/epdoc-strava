@@ -46,7 +46,6 @@ class Kml {
         this.lineStyles = {};
         this.verbose = 9;
         this.buffer = '';
-        this.detailedActivity = '';
         this.opts = opts;
         this.verbose = opts.verbose;
     }
@@ -70,19 +69,26 @@ class Kml {
     outputData(filepath, activities, segments) {
         let file = filepath || 'Activities.kml';
         return new Promise((resolve, reject) => {
-            this.detailedActivity = ''; // new Buffer(8*1024);
             this.stream = fs.createWriteStream(file);
             this.stream.once('open', fd => {
-                this.header();
-                if (this.opts.activities) {
-                    this.addActivities(activities);
-                }
-                if (this.opts.segments) {
-                    this.addSegments(segments);
-                }
-                this.footer();
-                this.stream.end();
-                console.log('Wrote ' + file);
+                this.header()
+                    .then(resp => {
+                    if (this.opts.activities) {
+                        return this.addActivities(activities);
+                    }
+                })
+                    .then(resp => {
+                    if (this.opts.segments) {
+                        return this.addSegments(segments);
+                    }
+                })
+                    .then(resp => {
+                    return this.footer();
+                })
+                    .then(resp => {
+                    this.stream.end();
+                    console.log('Wrote ' + file);
+                });
             });
             this.stream.once('error', err => {
                 this.stream.end();

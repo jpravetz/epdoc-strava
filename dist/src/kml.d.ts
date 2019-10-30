@@ -29,7 +29,6 @@ export declare class Kml {
     lineStyles: Record<string, LineStyle>;
     verbose: number;
     buffer: string;
-    detailedActivity: string;
     stream: fs.WriteStream;
     trackIndex: number;
     constructor(opts?: KmlOpts);

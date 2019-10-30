@@ -75,7 +75,6 @@ export class Kml {
   lineStyles: Record<string, LineStyle> = {};
   verbose: number = 9;
   buffer: string = '';
-  detailedActivity: string = '';
   stream: fs.WriteStream;
   trackIndex: number;
 
@@ -110,20 +109,27 @@ export class Kml {
     let file = filepath || 'Activities.kml';
 
     return new Promise((resolve, reject) => {
-      this.detailedActivity = ''; // new Buffer(8*1024);
       this.stream = fs.createWriteStream(file);
 
       this.stream.once('open', fd => {
-        this.header();
-        if (this.opts.activities) {
-          this.addActivities(activities);
-        }
-        if (this.opts.segments) {
-          this.addSegments(segments);
-        }
-        this.footer();
-        this.stream.end();
-        console.log('Wrote ' + file);
+        this.header()
+          .then(resp => {
+            if (this.opts.activities) {
+              return this.addActivities(activities);
+            }
+          })
+          .then(resp => {
+            if (this.opts.segments) {
+              return this.addSegments(segments);
+            }
+          })
+          .then(resp => {
+            return this.footer();
+          })
+          .then(resp => {
+            this.stream.end();
+            console.log('Wrote ' + file);
+          });
       });
 
       this.stream.once('error', err => {
@@ -141,7 +147,7 @@ export class Kml {
     });
   }
 
-  addActivities(activities: Activity[]) {
+  addActivities(activities: Activity[]): Promise<void> {
     if (activities && activities.length) {
       let dateString = this._dateString();
 
@@ -177,7 +183,7 @@ export class Kml {
     return '';
   }
 
-  addSegments(segments: SegmentData[]) {
+  addSegments(segments: SegmentData[]): Promise<void> {
     if (segments && segments.length) {
       let indent = 2;
       let sortedSegments: SegmentData[] = segments.sort((a, b) => {
@@ -198,7 +204,7 @@ export class Kml {
     return Promise.resolve();
   }
 
-  outputSegments(indent: number, segments: SegmentData[], country?: string, state?: string) {
+  outputSegments(indent: number, segments: SegmentData[], country?: string, state?: string): void {
     let title = 'Segments';
     const dateString = this._dateString();
     if (country && state) {
@@ -247,7 +253,7 @@ export class Kml {
     //this.buffer.write( indent + s + "\n", 'utf8' );
   }
 
-  flush() {
+  flush(): Promise<void> {
     if (this.verbose) {
       console.log('  Flushing %d bytes', this.buffer.length);
     }
@@ -267,7 +273,7 @@ export class Kml {
     }
   }
 
-  outputActivity(indent: number, activity: Activity) {
+  outputActivity(indent: number, activity: Activity): void {
     let t0 = activity.start_date_local.substr(0, 10);
     let styleName = 'Default';
     if (activity.commute && defaultLineStyles['Commute']) {
@@ -286,7 +292,7 @@ export class Kml {
     this.placemark(indent, params);
   }
 
-  _buildActivityDescription(activity: Activity) {
+  _buildActivityDescription(activity: Activity): string {
     //console.log(this.opts)
     //console.log(activity.keys)
     if (this.more) {
@@ -338,7 +344,7 @@ export class Kml {
    * @param segment
    * @returns {string}
    */
-  outputSegment(indent: number, segment: SegmentData) {
+  outputSegment(indent: number, segment: SegmentData): void {
     let params = {
       placemarkId: 'StravaSegment' + ++this.trackIndex,
       name: escapeHtml(segment.name),
@@ -375,12 +381,12 @@ export class Kml {
     this.write(2, '</Style>\n');
   }
 
-  footer() {
+  footer(): Promise<void> {
     this.write(1, '</Document>\n</kml>\n');
     return this.flush();
   }
 
-  placemark(indent: number, params: PlacemarkParams) {
+  placemark(indent: number, params: PlacemarkParams): void {
     this.writeln(indent, '<Placemark id="' + params.placemarkId + '">');
     this.writeln(indent + 1, '<name>' + params.name + '</name>');
     if (params.description) {
