@@ -1,0 +1,15 @@
+{
+  "extends": ["tslint:recommended", "tslint-config-prettier", "tslint-plugin-prettier"],
+  "linterOptions": {
+    "exclude": ["test/**/*.ts"]
+  },
+  "rules": {
+    "prettier": true,
+    "quotemark": [true, "single"],
+    "ordered-imports": false,
+    "object-literal-sort-keys": false,
+    "variable-name": {
+      "options": ["allow-leading-underscore"]
+    }
+  }
+}

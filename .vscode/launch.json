@@ -1,0 +1,78 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "strava -h",
+      "program": "${workspaceFolder}/dist/src/cli.js",
+      "args": ["-h"],
+      "console": "integratedTerminal",
+      "preLaunchTask": "tsc: build - tsconfig.json",
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "strava -u",
+      "program": "${workspaceFolder}/dist/src/cli.js",
+      "args": ["-u"],
+      "console": "integratedTerminal",
+      "preLaunchTask": "tsc: build - tsconfig.json",
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "strava -a -d 20191001",
+      "program": "${workspaceFolder}/dist/src/cli.js",
+      "args": ["-a", "-d", "20191001"],
+      "console": "integratedTerminal",
+      "preLaunchTask": "tsc: build - tsconfig.json",
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "strava --auth",
+      "program": "${workspaceFolder}/dist/src/cli.js",
+      "args": ["--auth"],
+      "console": "integratedTerminal",
+      "preLaunchTask": "tsc: build - tsconfig.json",
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "strava -a -d 20191025 -x ~/Downloads/Activities.xml",
+      "program": "${workspaceFolder}/dist/src/cli.js",
+      "args": ["-a", "-d", "20191025", "-x", "~/Downloads/Activities.xml"],
+      "console": "integratedTerminal",
+      "preLaunchTask": "tsc: build - tsconfig.json",
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "strava -a -d 20191025 -k ~/Downloads/Activities.kml",
+      "program": "${workspaceFolder}/dist/src/cli.js",
+      "args": ["-a", "-d", "20191025", "-k", "~/Downloads/Activities.kml"],
+      "console": "integratedTerminal",
+      "preLaunchTask": "tsc: build - tsconfig.json",
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "strava -a -d 20191001 -k ~/Downloads/Activities.kml",
+      "program": "${workspaceFolder}/dist/src/cli.js",
+      "args": ["-a", "-d", "20191001", "-k", "~/Downloads/Activities.kml"],
+      "console": "integratedTerminal",
+      "preLaunchTask": "tsc: build - tsconfig.json",
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    }
+  ]
+}
