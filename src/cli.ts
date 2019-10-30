@@ -97,8 +97,8 @@ function run(): Promise<void> {
         friends: program.friends,
         dates: program.dates || [], // array of date ranges, in seconds (not milliseconds)
         more: program.more,
-        kml: program.kml,
-        xml: program.xml,
+        kml: program.path && program.kml ? path.resolve(program.path, program.kml) : program.kml,
+        xml: program.path && program.xml ? path.resolve(program.path, program.xml) : program.xml,
         activities: program.activities,
         // activityFilter: _.without(program.filter || [], 'commute', 'nocommute'),
         commuteOnly: (program.filter || []).indexOf('commute') >= 0 ? true : false,

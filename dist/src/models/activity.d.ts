@@ -29,6 +29,7 @@ export declare class Activity {
     static newFromResponseData(data: any, main: Main): Activity;
     static isInstance(val: any): val is Activity;
     toString(): string;
+    hasKmlData(): boolean;
     /**
      * Get starred segment_efforts and descriptions from the DetailedActivity
      * object and add to Acivity.

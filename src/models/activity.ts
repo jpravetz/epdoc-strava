@@ -6,12 +6,17 @@ import * as dateutil from 'dateutil';
 import { pick, isString, isNumber, isBoolean } from 'epdoc-util';
 import { SegmentEffort } from './segment-effort';
 import { SegmentData } from './segment-data';
+import { types } from '@babel/core';
 
 export type ActivityFilter = {
   commuteOnly?: boolean;
   nonCommuteOnly?: boolean;
   include?: string[];
   exclude?: string[];
+};
+
+const REGEX = {
+  noKmlData: /^(Workout|Yoga|Weight Training)$/i
 };
 
 export class Activity {
@@ -29,12 +34,13 @@ export class Activity {
 
   _asString: string;
   _segments: SegmentData[]; // list of starred segments for this Activity
-  _coordinates: StravaCoord[]; // will contain the latlng coordinates for the activity
+  _coordinates: StravaCoord[] = []; // will contain the latlng coordinates for the activity
 
   constructor(data) {
     Object.assign(this, data);
     this.startDate = new Date(this.start_date);
-    this._asString = `${this.start_date_local.slice(0, 10)}, ${Math.round(this.distance / 100) / 10} km, ${this.name}`;
+    let d = Math.round(this.distance / 100) / 10;
+    this._asString = `${this.start_date_local.slice(0, 10)}, ${this.type} ${d} km, ${this.name}`;
   }
 
   static newFromResponseData(data, main: Main): Activity {
@@ -47,8 +53,15 @@ export class Activity {
     return val && isNumber(val.id) && isBoolean(val.commute);
   }
 
-  toString() {
+  toString(): string {
     return this._asString;
+  }
+
+  hasKmlData(): boolean {
+    if (!isString(this.type) || REGEX.noKmlData.test(this.type)) {
+      return false;
+    }
+    return this._coordinates.length > 0 ? true : false;
   }
 
   /**

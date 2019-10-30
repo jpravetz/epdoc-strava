@@ -144,6 +144,9 @@ export class Kml {
       this.stream.on('finish', () => {
         console.log('Finish ' + file);
       });
+      this.stream.on('drain', () => {
+        this._flush;
+      });
     });
   }
 
@@ -158,7 +161,9 @@ export class Kml {
         .reduce((promiseChain, activity: Activity) => {
           return promiseChain.then(() => {
             let job = Promise.resolve().then(() => {
-              this.outputActivity(indent + 1, activity);
+              if (activity.hasKmlData()) {
+                this.outputActivity(indent + 1, activity);
+              }
               return this.flush();
             });
             return job;
@@ -396,15 +401,12 @@ export class Kml {
   }
 
   _flush(): Promise<void> {
-    let bOk = this.stream.write(this.buffer);
-    this.buffer = '';
-    if (bOk) {
-      return Promise.resolve();
-    } else {
-      if (this.verbose) {
-        console.log('  Waiting on drain event');
-      }
-      this.stream.once('drain', this._flush);
-    }
+    return new Promise((resolve, reject) => {
+      let tbuf = this.buffer;
+      this.buffer = '';
+      let bOk = this.stream.write(tbuf, () => {
+        resolve();
+      });
+    });
   }
 }

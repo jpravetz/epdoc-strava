@@ -11,12 +11,17 @@ const detailed_activity_1 = require("./detailed-activity");
 const dateutil = __importStar(require("dateutil"));
 const epdoc_util_1 = require("epdoc-util");
 const segment_data_1 = require("./segment-data");
+const REGEX = {
+    noKmlData: /^(Workout|Yoga|Weight Training)$/i
+};
 class Activity {
     constructor(data) {
         this.keys = ['distance', 'total_elevation_gain', 'moving_time', 'elapsed_time', 'average_temp', 'device_name'];
+        this._coordinates = []; // will contain the latlng coordinates for the activity
         Object.assign(this, data);
         this.startDate = new Date(this.start_date);
-        this._asString = `${this.start_date_local.slice(0, 10)}, ${Math.round(this.distance / 100) / 10} km, ${this.name}`;
+        let d = Math.round(this.distance / 100) / 10;
+        this._asString = `${this.start_date_local.slice(0, 10)}, ${this.type} ${d} km, ${this.name}`;
     }
     static newFromResponseData(data, main) {
         let result = new Activity(data);
@@ -28,6 +33,12 @@ class Activity {
     }
     toString() {
         return this._asString;
+    }
+    hasKmlData() {
+        if (!epdoc_util_1.isString(this.type) || REGEX.noKmlData.test(this.type)) {
+            return false;
+        }
+        return this._coordinates.length > 0 ? true : false;
     }
     /**
      * Get starred segment_efforts and descriptions from the DetailedActivity

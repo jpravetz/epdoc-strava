@@ -77,7 +77,7 @@ export declare class StravaApi {
     getAthlete(athleteId?: number): Promise<Athelete>;
     getActivities(options: StravaActivityOpts, callback: any): Promise<Dict[]>;
     getStarredSegments(): Promise<SummarySegment[]>;
-    getStreamCoords(source: StravaStreamSource, objId: StravaObjId): Promise<any[]>;
+    getStreamCoords(source: StravaStreamSource, objId: StravaObjId, name: string): Promise<any[]>;
     getDetailedActivity(activity: Activity): Promise<DetailedActivity>;
     /**
      * Retrieve data for the designated type of stream

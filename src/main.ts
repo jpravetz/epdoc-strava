@@ -17,6 +17,8 @@ import { SegmentData } from './models/segment-data';
 // let Strava = require('../lib/stravaV3api');
 // let Bikelog = require('../lib/bikelog');
 
+const REQ_LIMIT = 10;
+
 export type SegmentConfig = {
   description: string;
   alias: Dict;
@@ -287,9 +289,10 @@ export class Main {
 
   getStarredSegmentList(): Promise<void> {
     this.starredSegments = [];
+    console.log('Retrieving starred segments ...');
     return this.strava.getStarredSegments().then(summarySegments => {
       // this.segments = resp;
-      console.log('Found %s starred segments', summarySegments.length);
+      console.log('  Found %s starred segments', summarySegments.length);
       summarySegments.forEach(seg => {
         // @ts-ignore
         this.starredSegments.push(seg.name);
@@ -302,12 +305,29 @@ export class Main {
    * details to the Activity object.
    */
   addActivitiesDetails(): Promise<any> {
-    let jobs = [];
-    this.activities.forEach(activity => {
-      let job = this.addActivityDetail(activity);
-      jobs.push(job);
-    });
-    return Promise.all(jobs);
+    console.log(`Retrieving activity details for ${this.activities.length} Activities`);
+
+    // Break into chunks to limit to REQ_LIMIT parallel requests.
+    let activitiesChunks = [];
+    for (let idx = 0; idx < this.activities.length; idx += REQ_LIMIT) {
+      const tmpArray = this.activities.slice(idx, idx + REQ_LIMIT);
+      activitiesChunks.push(tmpArray);
+    }
+
+    return activitiesChunks
+      .reduce((promiseChain, activities) => {
+        return promiseChain.then(() => {
+          let jobs = [];
+          activities.forEach(activity => {
+            let job = this.addActivityDetail(activity);
+            jobs.push(job);
+          });
+          return Promise.all(jobs);
+        });
+      }, Promise.resolve())
+      .then(resp => {
+        return Promise.resolve();
+      });
   }
 
   addActivityDetail(activity: Activity): Promise<void> {
@@ -317,17 +337,30 @@ export class Main {
   }
 
   /**
-   * Add coordinates for the activity or segment.
+   * Add coordinates for the activity or segment. Limits to REQ_LIMIT parallel requests.
    */
   addActivitiesCoordinates() {
     console.log(`Retrieving coordinates for ${this.activities.length} Activities`);
 
-    return this.activities
-      .reduce((promiseChain, item) => {
+    // Break into chunks to limit to REQ_LIMIT parallel requests.
+    let activitiesChunks = [];
+    for (let idx = 0; idx < this.activities.length; idx += REQ_LIMIT) {
+      const tmpArray = this.activities.slice(idx, idx + REQ_LIMIT);
+      activitiesChunks.push(tmpArray);
+    }
+
+    return activitiesChunks
+      .reduce((promiseChain, items) => {
         return promiseChain.then(() => {
-          return this.strava.getStreamCoords(StravaStreamSource.activities, item.id).then(resp => {
-            item._coordinates = resp;
+          let jobs = [];
+          items.forEach(item => {
+            let name = item.start_date_local;
+            let job = this.strava.getStreamCoords(StravaStreamSource.activities, item.id, name).then(resp => {
+              item._coordinates = resp;
+            });
+            jobs.push(job);
           });
+          return Promise.all(jobs);
         });
       }, Promise.resolve())
       .then(resp => {
@@ -341,7 +374,7 @@ export class Main {
     return this.starredSegments
       .reduce((promiseChain, item) => {
         return promiseChain.then(() => {
-          return this.strava.getStreamCoords(StravaStreamSource.segments, item.id).then(resp => {
+          return this.strava.getStreamCoords(StravaStreamSource.segments, item.id, item.name).then(resp => {
             item.coordinates = resp;
           });
         });

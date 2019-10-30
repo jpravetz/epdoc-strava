@@ -81,9 +81,9 @@ export declare class Main {
     addActivitiesDetails(): Promise<any>;
     addActivityDetail(activity: Activity): Promise<void>;
     /**
-     * Add coordinates for the activity or segment.
+     * Add coordinates for the activity or segment. Limits to REQ_LIMIT parallel requests.
      */
-    addActivitiesCoordinates(): Promise<void>;
+    addActivitiesCoordinates(): any;
     addStarredSegmentsCoordinates(): Promise<void>;
     saveXml(): Promise<void>;
     saveKml(options?: {

@@ -244,7 +244,7 @@ export class StravaApi {
       });
   }
 
-  getStreamCoords(source: StravaStreamSource, objId: StravaObjId) {
+  getStreamCoords(source: StravaStreamSource, objId: StravaObjId, name: string) {
     let result: StravaCoord[] = [];
     let query = {
       keys: StravaStreamType.latlng,
@@ -253,14 +253,14 @@ export class StravaApi {
     return this.getStreams(source, objId, query)
       .then(resp => {
         if (Array.isArray(resp.latlng)) {
-          console.log(`Get ${source} ${objId} Found ${resp.latlng.length} coordinates`);
+          console.log(`  Get ${name} Found ${resp.latlng.length} coordinates`);
           return Promise.resolve(resp.latlng);
         }
-        console.log(`Get ${source} ${objId} did not find any coordinates`);
+        console.log(`  Get ${name} did not find any coordinates`);
         return Promise.resolve([]);
       })
       .catch(err => {
-        console.log(`Get ${source} ${objId} coordinates ${err.message}`);
+        console.log(`  Get ${name} coordinates ${err.message}`);
         return Promise.resolve([]);
       });
   }

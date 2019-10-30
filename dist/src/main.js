@@ -10,6 +10,12 @@ const kml_1 = require("./kml");
 const util_1 = require("./util");
 const server_1 = require("./server");
 const bikelog_1 = require("./bikelog");
+// let _ = require('underscore');
+// let async = require('async');
+// let dateutil = require('dateutil');
+// let Strava = require('../lib/stravaV3api');
+// let Bikelog = require('../lib/bikelog');
+const REQ_LIMIT = 10;
 class Main {
     constructor(options) {
         this.starredSegments = [];
@@ -216,9 +222,10 @@ class Main {
     }
     getStarredSegmentList() {
         this.starredSegments = [];
+        console.log('Retrieving starred segments ...');
         return this.strava.getStarredSegments().then(summarySegments => {
             // this.segments = resp;
-            console.log('Found %s starred segments', summarySegments.length);
+            console.log('  Found %s starred segments', summarySegments.length);
             summarySegments.forEach(seg => {
                 // @ts-ignore
                 this.starredSegments.push(seg.name);
@@ -230,12 +237,27 @@ class Main {
      * details to the Activity object.
      */
     addActivitiesDetails() {
-        let jobs = [];
-        this.activities.forEach(activity => {
-            let job = this.addActivityDetail(activity);
-            jobs.push(job);
+        console.log(`Retrieving activity details for ${this.activities.length} Activities`);
+        // Break into chunks to limit to REQ_LIMIT parallel requests.
+        let activitiesChunks = [];
+        for (let idx = 0; idx < this.activities.length; idx += REQ_LIMIT) {
+            const tmpArray = this.activities.slice(idx, idx + REQ_LIMIT);
+            activitiesChunks.push(tmpArray);
+        }
+        return activitiesChunks
+            .reduce((promiseChain, activities) => {
+            return promiseChain.then(() => {
+                let jobs = [];
+                activities.forEach(activity => {
+                    let job = this.addActivityDetail(activity);
+                    jobs.push(job);
+                });
+                return Promise.all(jobs);
+            });
+        }, Promise.resolve())
+            .then(resp => {
+            return Promise.resolve();
         });
-        return Promise.all(jobs);
     }
     addActivityDetail(activity) {
         return this.strava.getDetailedActivity(activity).then(data => {
@@ -243,16 +265,28 @@ class Main {
         });
     }
     /**
-     * Add coordinates for the activity or segment.
+     * Add coordinates for the activity or segment. Limits to REQ_LIMIT parallel requests.
      */
     addActivitiesCoordinates() {
         console.log(`Retrieving coordinates for ${this.activities.length} Activities`);
-        return this.activities
-            .reduce((promiseChain, item) => {
+        // Break into chunks to limit to REQ_LIMIT parallel requests.
+        let activitiesChunks = [];
+        for (let idx = 0; idx < this.activities.length; idx += REQ_LIMIT) {
+            const tmpArray = this.activities.slice(idx, idx + REQ_LIMIT);
+            activitiesChunks.push(tmpArray);
+        }
+        return activitiesChunks
+            .reduce((promiseChain, items) => {
             return promiseChain.then(() => {
-                return this.strava.getStreamCoords(strava_api_1.StravaStreamSource.activities, item.id).then(resp => {
-                    item._coordinates = resp;
+                let jobs = [];
+                items.forEach(item => {
+                    let name = item.start_date_local;
+                    let job = this.strava.getStreamCoords(strava_api_1.StravaStreamSource.activities, item.id, name).then(resp => {
+                        item._coordinates = resp;
+                    });
+                    jobs.push(job);
                 });
+                return Promise.all(jobs);
             });
         }, Promise.resolve())
             .then(resp => {
@@ -264,7 +298,7 @@ class Main {
         return this.starredSegments
             .reduce((promiseChain, item) => {
             return promiseChain.then(() => {
-                return this.strava.getStreamCoords(strava_api_1.StravaStreamSource.segments, item.id).then(resp => {
+                return this.strava.getStreamCoords(strava_api_1.StravaStreamSource.segments, item.id, item.name).then(resp => {
                     item.coordinates = resp;
                 });
             });
