@@ -148,12 +148,13 @@ export class StravaApi {
       client_secret: this.secret,
       grant_type: 'authorization_code'
     };
-    console.log('getTokens request', payload);
+    // console.log('getTokens request', payload);
     return request
       .post(STRAVA_URL.token)
       .send(payload)
       .then(resp => {
-        console.log('getTokens response', resp.body);
+        // console.log('getTokens response', resp.body);
+        console.log('Authorization obtained.');
         return this.creds.write(resp.body);
       })
       .then(resp => {

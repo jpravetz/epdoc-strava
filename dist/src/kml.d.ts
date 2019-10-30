@@ -41,10 +41,6 @@ export declare class Kml {
     addSegments(segments: SegmentData[]): Promise<void>;
     outputSegments(indent: number, segments: SegmentData[], country?: string, state?: string): void;
     getSegmentRegionList(segments: any): {};
-    write(indent: string | number, s: string): void;
-    writeln(indent: string | number, s: string): void;
-    flush(): Promise<void>;
-    _flush(): Promise<void>;
     outputActivity(indent: number, activity: Activity): void;
     _buildActivityDescription(activity: Activity): string;
     /**
@@ -54,8 +50,12 @@ export declare class Kml {
      */
     outputSegment(indent: number, segment: SegmentData): void;
     buildSegmentDescription(segment: SegmentData): string;
-    header(): Promise<void>;
     _addLineStyle(name: any, style: any): void;
-    footer(): Promise<void>;
     placemark(indent: number, params: PlacemarkParams): void;
+    header(): Promise<void>;
+    footer(): Promise<void>;
+    write(indent: string | number, s: string): void;
+    writeln(indent: string | number, s: string): void;
+    flush(): Promise<void>;
+    _flush(): Promise<void>;
 }

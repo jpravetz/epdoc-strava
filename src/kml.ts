@@ -72,11 +72,11 @@ const defaultLineStyles = {
 export class Kml {
   main: Main;
   opts: KmlOpts;
-  lineStyles: Record<string, LineStyle> = {};
+  lineStyles: Record<string, LineStyle> = defaultLineStyles;
   verbose: number = 9;
   buffer: string = '';
   stream: fs.WriteStream;
-  trackIndex: number;
+  trackIndex: number = 0;
 
   constructor(opts: KmlOpts = {}) {
     this.opts = opts;
@@ -234,45 +234,6 @@ export class Kml {
     return regions;
   }
 
-  write(indent: string | number, s: string): void {
-    if (isString(indent)) {
-      this.buffer += s;
-    } else {
-      let indent2 = new Array(indent + 1).join('  ');
-      this.buffer += indent2 + s;
-    }
-  }
-
-  writeln(indent: string | number, s: string): void {
-    if (isString(indent)) {
-      this.buffer += s + '\n';
-    } else {
-      let indent2 = new Array(indent + 1).join('  ');
-      this.buffer += indent2 + s + '\n';
-    }
-    //this.buffer.write( indent + s + "\n", 'utf8' );
-  }
-
-  flush(): Promise<void> {
-    if (this.verbose) {
-      console.log('  Flushing %d bytes', this.buffer.length);
-    }
-    return this._flush();
-  }
-
-  _flush(): Promise<void> {
-    let bOk = this.stream.write(this.buffer);
-    this.buffer = '';
-    if (bOk) {
-      return Promise.resolve();
-    } else {
-      if (this.verbose) {
-        console.log('  Waiting on drain event');
-      }
-      this.stream.once('drain', this._flush);
-    }
-  }
-
   outputActivity(indent: number, activity: Activity): void {
     let t0 = activity.start_date_local.substr(0, 10);
     let styleName = 'Default';
@@ -359,31 +320,11 @@ export class Kml {
     return '';
   }
 
-  header(): Promise<void> {
-    this.write(0, '<?xml version="1.0" encoding="UTF-8"?>\n');
-    this.write(
-      1,
-      '<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">'
-    );
-    this.write(1, '<Document>\n');
-    this.write(2, '<name>Strava Activities</name>\n');
-    this.write(2, '<open>1</open>\n');
-    Object.keys(this.lineStyles).forEach(name => {
-      this._addLineStyle(name, this.lineStyles[name]);
-    });
-    return this.flush();
-  }
-
   _addLineStyle(name, style) {
     this.write(2, '<Style id="StravaLineStyle' + name + '">\n');
     this.write(3, '<LineStyle><color>' + style.color + '</color><width>' + style.width + '</width></LineStyle>\n');
     this.write(3, '<PolyStyle><color>' + style.color + '</color></PolyStyle>\n');
     this.write(2, '</Style>\n');
-  }
-
-  footer(): Promise<void> {
-    this.write(1, '</Document>\n</kml>\n');
-    return this.flush();
   }
 
   placemark(indent: number, params: PlacemarkParams): void {
@@ -406,5 +347,64 @@ export class Kml {
     }
     this.writeln(indent + 1, '</LineString>');
     this.writeln(indent, '</Placemark>');
+  }
+
+  header(): Promise<void> {
+    this.write(0, '<?xml version="1.0" encoding="UTF-8"?>\n');
+    this.write(
+      1,
+      '<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">'
+    );
+    this.write(1, '<Document>\n');
+    this.write(2, '<name>Strava Activities</name>\n');
+    this.write(2, '<open>1</open>\n');
+    Object.keys(this.lineStyles).forEach(name => {
+      this._addLineStyle(name, this.lineStyles[name]);
+    });
+    return this.flush();
+  }
+
+  footer(): Promise<void> {
+    this.write(1, '</Document>\n</kml>\n');
+    return this.flush();
+  }
+
+  write(indent: string | number, s: string): void {
+    if (isString(indent)) {
+      this.buffer += s;
+    } else {
+      let indent2 = new Array(indent + 1).join('  ');
+      this.buffer += indent2 + s;
+    }
+  }
+
+  writeln(indent: string | number, s: string): void {
+    if (isString(indent)) {
+      this.buffer += s + '\n';
+    } else {
+      let indent2 = new Array(indent + 1).join('  ');
+      this.buffer += indent2 + s + '\n';
+    }
+    //this.buffer.write( indent + s + "\n", 'utf8' );
+  }
+
+  flush(): Promise<void> {
+    if (this.verbose) {
+      console.log('  Flushing %d bytes', this.buffer.length);
+    }
+    return this._flush();
+  }
+
+  _flush(): Promise<void> {
+    let bOk = this.stream.write(this.buffer);
+    this.buffer = '';
+    if (bOk) {
+      return Promise.resolve();
+    } else {
+      if (this.verbose) {
+        console.log('  Waiting on drain event');
+      }
+      this.stream.once('drain', this._flush);
+    }
   }
 }
