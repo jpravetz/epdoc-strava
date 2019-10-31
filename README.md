@@ -2,41 +2,46 @@
 
 ## Overview
 
-This project contains a command line application bin/strava.js that will generate KML files suitable for import
+This project contains a command line application `bin/strava` that will generate KML files suitable for import
 into Google Earth. The application uses the Strava V3 APIs to retrieve your information and outputs two types of information:
-* Your activities, color coded by activity type, and optionally including a description
-* Your efforts for segments that you have [starred in Strava](http://blog.strava.com/keep-track-of-your-favorites-with-starred-segments-6260/),
-optionally including a description that lists all your times
+
+- Your activities, color coded by activity type, and optionally including a
+  description
+- Your efforts for segments that you have [starred in Strava](http://blog.strava.com/keep-track-of-your-favorites-with-starred-segments-6260/),
+  optionally including a description that lists all your times
 
 ## Installation
 
-The application bin/strava.js is written in javascript for node, requiring that you install nodejs, this application
-and it's dependent libraries on your computer. You will also need to obtain your own Strava ID, secret and access token
-from Strava, then add these to a JSON-encoded settings file.
+This application is written in javascript (typescript actually) for node,
+requiring that you install `nodejs`, `npm`, this application and it's dependent libraries
+on your computer. You will also need to obtain your own Strava ID, secret and
+access token from Strava, then add these to a JSON-encoded
+`project.settings.json` file in your root `~/.strava` folder.
 
-* [Install node](http://nodejs.org/download/).
-* [Install and use git](http://git-scm.com/downloads) to clone or download a zip of [this project](https://github.com/jpravetz/strava)
-* Run _cd strava; npm install_ to install nodejs library dependencies
-* Obtain your [Strava ID, secret and access token](https://www.strava.com/settings/api)
-* Look up your Strava Athlete ID. You can find your Athlete ID by going to
-your [Strava dashboard](http://www.strava.com/dashboard), and clicking on “My Profile”.
-Your ID will be shown in the address bar.
-* Create the file $HOME/.strava/settings.json as show below.
-* Run the application with _bin/strava.js --help_
+- [Install node](http://nodejs.org/download/)
+- [Install npm](https://www.npmjs.com/get-npm)
+- [Install and use git](http://git-scm.com/downloads) to clone or download a zip of [this project](https://github.com/jpravetz/strava)
+- Run _cd strava; npm install_ to install nodejs library dependencies
+- Obtain your [Strava ID, secret and access token](https://www.strava.com/settings/api)
+- Look up your Strava Athlete ID. You can find your Athlete ID by going to
+  your [Strava dashboard](http://www.strava.com/dashboard), and clicking on “My Profile”.
+  Your ID will be shown in the address bar
+- Create the file `$HOME/.strava/project.settings.json` as show below
+- Run the application with _bin/strava --help_
 
-```
+```json
 {
-    "client": {
-        "id": 012,
-        "secret": "ab123...0f",
-        "token": "123..abc"
-    },
-    "athleteId": 3456,
+  "client": {
+    "id": 012,
+    "secret": "ab123...0f",
+    "token": "123..abc"
+  },
+  "athleteId": 3456,
 
-    "lineStyles": {
-        "Commute": { "color": "C03030C0", "width": 4 },
-        "Run": { "color": "C000FF00", "width": 4 }
-    }
+  "lineStyles": {
+    "Commute": { "color": "C03030C0", "width": 4 },
+    "Run": { "color": "C000FF00", "width": 4 }
+  }
 }
 ```
 
@@ -46,13 +51,13 @@ Notes:
 $HOME is resolved by trying, in order, the ENV variables HOME, HOMEPATH and USERPROFILE.
 2. athleteId may be specified in the settings file or on the command line.
 3. The settings file's lineStyles object allows you to customize colors for segments and routes. The keys in this object are
-Strava [Activity types](http://strava.github.io/api/v3/activities/), and the values include KML line
-color ('aabbggrr', alpha, blue, green, red hex values) and width. There are additional keys for 'Segment' and 'Commute' that
-are not in the list of Strava activity types.
+   Strava [Activity types](http://strava.github.io/api/v3/activities/), and the values include KML line
+   color ('aabbggrr', alpha, blue, green, red hex values) and width. There are additional keys for 'Segment' and 'Commute' that
+   are not in the list of Strava activity types.
 
 ## Strava Command Line Application
 
-```
+```bash
 > bin/strava.js --help
 
   Usage: strava.js [options]
@@ -78,17 +83,17 @@ are not in the list of Strava activity types.
 
 This command line application can be used to query Strava and:
 
-* Return details for an athlete
-* Return your list of bikes (currently not working)
-* Generate a KML file that contains activity routes for the range of dates and/or starred segments and corresponding
-segment efforts within the date range.
+- Return details for an athlete
+- Return your list of bikes (currently not working)
+- Generate a KML file that contains activity routes for the range of dates and/or starred segments and corresponding
+  segment efforts within the date range.
 
 Notes:
 
-* Different activity types are rendered using different colors, using the colors defined by lineStyle in the settings file.
-A default set of colors is defined in _defaultLineStyles_ in the file lib/kml.js.
-* There is a Strava limit of 200 activities per call, so for date ranges that include more than 200 activities, only
-the first 200 activities are returned.
+- Different activity types are rendered using different colors, using the colors defined by lineStyle in the settings file.
+  A default set of colors is defined in _defaultLineStyles_ in the file lib/kml.js.
+- There is a Strava limit of 200 activities per call, so for date ranges that include more than 200 activities, only
+  the first 200 activities are returned.
 
 ### Example Command Line Use
 
@@ -112,7 +117,7 @@ bin/strava.js --date 20100101-20141231 --kml ~/tmp/activities.kml --segments --m
 
 ### KML Description
 
-Using *--more* will result in a description field being added to the KML activity or segment.
+Using _--more_ will result in a description field being added to the KML activity or segment.
 For activities this will include the following fields (see notes afterwards):
 
 ```
@@ -127,10 +132,10 @@ For activities this will include the following fields (see notes afterwards):
 
 Notes:
 
-1. The Strava *description* field is parsed. Any key/value pairs, represented by a line containing a string of
-the form *Tires=Knobbies*, will result in a separate line being added to the description output.
-2. For segments, using *--more* will add some basic information about the segment _and_ add an ordered list of efforts
-you've made for that segment during the specified date range.
+1. The Strava _description_ field is parsed. Any key/value pairs, represented by a line containing a string of
+   the form _Tires=Knobbies_, will result in a separate line being added to the description output.
+2. For segments, using _--more_ will add some basic information about the segment _and_ add an ordered list of efforts
+   you've made for that segment during the specified date range.
 
 ## Credits
 
@@ -139,6 +144,6 @@ been modified.
 
 ## ToDo
 
-* Handle paginated data, in other words, requests that exceed 200 activities.
-* I started working on a PDF report generator, however I have barely begun this
-effort and may or may not ever complete it. It is at _bin/pdfgen.js_.
+- Handle paginated data, in other words, requests that exceed 200 activities.
+- I started working on a PDF report generator, however I have barely begun this
+  effort and may or may not ever complete it. It is at _bin/pdfgen.js_.
