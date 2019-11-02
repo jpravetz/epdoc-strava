@@ -163,6 +163,9 @@ export class Bikelog {
           if (activity.note1) {
             item.ele('note1', activity.note1);
           }
+          if (activity.wt) {
+            item.ele('wt', activity.wt.replace(/[^\d\.]/g,''));
+          }
         });
         let s = doc.doc().end({ pretty: true });
         self.stream.write(s);
