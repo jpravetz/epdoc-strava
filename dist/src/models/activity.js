@@ -64,7 +64,6 @@ class Activity {
                 let a = [];
                 p.forEach(line => {
                     let kv = line.match(/^([^\s\=]+)\s*=\s*(.*)+$/);
-                    //console.log(kv)
                     if (kv) {
                         this.keys.push(kv[1]);
                         this[kv[1]] = kv[2];

@@ -228,17 +228,22 @@ export class StravaApi {
       });
   }
 
-  getStarredSegments(): Promise<SummarySegment[]> {
+  getStarredSegments(accum: SummarySegment[], page: number = 0): Promise<void> {
+    const perPage = 200;
     return request
       .get(STRAVA_URL.starred)
-      .query({ per_page: 200 })
+      .query({ per_page: perPage, page: page })
       .set('Authorization', 'access_token ' + this.creds.accessToken)
       .then(resp => {
         if (resp && Array.isArray(resp.body)) {
-          let result: SummarySegment[] = resp.body.map(item => {
+          let results: SummarySegment[] = resp.body.map(item => {
             return SummarySegment.newFromResponseData(item);
           });
-          return Promise.resolve(result);
+          accum.concat(results);
+          if (results.length < perPage) {
+            return this.getStarredSegments(accum, page + 1);
+          }
+          return Promise.resolve();
         }
         throw new Error('Invalid starred segments return value');
       });

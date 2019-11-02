@@ -69,6 +69,10 @@ function run(): Promise<void> {
           'Create Acroforms XML file for specified date range, this is specific to a particular unpublished PDF form document'
         )
         .option(
+          '-c, --cache',
+          "Use cached list of starred segments. Use this option unless you've starred new segments recently."
+        )
+        .option(
           '-a, --activities [filter]',
           "Output activities to kml file, optionally filtering by activity type (as defined by Strava, 'Ride', 'Hike', 'Walk', etc), plus 'commute' and 'nocommute')",
           commaList
@@ -89,6 +93,7 @@ function run(): Promise<void> {
         home: home,
         cwd: program.cwd,
         config: config,
+        useCache: cache,
         segmentsFile: segmentsFile,
         credentialsFile: credentialsFile,
         athleteId: parseInt(program.id, 10) || (config as StravaConfig).athleteId,

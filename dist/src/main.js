@@ -45,7 +45,7 @@ class Main {
             });
         }
         else {
-            return Promise.reject(new Error('No config file specified'));
+            return Promise.reject(new Error('No config file or config file does not contain client id and secret'));
         }
     }
     run() {

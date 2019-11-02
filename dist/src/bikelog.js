@@ -14,6 +14,7 @@ const epdoc_util_1 = require("epdoc-util");
 const util_1 = require("./util");
 const builder = __importStar(require("xmlbuilder"));
 const fs_1 = __importDefault(require("fs"));
+const dateutil = __importStar(require("dateutil"));
 class Bikelog {
     constructor(options) {
         this.opts = {};
@@ -36,6 +37,9 @@ class Bikelog {
             let d = new Date(activity.start_date_local);
             let jd = util_1.julianDate(d);
             let entry = result[jd] || { jd: jd, date: new Date(activity.start_date_local), events: [] };
+            if (activity.wt) {
+                entry.wt = activity.wt;
+            }
             if (activity.type === 'Ride') {
                 let note = '';
                 // note += 'Ascend ' + Math.round(activity.total_elevation_gain) + 'm, time ';
@@ -49,6 +53,16 @@ class Bikelog {
                 }
                 if (activity.description) {
                     note += '\n' + activity.description;
+                }
+                let times = [];
+                if (activity.moving_time) {
+                    times.push('Moving: ' + this.secondsToString(activity.moving_time));
+                }
+                if (activity.elapsed_time) {
+                    times.push('Elapsed: ' + this.secondsToString(activity.elapsed_time));
+                }
+                if (times.length) {
+                    note += '\n' + times.join(', ');
                 }
                 if (Array.isArray(activity.segments)) {
                     let segs = [];
@@ -104,6 +118,9 @@ class Bikelog {
             result[jd] = entry;
         });
         return result;
+    }
+    secondsToString(seconds) {
+        return dateutil.formatMS(seconds * 1000, { seconds: false, ms: false, hours: true });
     }
     registerBikes(bikes) {
         if (bikes && bikes.length) {

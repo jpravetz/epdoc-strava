@@ -4,6 +4,7 @@ import { DateRange } from './main';
 import { Dict, Seconds, julianDate } from './util';
 import * as builder from 'xmlbuilder';
 import fs from 'fs';
+import * as dateutil from 'dateutil';
 
 export type BikeDef = {
   name: string;
@@ -44,6 +45,9 @@ export class Bikelog {
       let d = new Date(activity.start_date_local);
       let jd = julianDate(d);
       let entry = result[jd] || { jd: jd, date: new Date(activity.start_date_local), events: [] };
+      if (activity.wt) {
+        entry.wt = activity.wt;
+      }
       if (activity.type === 'Ride') {
         let note = '';
         // note += 'Ascend ' + Math.round(activity.total_elevation_gain) + 'm, time ';
@@ -56,6 +60,16 @@ export class Bikelog {
         }
         if (activity.description) {
           note += '\n' + activity.description;
+        }
+        let times: string[] = [];
+        if (activity.moving_time) {
+          times.push('Moving: ' + this.secondsToString(activity.moving_time));
+        }
+        if (activity.elapsed_time) {
+          times.push('Elapsed: ' + this.secondsToString(activity.elapsed_time));
+        }
+        if (times.length) {
+          note += '\n' + times.join(', ');
         }
         if (Array.isArray(activity.segments)) {
           let segs = [];
@@ -107,6 +121,10 @@ export class Bikelog {
       result[jd] = entry;
     });
     return result;
+  }
+
+  secondsToString(seconds: Seconds) {
+    return dateutil.formatMS(seconds * 1000, { seconds: false, ms: false, hours: true });
   }
 
   registerBikes(bikes) {
@@ -164,7 +182,7 @@ export class Bikelog {
             item.ele('note1', activity.note1);
           }
           if (activity.wt) {
-            item.ele('wt', activity.wt.replace(/[^\d\.]/g,''));
+            item.ele('wt', activity.wt.replace(/[^\d\.]/g, ''));
           }
         });
         let s = doc.doc().end({ pretty: true });

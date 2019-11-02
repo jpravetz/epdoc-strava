@@ -28,6 +28,7 @@ export declare class Bikelog {
      * @returns {{}} Dictionary of bikelog data, with keys set to julian day.
      */
     combineActivities(activities: any): {};
+    secondsToString(seconds: Seconds): any;
     registerBikes(bikes: any): void;
     outputData(filepath: string, stravaActivities: Activity[], bikes: any): Promise<void>;
     write(indent: any, s: any): void;

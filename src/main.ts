@@ -5,7 +5,7 @@ import { Activity, ActivityFilter } from './models/activity';
 import fs from 'fs';
 import { StravaActivityOpts, StravaApi, StravaClientConfig, StravaStreamSource } from './strava-api';
 import { Kml, LineStyle, KmlOpts } from './kml';
-import { readJson, Dict, EpochSeconds, Metres, Seconds } from './util';
+import { readJson, Dict, EpochSeconds, Metres, Seconds, writeJson } from './util';
 import { Server } from './server';
 import { Bikelog, BikelogOutputOpts, BikeDef } from './bikelog';
 import { Segment } from './models/segment';
@@ -96,7 +96,7 @@ export class Main {
             }
           }
 
-          if (this.options.segmentsFile) {
+          if (this.options.segmentsFile && this.options.cache) {
             return this.readSegmentsConfigFile(this.options.segmentsFile);
           } else {
             return Promise.resolve();
@@ -106,7 +106,7 @@ export class Main {
           return this.strava.initCreds();
         });
     } else {
-      return Promise.reject(new Error('No config file specified'));
+      return Promise.reject(new Error('No config file or config file does not contain client id and secret'));
     }
   }
 
@@ -289,14 +289,16 @@ export class Main {
 
   getStarredSegmentList(): Promise<void> {
     this.starredSegments = [];
+    let summarySegments: SummarySegment[] = [];
     console.log('Retrieving starred segments ...');
-    return this.strava.getStarredSegments().then(summarySegments => {
+    return this.strava.getStarredSegments(summarySegments).then(summarySegments => {
       // this.segments = resp;
       console.log('  Found %s starred segments', summarySegments.length);
       summarySegments.forEach(seg => {
         // @ts-ignore
         this.starredSegments.push(seg.name);
       });
+      return writeJson(this.segmentsFileLastModified, this.summarySegments);
     });
   }
 
