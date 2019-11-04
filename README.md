@@ -2,27 +2,30 @@
 
 ## Overview
 
-This project contains a command line application `bin/strava` that will generate
-KML files suitable for import into Google Earth. Strava authorization will open
-a browser page. The application uses the Strava V3 APIs to retrieve your
-information and outputs two types of information:
+A command line application `bin/strava` to generate KML files suitable for
+import into Google Earth. Strava authorization will open a browser page. Uses
+[Strava V3 APIs](https://developers.strava.com). Can output two types of
+information:
 
 - Your activities, color coded by activity type, and optionally including a
-  description
+  description and [starred
+  segment](<(http://blog.strava.com/keep-track-of-your-favorites-with-starred-segments-6260/)>)
+  times
 - Your efforts for segments that you have [starred in
   Strava](http://blog.strava.com/keep-track-of-your-favorites-with-starred-segments-6260/),
   optionally including a description that lists all your times
+  - Currently this feature is broken
 
 ## Installation
 
-This application is written in javascript (typescript actually) for node,
+This application is written for nodejs in [typescript](http://typescript.org) for node,
 requiring that you install `nodejs`, `npm`, this application and it's dependent libraries
 on your computer.
 
 - [Install node](http://nodejs.org/download/)
 - [Install npm](https://www.npmjs.com/get-npm)
 - [Install and use git](http://git-scm.com/downloads) to clone or download a zip of [this project](https://github.com/jpravetz/strava)
-- Install nodejs library dependencies
+- Install this project's nodejs library dependencies
 
 ```bash
 cd strava
@@ -66,9 +69,9 @@ Notes:
 
 1. `bin/strava` is a `bash` script that adds the `--path` option and executes the nodejs application.
 1. `bin/strava` will try to resolve the location of
-   `.strava/user.settings.json` by resolving`$HOME`. `$HOME` is resolved by
+   `.strava/user.settings.json` by resolving `$HOME`. `$HOME` is resolved by
    trying, in order, the ENV variables `HOME`, `HOMEPATH` and `USERPROFILE`.
-1. athleteId will be automatically determined from your login (the `--id` option is ignored for now).
+1. athleteId will be automatically determined from your authentication (the `--id` option is ignored for now).
 1. The settings file's lineStyles object allows you to customize colors for
    segments and routes. The keys in this object are Strava [Activity
    types](http://strava.github.io/api/v3/activities/), and the values include
