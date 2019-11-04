@@ -1,32 +1,42 @@
+import { SegmentName } from './models/segment-base';
+import { StravaApi } from './strava-api';
+import { SummarySegment } from './models/summary-segment';
 import fs from 'fs';
-import { Metres, readJson } from './util';
+import { Metres, readJson, writeJson } from './util';
 
 export type GpsDegrees = number;
 
 export type SegmentCacheEntry = {
-  name?: string;
+  name?: SegmentName;
   distance?: Metres;
-  average_grade?: number;
-  elevaion_high?: Metres;
-  elevation_low?: Metres;
-  start_latlng?: GpsDegrees[];
-  end_laglng?: GpsDegrees[];
+  gradient?: number;
+  elevation?: Metres;
 };
 
 export class SegmentFile {
   filepath: string;
+  api: StravaApi;
   lastModified: Date;
-  aliases: Record<string, string> = {};
   segments: Record<string, SegmentCacheEntry> = {};
 
-  constructor(filepath: string) {
+  constructor(filepath: string, stravaApi: StravaApi) {
     this.filepath = filepath;
+    this.api = stravaApi;
   }
 
-  get(opts: { cache?: boolean }) {
-    if (opts.cache) {
+  get(opts: { refresh?: boolean }) {
+    console.log('Retrieving list of starred segments');
+    if (opts.refresh) {
+      return this.getFromServer().then(resp => {
+        return this.write();
+      });
+    } else {
       return this.read().catch(err => {
-        getNetwork();
+        console.log(`  Error reading starred segments from ${this.filepath}`);
+        console.log('    ' + err.message);
+        return this.getFromServer().then(() => {
+          return this.write();
+        });
       });
     }
   }
@@ -41,12 +51,10 @@ export class SegmentFile {
             this.lastModified = stats.mtime;
             readJson(this.filepath)
               .then(resp => {
-                if (resp.aliases) {
-                  this.aliases = resp.aliases;
-                }
                 if (resp.segments) {
                   this.segments = resp.segments;
                 }
+                console.log(`Read ${Object.keys(this.segments).length} starred segments from ${this.filepath}`);
                 resolve();
               })
               .catch(err => {
@@ -55,8 +63,42 @@ export class SegmentFile {
           }
         });
       } else {
-        reject('File does not exist');
+        reject(new Error('File not found'));
       }
     });
+  }
+
+  getFromServer(): Promise<void> {
+    // this.starredSegments = [];
+    let summarySegments: SummarySegment[] = [];
+    console.log('  Retrieving starred segments from Strava ...');
+    return this.api
+      .getStarredSegments(summarySegments)
+      .then(() => {
+        // this.segments = resp;
+        console.log('  Found %s starred segments', summarySegments.length);
+        this.segments = {};
+        summarySegments.forEach(seg => {
+          this.segments[seg.name] = seg.asCacheEntry();
+        });
+      })
+      .catch(err => {
+        err.message = 'Starred segments - ' + err.message;
+        throw err;
+      });
+  }
+
+  write(): Promise<void> {
+    let json: Record<string, any> = {
+      description: 'Strava segments',
+      segments: this.segments
+    };
+    return writeJson(this.filepath, json).then(resp => {
+      console.log(`Wrote ${Object.keys(this.segments).length} starred segments to ${this.filepath}`);
+    });
+  }
+
+  getSegment(name: string): SegmentCacheEntry {
+    return this.segments[name];
   }
 }

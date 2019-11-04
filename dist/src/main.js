@@ -1,13 +1,9 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
+const segment_file_1 = require("./segment-file");
 const activity_1 = require("./models/activity");
-const fs_1 = __importDefault(require("fs"));
 const strava_api_1 = require("./strava-api");
 const kml_1 = require("./kml");
-const util_1 = require("./util");
 const server_1 = require("./server");
 const bikelog_1 = require("./bikelog");
 // let _ = require('underscore');
@@ -20,6 +16,7 @@ class Main {
     constructor(options) {
         this.starredSegments = [];
         this.options = options;
+        this.config = options.config;
     }
     init() {
         if (this.options.config && this.options.config.client) {
@@ -32,12 +29,6 @@ class Main {
                     if (this.options.config.lineStyles) {
                         this.kml.setLineStyles(this.options.config.lineStyles);
                     }
-                }
-                if (this.options.segmentsFile) {
-                    return this.readSegmentsConfigFile(this.options.segmentsFile);
-                }
-                else {
-                    return Promise.resolve();
                 }
             })
                 .then(resp => {
@@ -55,6 +46,7 @@ class Main {
                 console.log('Authorization required. Opening web authorization page');
                 let authServer = new server_1.Server(this.strava);
                 return authServer.run().then(resp => {
+                    console.log('Closing server');
                     authServer.close();
                 });
             }
@@ -66,6 +58,10 @@ class Main {
             if (!this.strava.creds.areValid()) {
                 throw new Error('Invalid credentials');
             }
+        })
+            .then(resp => {
+            this.segFile = new segment_file_1.SegmentFile(this.options.segmentsFile, this.strava);
+            return this.segFile.get({ refresh: this.options.refreshStarredSegments });
         })
             .then(resp => {
             if (this.options.kml && !this.options.activities && !this.options.segments) {
@@ -96,11 +92,6 @@ class Main {
         })
             .then(resp => {
             if (this.options.xml) {
-                return this.getStarredSegmentList();
-            }
-        })
-            .then(resp => {
-            if (this.options.xml) {
                 return this.addActivitiesDetails();
             }
         })
@@ -126,32 +117,6 @@ class Main {
                     segments: this.options.segments ? true : false
                 };
                 return this.saveKml(opts);
-            }
-        });
-    }
-    /**
-     * Read a local file that contains segment name aliases
-     */
-    readSegmentsConfigFile(segmentsFile) {
-        return new Promise((resolve, reject) => {
-            if (fs_1.default.existsSync(segmentsFile)) {
-                fs_1.default.stat(segmentsFile, (err, stats) => {
-                    if (err) {
-                        reject(err);
-                    }
-                    else {
-                        this.segmentsFileLastModified = stats.mtime;
-                        this.segmentConfig = util_1.readJson(segmentsFile);
-                        this.segmentConfig || (this.segmentConfig = {});
-                        this.segmentConfig.alias || (this.segmentConfig.alias = {});
-                        this.segmentConfig.data || (this.segmentConfig.data = {});
-                        resolve();
-                    }
-                });
-            }
-            else {
-                this.segmentConfig = { description: 'Strava segments', alias: {}, data: {} };
-                resolve();
             }
         });
     }
@@ -220,18 +185,6 @@ class Main {
         });
         return results;
     }
-    getStarredSegmentList() {
-        this.starredSegments = [];
-        console.log('Retrieving starred segments ...');
-        return this.strava.getStarredSegments().then(summarySegments => {
-            // this.segments = resp;
-            console.log('  Found %s starred segments', summarySegments.length);
-            summarySegments.forEach(seg => {
-                // @ts-ignore
-                this.starredSegments.push(seg.name);
-            });
-        });
-    }
     /**
      * Read more information using the DetailedActivity object and add these
      * details to the Activity object.
@@ -293,6 +246,9 @@ class Main {
             return Promise.resolve();
         });
     }
+    /**
+     * Call only when generating KML file with all segments
+     */
     addStarredSegmentsCoordinates() {
         console.log(`Retrieving coordinates for ${this.starredSegments.length} Starred Segments`);
         return this.starredSegments

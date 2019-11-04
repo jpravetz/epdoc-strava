@@ -1,10 +1,11 @@
+import { SegmentName } from './segment-base';
 import { StravaCoord } from './../strava-api';
 import { Seconds, Metres } from './../util';
 import { SegmentId } from './segment';
 export declare class SegmentData {
     klass: string;
     id: SegmentId;
-    name: string;
+    name: SegmentName;
     elapsedTime: Seconds;
     movingTime: Seconds;
     distance: Metres;

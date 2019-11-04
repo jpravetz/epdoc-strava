@@ -69,8 +69,8 @@ function run(): Promise<void> {
           'Create Acroforms XML file for specified date range, this is specific to a particular unpublished PDF form document'
         )
         .option(
-          '-c, --cache',
-          "Use cached list of starred segments. Use this option unless you've starred new segments recently."
+          '-r, --refresh',
+          'Refresh list of starred segments rather than using local stored copy. Will automatically refresh from server if there is no locally stored copy.'
         )
         .option(
           '-a, --activities [filter]',
@@ -93,7 +93,7 @@ function run(): Promise<void> {
         home: home,
         cwd: program.cwd,
         config: config,
-        useCache: cache,
+        refreshStarredSegments: program.refresh,
         segmentsFile: segmentsFile,
         credentialsFile: credentialsFile,
         athleteId: parseInt(program.id, 10) || (config as StravaConfig).athleteId,

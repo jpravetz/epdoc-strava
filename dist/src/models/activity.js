@@ -86,15 +86,20 @@ class Activity {
         this._segments = [];
         data.segment_efforts.forEach(effort => {
             // @ts-ignore
-            if (Array.isArray(this.main.starredSegment) && this.main.starredSegment.indexOf(effort.name) >= 0) {
-                this._addDetailSegment(effort);
+            if (this.main.segFile) {
+                let seg = this.main.segFile.getSegment(effort.name);
+                if (seg) {
+                    console.log('  Found starred segment', effort.name);
+                    this._addDetailSegment(effort);
+                }
             }
         });
     }
     _addDetailSegment(segEffort) {
         let name = String(segEffort.name).trim();
-        if (this.main.segmentConfig && this.main.segmentConfig.alias && this.main.segmentConfig.alias[name]) {
-            name = this.main.segmentConfig.alias[name];
+        let aliases = this.main.config.aliases;
+        if (aliases && aliases[name]) {
+            name = aliases[name];
             segEffort.name = name;
         }
         console.log("  Adding segment '" +

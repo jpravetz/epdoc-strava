@@ -2,10 +2,15 @@ import Koa from 'koa';
 import Router from 'koa-router';
 import open from 'open';
 import { StravaApi, StravaCode } from './strava-api';
+import { Milliseconds } from '@jest/test-result';
 
 export class Server {
   strava: any;
   server: any;
+  result: {
+    resolve?: string;
+    reject?: string;
+  } = {};
 
   constructor(strava: StravaApi) {
     this.strava = strava;
@@ -37,13 +42,13 @@ export class Server {
                   s += '<p>Tokens retrieved. Please return to command line.</p>';
                   s += '</body></html>';
                   ctx.body = s;
-                  resolve('Tokens retrieved and saved to file');
+                  this.result = { resolve: 'Tokens retrieved and saved to file' };
                 })
                 .catch(err => {
                   s += `<p>Error retrieving tokens: ${err.message}</p>`;
                   s += '</body></html>';
                   ctx.body = s;
-                  reject(new Error('Could not retrieve tokens: ' + err.message));
+                  this.result = { reject: 'Could not retrieve tokens: ' + err.message };
                 });
             }
           })
@@ -66,6 +71,23 @@ export class Server {
       open(authUrl, { wait: true }).then(resp => {
         console.log('browser is open');
       });
+
+      let timer = setInterval(() => {
+        console.log('Waiting ...');
+        if (this.result.resolve) {
+          clearInterval(timer);
+          timer = undefined;
+          console.log('Closing server', this.result.resolve);
+          this.close();
+          resolve(this.result.resolve);
+        } else if (this.result.reject) {
+          clearInterval(timer);
+          timer = undefined;
+          console.log('Closing server', this.result.reject);
+          this.close();
+          reject(new Error(this.result.reject));
+        }
+      }, 1000);
     });
   }
 

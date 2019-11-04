@@ -228,7 +228,7 @@ export class StravaApi {
       });
   }
 
-  getStarredSegments(accum: SummarySegment[], page: number = 0): Promise<void> {
+  getStarredSegments(accum: SummarySegment[], page: number = 1): Promise<void> {
     const perPage = 200;
     return request
       .get(STRAVA_URL.starred)
@@ -236,11 +236,12 @@ export class StravaApi {
       .set('Authorization', 'access_token ' + this.creds.accessToken)
       .then(resp => {
         if (resp && Array.isArray(resp.body)) {
-          let results: SummarySegment[] = resp.body.map(item => {
-            return SummarySegment.newFromResponseData(item);
+          console.log(`  Retrieved ${resp.body.length} starred segments for page ${page}`);
+          resp.body.forEach(item => {
+            let result = SummarySegment.newFromResponseData(item);
+            accum.push(result);
           });
-          accum.concat(results);
-          if (results.length < perPage) {
+          if (resp.body.length >= perPage) {
             return this.getStarredSegments(accum, page + 1);
           }
           return Promise.resolve();

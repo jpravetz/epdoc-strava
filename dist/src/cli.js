@@ -53,6 +53,7 @@ function run() {
             .option('-g, --friends [opt]', 'Show athlete friends list (Use --more a complete summary, otherwise id and name are displayed)')
             .option('-k, --kml <file>', 'Create KML file for specified date range')
             .option('-x, --xml <file>', 'Create Acroforms XML file for specified date range, this is specific to a particular unpublished PDF form document')
+            .option('-r, --refresh', 'Refresh list of starred segments rather than using local stored copy. Will automatically refresh from server if there is no locally stored copy.')
             .option('-a, --activities [filter]', "Output activities to kml file, optionally filtering by activity type (as defined by Strava, 'Ride', 'Hike', 'Walk', etc), plus 'commute' and 'nocommute')", commaList)
             //.option('-f, --filter <types>', "Filter based on comma-separated list of activity types (as defined by Strava, 'Ride', 'Hike', 'Walk', etc), plus 'commute' and 'nocommute'", commaList)
             //.option('-p, --prompt', "With --show, when adding segments, prompt user whether to include or exclude a segment.")
@@ -66,6 +67,7 @@ function run() {
             home: home,
             cwd: program.cwd,
             config: config,
+            refreshStarredSegments: program.refresh,
             segmentsFile: segmentsFile,
             credentialsFile: credentialsFile,
             athleteId: parseInt(program.id, 10) || config.athleteId,

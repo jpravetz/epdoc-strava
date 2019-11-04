@@ -1,4 +1,4 @@
-import { SegmentBase } from './segment-base';
+import { SegmentBase, SegmentName } from './segment-base';
 import { StravaCoord } from './../strava-api';
 import { Seconds, Metres } from './../util';
 import { SegmentId } from './segment';
@@ -6,7 +6,7 @@ import { SegmentId } from './segment';
 export class SegmentData {
   klass = 'SegmentData';
   id: SegmentId;
-  name: string;
+  name: SegmentName;
   elapsedTime: Seconds;
   movingTime: Seconds;
   distance: Metres;

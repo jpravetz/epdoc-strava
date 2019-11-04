@@ -1,3 +1,5 @@
+import { SegmentName } from './models/segment-base';
+import { SegmentFile } from './segment-file';
 import { SummarySegment } from './models/summary-segment';
 import { StravaCreds } from './strava-creds';
 import { Athelete } from './models/athlete';
@@ -33,6 +35,7 @@ export type StravaConfig = {
   cachePath?: string;
   lineStyles?: Record<string, LineStyle>;
   bikes?: BikeDef[];
+  aliases?: Record<SegmentName, SegmentName>;
 };
 
 export type DateRange = {
@@ -46,6 +49,7 @@ export type MainOpts = {
   config?: StravaConfig;
   auth?: boolean;
   segmentsFile?: string;
+  refreshStarredSegments?: boolean;
   credentialsFile?: string;
   athlete?: string;
   athleteId?: number;
@@ -67,6 +71,7 @@ export type MainOpts = {
 
 export class Main {
   options: MainOpts;
+  config: StravaConfig;
   strava: any;
   stravaCreds: StravaCreds;
   kml: Kml;
@@ -78,9 +83,11 @@ export class Main {
   gear: any[];
   segmentEfforts: Record<string, any>;
   starredSegments: SegmentData[] = [];
+  segFile: SegmentFile;
 
   constructor(options: MainOpts) {
     this.options = options;
+    this.config = options.config;
   }
 
   init(): Promise<void> {
@@ -94,12 +101,6 @@ export class Main {
             if (this.options.config.lineStyles) {
               this.kml.setLineStyles(this.options.config.lineStyles);
             }
-          }
-
-          if (this.options.segmentsFile && this.options.cache) {
-            return this.readSegmentsConfigFile(this.options.segmentsFile);
-          } else {
-            return Promise.resolve();
           }
         })
         .then(resp => {
@@ -117,6 +118,7 @@ export class Main {
           console.log('Authorization required. Opening web authorization page');
           let authServer = new Server(this.strava);
           return authServer.run().then(resp => {
+            console.log('Closing server');
             authServer.close();
           });
         } else {
@@ -127,6 +129,10 @@ export class Main {
         if (!this.strava.creds.areValid()) {
           throw new Error('Invalid credentials');
         }
+      })
+      .then(resp => {
+        this.segFile = new SegmentFile(this.options.segmentsFile, this.strava);
+        return this.segFile.get({ refresh: this.options.refreshStarredSegments });
       })
       .then(resp => {
         if (this.options.kml && !this.options.activities && !this.options.segments) {
@@ -153,11 +159,6 @@ export class Main {
               });
             }
           });
-        }
-      })
-      .then(resp => {
-        if (this.options.xml) {
-          return this.getStarredSegmentList();
         }
       })
       .then(resp => {
@@ -189,31 +190,6 @@ export class Main {
           return this.saveKml(opts);
         }
       });
-  }
-
-  /**
-   * Read a local file that contains segment name aliases
-   */
-  readSegmentsConfigFile(segmentsFile: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      if (fs.existsSync(segmentsFile)) {
-        fs.stat(segmentsFile, (err, stats) => {
-          if (err) {
-            reject(err);
-          } else {
-            this.segmentsFileLastModified = stats.mtime;
-            this.segmentConfig = readJson(segmentsFile);
-            this.segmentConfig || (this.segmentConfig = {});
-            this.segmentConfig.alias || (this.segmentConfig.alias = {});
-            this.segmentConfig.data || (this.segmentConfig.data = {});
-            resolve();
-          }
-        });
-      } else {
-        this.segmentConfig = { description: 'Strava segments', alias: {}, data: {} };
-        resolve();
-      }
-    });
   }
 
   getAthlete(): Promise<void> {
@@ -287,21 +263,6 @@ export class Main {
     return results;
   }
 
-  getStarredSegmentList(): Promise<void> {
-    this.starredSegments = [];
-    let summarySegments: SummarySegment[] = [];
-    console.log('Retrieving starred segments ...');
-    return this.strava.getStarredSegments(summarySegments).then(summarySegments => {
-      // this.segments = resp;
-      console.log('  Found %s starred segments', summarySegments.length);
-      summarySegments.forEach(seg => {
-        // @ts-ignore
-        this.starredSegments.push(seg.name);
-      });
-      return writeJson(this.segmentsFileLastModified, this.summarySegments);
-    });
-  }
-
   /**
    * Read more information using the DetailedActivity object and add these
    * details to the Activity object.
@@ -370,6 +331,9 @@ export class Main {
       });
   }
 
+  /**
+   * Call only when generating KML file with all segments
+   */
   addStarredSegmentsCoordinates() {
     console.log(`Retrieving coordinates for ${this.starredSegments.length} Starred Segments`);
 
