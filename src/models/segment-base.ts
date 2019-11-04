@@ -2,10 +2,12 @@ import { SegmentData } from './segment-data';
 import { Seconds, Metres } from './../util';
 import { SegmentId } from './segment';
 
+export type SegmentName = string;
+
 export class SegmentBase {
   isSegmentBase = true;
   id: SegmentId;
-  name: string;
+  name: SegmentName;
   elapsed_time: Seconds;
   moving_time: Seconds;
   distance: Metres;

@@ -17,6 +17,7 @@ const koa_router_1 = __importDefault(require("koa-router"));
 const open_1 = __importDefault(require("open"));
 class Server {
     constructor(strava) {
+        this.result = {};
         this.strava = strava;
     }
     run() {
@@ -44,13 +45,13 @@ class Server {
                             s += '<p>Tokens retrieved. Please return to command line.</p>';
                             s += '</body></html>';
                             ctx.body = s;
-                            resolve('Tokens retrieved and saved to file');
+                            this.result = { resolve: 'Tokens retrieved and saved to file' };
                         })
                             .catch(err => {
                             s += `<p>Error retrieving tokens: ${err.message}</p>`;
                             s += '</body></html>';
                             ctx.body = s;
-                            reject(new Error('Could not retrieve tokens: ' + err.message));
+                            this.result = { reject: 'Could not retrieve tokens: ' + err.message };
                         });
                     }
                 })
@@ -68,6 +69,23 @@ class Server {
             open_1.default(authUrl, { wait: true }).then(resp => {
                 console.log('browser is open');
             });
+            let timer = setInterval(() => {
+                console.log('Waiting ...');
+                if (this.result.resolve) {
+                    clearInterval(timer);
+                    timer = undefined;
+                    console.log('Closing server', this.result.resolve);
+                    this.close();
+                    resolve(this.result.resolve);
+                }
+                else if (this.result.reject) {
+                    clearInterval(timer);
+                    timer = undefined;
+                    console.log('Closing server', this.result.reject);
+                    this.close();
+                    reject(new Error(this.result.reject));
+                }
+            }, 1000);
         });
     }
     close() {

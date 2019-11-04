@@ -17,6 +17,15 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "strava",
+      "program": "${workspaceFolder}/dist/src/cli.js",
+      "console": "integratedTerminal",
+      "preLaunchTask": "tsc: build - tsconfig.json",
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "strava -u",
       "program": "${workspaceFolder}/dist/src/cli.js",
       "args": ["-u"],

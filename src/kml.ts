@@ -13,7 +13,6 @@ import {
   getElevationString
 } from './util';
 import * as dateutil from 'dateutil';
-import { Segment } from './models/segment';
 
 export type LineStyle = {
   color: string;
@@ -64,6 +63,14 @@ const defaultLineStyles = {
     width: 4
   },
   Walk: {
+    color: 'F0f08000',
+    width: 4
+  },
+  'Stand Up Paddling': {
+    color: 'F0f08000',
+    width: 4
+  },
+  'Nordic Ski': {
     color: 'F0f08000',
     width: 4
   }

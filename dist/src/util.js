@@ -4,6 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const fs_1 = __importDefault(require("fs"));
+const epdoc_util_1 = require("epdoc-util");
 function compare(a, b, key) {
     if (a[key] < b[key]) {
         return -1;
@@ -19,19 +20,19 @@ function formatHMS(s, options) {
     let seconds = s % 60;
     let minutes = Math.floor(s / 60) % 60;
     let hours = Math.floor(s / (60 * 60));
-    let result = this.pad(hours) + ':';
-    result += this.pad(minutes);
+    let result = epdoc_util_1.pad(hours, 2) + ':';
+    result += epdoc_util_1.pad(minutes, 2);
     if (options.seconds !== false) {
-        result += ':' + this.pad(seconds);
+        result += ':' + epdoc_util_1.pad(seconds, 2);
     }
     return result;
 }
 exports.formatHMS = formatHMS;
-function formatMS(s, options) {
+function formatMS(s) {
     let seconds = s % 60;
     let minutes = Math.floor(s / 60);
     let result = minutes + ':';
-    result += this.pad(seconds);
+    result += epdoc_util_1.pad(seconds, 2);
     return result;
 }
 exports.formatMS = formatMS;

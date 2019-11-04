@@ -1,3 +1,5 @@
+import { SegmentName } from './models/segment-base';
+import { SegmentFile } from './segment-file';
 import { SummarySegment } from './models/summary-segment';
 import { StravaCreds } from './strava-creds';
 import { Athelete } from './models/athlete';
@@ -19,6 +21,7 @@ export declare type StravaConfig = {
     cachePath?: string;
     lineStyles?: Record<string, LineStyle>;
     bikes?: BikeDef[];
+    aliases?: Record<SegmentName, SegmentName>;
 };
 export declare type DateRange = {
     before: EpochSeconds;
@@ -30,6 +33,7 @@ export declare type MainOpts = {
     config?: StravaConfig;
     auth?: boolean;
     segmentsFile?: string;
+    refreshStarredSegments?: boolean;
     credentialsFile?: string;
     athlete?: string;
     athleteId?: number;
@@ -50,6 +54,7 @@ export declare type MainOpts = {
 };
 export declare class Main {
     options: MainOpts;
+    config: StravaConfig;
     strava: any;
     stravaCreds: StravaCreds;
     kml: Kml;
@@ -61,19 +66,15 @@ export declare class Main {
     gear: any[];
     segmentEfforts: Record<string, any>;
     starredSegments: SegmentData[];
+    segFile: SegmentFile;
     constructor(options: MainOpts);
     init(): Promise<void>;
     run(): Promise<void>;
-    /**
-     * Read a local file that contains segment name aliases
-     */
-    readSegmentsConfigFile(segmentsFile: string): Promise<void>;
     getAthlete(): Promise<void>;
     logAthlete(): void;
     getActivities(): Promise<Activity[]>;
     getActivitiesForDateRange(dateRange: DateRange): Promise<Activity[]>;
     filterActivities(activities: Activity[]): Activity[];
-    getStarredSegmentList(): Promise<void>;
     /**
      * Read more information using the DetailedActivity object and add these
      * details to the Activity object.
@@ -84,6 +85,9 @@ export declare class Main {
      * Add coordinates for the activity or segment. Limits to REQ_LIMIT parallel requests.
      */
     addActivitiesCoordinates(): any;
+    /**
+     * Call only when generating KML file with all segments
+     */
     addStarredSegmentsCoordinates(): Promise<void>;
     saveXml(): Promise<void>;
     saveKml(options?: {

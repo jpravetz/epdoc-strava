@@ -3,8 +3,8 @@
 ## Overview
 
 This project contains a command line application `bin/strava` that will generate
-KML files suitable for import into Google Earth. Authentiction with Strava will
-open a browser page. The application uses the Strava V3 APIs to retrieve your
+KML files suitable for import into Google Earth. Strava authorization will open
+a browser page. The application uses the Strava V3 APIs to retrieve your
 information and outputs two types of information:
 
 - Your activities, color coded by activity type, and optionally including a
@@ -17,9 +17,7 @@ information and outputs two types of information:
 
 This application is written in javascript (typescript actually) for node,
 requiring that you install `nodejs`, `npm`, this application and it's dependent libraries
-on your computer. You will also need to obtain your own Strava ID, secret and
-access token from Strava, then add these to a JSON-encoded
-`project.settings.json` file in your root `~/.strava` folder.
+on your computer.
 
 - [Install node](http://nodejs.org/download/)
 - [Install npm](https://www.npmjs.com/get-npm)
@@ -31,30 +29,15 @@ cd strava
 npm install
 ```
 
-- Obtain your [Strava ID, secret and access token](https://www.strava.com/settings/api)
-- Look up your Strava Athlete ID. You can find your Athlete ID by going to
-  your [Strava dashboard](http://www.strava.com/dashboard), and clicking on “My Profile”.
-  Your ID will be shown in the address bar
-- Optionally create the config file `$HOME/.strava/user.settings.json` as show here
-
-```json
-{
-  "athleteId": 3456,
-
-  "lineStyles": {
-    "Commute": { "color": "C03030C0", "width": 4 },
-    "Run": { "color": "C000FF00", "width": 4 }
-  }
-}
-```
-
-- If not already compiled,cCompile the application (compiler output is written to the `/dist` folder)
+- Create the folder `$HOME/.strava` (used to store credentials)
+- Optionally create a `$HOME/.strava/user.settings.json` config file as show under User Settings
+- If not already compiled, compile the application (compiler output is written to the `/dist` folder)
 
 ```bash
 npm run build
 ```
 
-- Run the application with _bin/strava --help_ to see that it is working
+- Test that the application is working using `bin/strava --help`
 
 ```bash
 strava -h
@@ -128,6 +111,43 @@ Create a KML file that shows all of your starred segments and lists your times f
 bin/strava.js --date 20100101-20141231 --kml ~/tmp/activities.kml --segments --more
 ```
 
+### User Settings
+
+The user settings file is stored at `$HOME/.strava/user.settings.json`.
+
+```json
+{
+  "lineStyles": {
+    "Commute": { "color": "C03030C0", "width": 4 },
+    "Run": { "color": "C000FF00", "width": 4 }
+  }
+}
+```
+
+Use this file to override default lineStyles for segments and routes. The keys
+in the `lineStyles` object are Strava [Activity
+types](http://strava.github.io/api/v3/activities/), and the values include KML
+line color ('aabbggrr', alpha, blue, green, red hex values) and line width. This
+application has added additional keys for 'Segment' and 'Commute' that are not
+in the list of Strava activity types.
+
+Defaults settings are shown below
+
+```json
+{
+  "lineStyles": {
+    "Default": { "color": "C00000FF", "width": 4 },
+    "Ride": { "color": "C00000A0", "width": 4 },
+    "Hike": { "color": "F0FF0000", "width": 4 },
+    "Walk": { "color": "F0f08000", "width": 4 },
+    "Sand Up Paddling": { "color": "F0f08000", "width": 4 },
+    "Nordic Ski": { "color": "F0f08000", "width": 4 },
+    "Commute": { "color": "C085037D", "width": 4 },
+    "Segment": { "color": "C0FFFFFF", "width": 6 }
+  }
+}
+```
+
 ### KML Description
 
 Using _--more_ will result in a description field being added to the KML activity or segment.
@@ -151,6 +171,12 @@ Notes:
 2. For segments, using `--more` will add some basic information about the
    segment _and_ add an ordered list of efforts you've made for that segment
    during the specified date range.
+
+### Description Field Processing
+
+Entries in the form `key=value` (_e.g._ `wt=84.1kg`) that on their own line in
+the Strava description field will be parsed out for use downstream. For KML files,
+these will be output as part of the activity description.
 
 ## Credits
 

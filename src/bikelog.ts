@@ -1,9 +1,10 @@
 import { isNumber } from 'epdoc-util';
 import { Activity } from './models/activity';
 import { DateRange } from './main';
-import { Dict, Seconds, julianDate } from './util';
+import { Dict, Seconds, julianDate, formatMS, formatHMS } from './util';
 import * as builder from 'xmlbuilder';
 import fs from 'fs';
+import * as dateutil from 'dateutil';
 
 export type BikeDef = {
   name: string;
@@ -44,6 +45,9 @@ export class Bikelog {
       let d = new Date(activity.start_date_local);
       let jd = julianDate(d);
       let entry = result[jd] || { jd: jd, date: new Date(activity.start_date_local), events: [] };
+      if (activity.wt) {
+        entry.wt = activity.wt;
+      }
       if (activity.type === 'Ride') {
         let note = '';
         // note += 'Ascend ' + Math.round(activity.total_elevation_gain) + 'm, time ';
@@ -57,11 +61,21 @@ export class Bikelog {
         if (activity.description) {
           note += '\n' + activity.description;
         }
-        if (Array.isArray(activity.segments)) {
+        let times: string[] = [];
+        if (activity.moving_time) {
+          times.push('Moving: ' + this.secondsToString(activity.moving_time));
+        }
+        if (activity.elapsed_time) {
+          times.push('Elapsed: ' + this.secondsToString(activity.elapsed_time));
+        }
+        if (times.length) {
+          note += '\n' + times.join(', ');
+        }
+        if (Array.isArray(activity._segments)) {
           let segs = [];
           let up = 'Up ';
-          activity.segments.forEach(segment => {
-            segs.push(up + segment.name + ' [' + this.formatMS(segment.moving_time) + ']');
+          activity._segments.forEach(segment => {
+            segs.push(up + segment.name + ' [' + formatMS(segment.movingTime) + ']');
             up = 'up ';
           });
           note += '\n' + segs.join(', ') + '\n';
@@ -94,7 +108,7 @@ export class Bikelog {
       } else {
         let distance = Math.round(activity.distance / 10) / 100;
         let note = activity.type + ': ' + distance + 'km ' + activity.name;
-        note += ', moving time ' + this.formatHMS(activity.moving_time, { seconds: false });
+        note += ', moving time ' + formatHMS(activity.moving_time, { seconds: false });
         if (activity.description) {
           note += '\n' + activity.description;
         }
@@ -107,6 +121,10 @@ export class Bikelog {
       result[jd] = entry;
     });
     return result;
+  }
+
+  secondsToString(seconds: Seconds) {
+    return dateutil.formatMS(seconds * 1000, { seconds: false, ms: false, hours: true });
   }
 
   registerBikes(bikes) {
@@ -164,7 +182,7 @@ export class Bikelog {
             item.ele('note1', activity.note1);
           }
           if (activity.wt) {
-            item.ele('wt', activity.wt.replace(/[^\d\.]/g,''));
+            item.ele('wt', activity.wt.replace(/[^\d\.]/g, ''));
           }
         });
         let s = doc.doc().end({ pretty: true });
@@ -242,31 +260,5 @@ export class Bikelog {
       }
     }
     return stravaBikeName;
-  }
-
-  formatHMS(s: Seconds, options?): string {
-    options || (options = {});
-    let seconds = s % 60;
-    let minutes = Math.floor(s / 60) % 60;
-    let hours = Math.floor(s / (60 * 60));
-    let result = this.pad(hours) + ':';
-    result += this.pad(minutes);
-    if (options.seconds !== false) {
-      result += ':' + this.pad(seconds);
-    }
-    return result;
-  }
-
-  formatMS(s: Seconds, options?): string {
-    options || (options = {});
-    let seconds = s % 60;
-    let minutes = Math.floor(s / 60);
-    let result = minutes + ':';
-    result += this.pad(seconds);
-    return result;
-  }
-
-  pad(n) {
-    return n < 10 ? '0' + n : n;
   }
 }
