@@ -36,7 +36,4 @@ export declare class Bikelog {
     flush(): Promise<void>;
     _flush(): Promise<void>;
     bikeMap(stravaBikeName: string): string;
-    formatHMS(s: Seconds, options?: any): string;
-    formatMS(s: Seconds, options?: any): string;
-    pad(n: any): any;
 }

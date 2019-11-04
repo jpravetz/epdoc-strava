@@ -17,6 +17,12 @@ export class SegmentData {
   constructor(data) {
     if (SegmentBase.isInstance(data)) {
       return data.toSegmentData();
+    } else {
+      this.id = data.id;
+      this.name = data.name;
+      this.elapsedTime = data.elapsed_time;
+      this.movingTime = data.moving_time;
+      this.distance = data.distance;
     }
   }
 

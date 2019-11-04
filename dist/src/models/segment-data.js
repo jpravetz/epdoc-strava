@@ -8,6 +8,13 @@ class SegmentData {
         if (segment_base_1.SegmentBase.isInstance(data)) {
             return data.toSegmentData();
         }
+        else {
+            this.id = data.id;
+            this.name = data.name;
+            this.elapsedTime = data.elapsed_time;
+            this.movingTime = data.moving_time;
+            this.distance = data.distance;
+        }
     }
     // static newFromResponseData(data): Segment {
     //   return new Segment(data);
