@@ -76,7 +76,7 @@ export declare class StravaApi {
     authHeaders: () => Record<string, any>;
     getAthlete(athleteId?: number): Promise<Athelete>;
     getActivities(options: StravaActivityOpts, callback: any): Promise<Dict[]>;
-    getStarredSegments(): Promise<SummarySegment[]>;
+    getStarredSegments(accum: SummarySegment[], page?: number): Promise<void>;
     getStreamCoords(source: StravaStreamSource, objId: StravaObjId, name: string): Promise<any[]>;
     getDetailedActivity(activity: Activity): Promise<DetailedActivity>;
     /**

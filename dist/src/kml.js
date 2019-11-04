@@ -39,6 +39,14 @@ const defaultLineStyles = {
     Walk: {
         color: 'F0f08000',
         width: 4
+    },
+    'Stand Up Paddling': {
+        color: 'F0f08000',
+        width: 4
+    },
+    'Nordic Ski': {
+        color: 'F0f08000',
+        width: 4
     }
 };
 class Kml {

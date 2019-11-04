@@ -69,6 +69,10 @@ function run(): Promise<void> {
           'Create Acroforms XML file for specified date range, this is specific to a particular unpublished PDF form document'
         )
         .option(
+          '-r, --refresh',
+          'Refresh list of starred segments rather than using local stored copy. Will automatically refresh from server if there is no locally stored copy.'
+        )
+        .option(
           '-a, --activities [filter]',
           "Output activities to kml file, optionally filtering by activity type (as defined by Strava, 'Ride', 'Hike', 'Walk', etc), plus 'commute' and 'nocommute')",
           commaList
@@ -89,6 +93,7 @@ function run(): Promise<void> {
         home: home,
         cwd: program.cwd,
         config: config,
+        refreshStarredSegments: program.refresh,
         segmentsFile: segmentsFile,
         credentialsFile: credentialsFile,
         athleteId: parseInt(program.id, 10) || (config as StravaConfig).athleteId,

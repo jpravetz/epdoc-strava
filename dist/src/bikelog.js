@@ -14,6 +14,7 @@ const epdoc_util_1 = require("epdoc-util");
 const util_1 = require("./util");
 const builder = __importStar(require("xmlbuilder"));
 const fs_1 = __importDefault(require("fs"));
+const dateutil = __importStar(require("dateutil"));
 class Bikelog {
     constructor(options) {
         this.opts = {};
@@ -36,6 +37,9 @@ class Bikelog {
             let d = new Date(activity.start_date_local);
             let jd = util_1.julianDate(d);
             let entry = result[jd] || { jd: jd, date: new Date(activity.start_date_local), events: [] };
+            if (activity.wt) {
+                entry.wt = activity.wt;
+            }
             if (activity.type === 'Ride') {
                 let note = '';
                 // note += 'Ascend ' + Math.round(activity.total_elevation_gain) + 'm, time ';
@@ -50,11 +54,21 @@ class Bikelog {
                 if (activity.description) {
                     note += '\n' + activity.description;
                 }
-                if (Array.isArray(activity.segments)) {
+                let times = [];
+                if (activity.moving_time) {
+                    times.push('Moving: ' + this.secondsToString(activity.moving_time));
+                }
+                if (activity.elapsed_time) {
+                    times.push('Elapsed: ' + this.secondsToString(activity.elapsed_time));
+                }
+                if (times.length) {
+                    note += '\n' + times.join(', ');
+                }
+                if (Array.isArray(activity._segments)) {
                     let segs = [];
                     let up = 'Up ';
-                    activity.segments.forEach(segment => {
-                        segs.push(up + segment.name + ' [' + this.formatMS(segment.moving_time) + ']');
+                    activity._segments.forEach(segment => {
+                        segs.push(up + segment.name + ' [' + util_1.formatMS(segment.movingTime) + ']');
                         up = 'up ';
                     });
                     note += '\n' + segs.join(', ') + '\n';
@@ -90,7 +104,7 @@ class Bikelog {
             else {
                 let distance = Math.round(activity.distance / 10) / 100;
                 let note = activity.type + ': ' + distance + 'km ' + activity.name;
-                note += ', moving time ' + this.formatHMS(activity.moving_time, { seconds: false });
+                note += ', moving time ' + util_1.formatHMS(activity.moving_time, { seconds: false });
                 if (activity.description) {
                     note += '\n' + activity.description;
                 }
@@ -104,6 +118,9 @@ class Bikelog {
             result[jd] = entry;
         });
         return result;
+    }
+    secondsToString(seconds) {
+        return dateutil.formatMS(seconds * 1000, { seconds: false, ms: false, hours: true });
     }
     registerBikes(bikes) {
         if (bikes && bikes.length) {
@@ -154,6 +171,9 @@ class Bikelog {
                     }
                     if (activity.note1) {
                         item.ele('note1', activity.note1);
+                    }
+                    if (activity.wt) {
+                        item.ele('wt', activity.wt.replace(/[^\d\.]/g, ''));
                     }
                 });
                 let s = doc.doc().end({ pretty: true });
@@ -228,29 +248,6 @@ class Bikelog {
             }
         }
         return stravaBikeName;
-    }
-    formatHMS(s, options) {
-        options || (options = {});
-        let seconds = s % 60;
-        let minutes = Math.floor(s / 60) % 60;
-        let hours = Math.floor(s / (60 * 60));
-        let result = this.pad(hours) + ':';
-        result += this.pad(minutes);
-        if (options.seconds !== false) {
-            result += ':' + this.pad(seconds);
-        }
-        return result;
-    }
-    formatMS(s, options) {
-        options || (options = {});
-        let seconds = s % 60;
-        let minutes = Math.floor(s / 60);
-        let result = minutes + ':';
-        result += this.pad(seconds);
-        return result;
-    }
-    pad(n) {
-        return n < 10 ? '0' + n : n;
     }
 }
 exports.Bikelog = Bikelog;

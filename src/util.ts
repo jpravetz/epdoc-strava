@@ -1,4 +1,5 @@
 import fs from 'fs';
+import { pad } from 'epdoc-util';
 
 export function compare(a: Dict, b: Dict, key: string) {
   if (a[key] < b[key]) {
@@ -28,19 +29,19 @@ export function formatHMS(s: Seconds, options?: formatHMSOpts): string {
   let seconds = s % 60;
   let minutes = Math.floor(s / 60) % 60;
   let hours = Math.floor(s / (60 * 60));
-  let result = this.pad(hours) + ':';
-  result += this.pad(minutes);
+  let result = pad(hours, 2) + ':';
+  result += pad(minutes, 2);
   if (options.seconds !== false) {
-    result += ':' + this.pad(seconds);
+    result += ':' + pad(seconds, 2);
   }
   return result;
 }
 
-export function formatMS(s: Seconds, options?): string {
+export function formatMS(s: Seconds): string {
   let seconds = s % 60;
   let minutes = Math.floor(s / 60);
   let result = minutes + ':';
-  result += this.pad(seconds);
+  result += pad(seconds, 2);
   return result;
 }
 
