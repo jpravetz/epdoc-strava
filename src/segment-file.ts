@@ -79,7 +79,13 @@ export class SegmentFile {
         console.log('  Found %s starred segments', summarySegments.length);
         this.segments = {};
         summarySegments.forEach(seg => {
-          this.segments[seg.name] = seg.asCacheEntry();
+          let newEntry = seg.asCacheEntry();
+          if (this.segments[seg.name]) {
+            console.log(
+              `Segment ${seg.name} (${this.segments[seg.name].distance},${this.segments[seg.name].elevation}) already exists. Overwriting with (${newEntry.distance},${newEntry.elevation}).`
+            );
+          }
+          this.segments[seg.name] = newEntry;
         });
       })
       .catch(err => {
