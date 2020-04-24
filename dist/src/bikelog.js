@@ -40,20 +40,11 @@ class Bikelog {
             if (activity.wt) {
                 entry.wt = activity.wt;
             }
-            if (activity.type === 'Ride') {
+            if (activity.type === 'Ride' || activity.type === 'EBikeRide') {
                 let note = '';
                 // note += 'Ascend ' + Math.round(activity.total_elevation_gain) + 'm, time ';
                 // note += this.formatHMS(activity.moving_time, { seconds: false });
                 // note += ' (' + this.formatHMS(activity.elapsed_time, { seconds: false }) + ')';
-                if (activity.commute) {
-                    note += 'Commute: ' + activity.name;
-                }
-                else {
-                    note += activity.name;
-                }
-                if (activity.description) {
-                    note += '\n' + activity.description;
-                }
                 let times = [];
                 if (activity.moving_time) {
                     times.push('Moving: ' + this.secondsToString(activity.moving_time));
@@ -62,7 +53,19 @@ class Bikelog {
                     times.push('Elapsed: ' + this.secondsToString(activity.elapsed_time));
                 }
                 if (times.length) {
-                    note += '\n' + times.join(', ');
+                    note += times.join(', ') + '\n';
+                }
+                if (activity.commute) {
+                    note += 'Commute: ' + activity.name;
+                }
+                else if (activity.type === 'EBikeRide') {
+                    note += 'EBike: ' + activity.name;
+                }
+                else {
+                    note += activity.name;
+                }
+                if (activity.description) {
+                    note += '\n' + activity.description;
                 }
                 if (Array.isArray(activity._segments)) {
                     let segs = [];
