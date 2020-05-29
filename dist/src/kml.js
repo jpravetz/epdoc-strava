@@ -25,7 +25,7 @@ const defaultLineStyles = {
         width: 4
     },
     EBikeRide: {
-        color: 'C000A0A0',
+        color: '7FFF00FF',
         width: 4
     },
     Segment: {
