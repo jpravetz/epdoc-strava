@@ -10,11 +10,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const epdoc_util_1 = require("epdoc-util");
-const util_1 = require("./util");
-const builder = __importStar(require("xmlbuilder"));
-const fs_1 = __importDefault(require("fs"));
 const dateutil = __importStar(require("dateutil"));
+const epdoc_util_1 = require("epdoc-util");
+const fs_1 = __importDefault(require("fs"));
+const builder = __importStar(require("xmlbuilder"));
+const util_1 = require("./util");
 class Bikelog {
     constructor(options) {
         this.opts = {};
@@ -67,6 +67,9 @@ class Bikelog {
                 if (activity.description) {
                     note += '\n' + activity.description;
                 }
+                if (activity.type === 'EBikeRide') {
+                    note += '\nBiker energy: ' + Math.round(activity.kilojoules / 3.6) + ' Wh; max ' + activity.max_watts + ' W';
+                }
                 if (Array.isArray(activity._segments)) {
                     let segs = [];
                     let up = 'Up ';
@@ -88,7 +91,8 @@ class Bikelog {
                         distance: Math.round(activity.distance / 10) / 100,
                         bike: this.bikeMap(this.bikes[activity.gear_id].name),
                         el: Math.round(activity.total_elevation_gain),
-                        t: Math.round(activity.moving_time / 36) / 100
+                        t: Math.round(activity.moving_time / 36) / 100,
+                        wh: Math.round(activity.kilojoules / 3.6)
                     };
                 }
                 if (entry.events.length < 2) {
@@ -167,6 +171,7 @@ class Bikelog {
                             group.ele('dist', event.distance);
                             group.ele('el', event.el);
                             group.ele('t', event.t);
+                            group.ele('wh', event.wh);
                         }
                     }
                     if (activity.note0) {

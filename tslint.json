@@ -10,6 +10,9 @@
     "object-literal-sort-keys": false,
     "variable-name": {
       "options": ["allow-leading-underscore"]
-    }
+    },
+    "no-console": false,
+    "interface-over-type-literal": false,
+    "member-ordering": false
   }
 }

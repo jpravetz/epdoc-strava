@@ -1,10 +1,10 @@
-import { isNumber } from 'epdoc-util';
-import { Activity } from './models/activity';
-import { DateRange } from './main';
-import { Dict, Seconds, julianDate, formatMS, formatHMS } from './util';
-import * as builder from 'xmlbuilder';
-import fs from 'fs';
 import * as dateutil from 'dateutil';
+import { isNumber } from 'epdoc-util';
+import fs from 'fs';
+import * as builder from 'xmlbuilder';
+import { DateRange } from './main';
+import { Activity } from './models/activity';
+import { Dict, formatHMS, formatMS, julianDate, Seconds } from './util';
 
 export type BikeDef = {
   name: string;
@@ -21,11 +21,11 @@ export type BikelogOutputOpts = {
 };
 
 export class Bikelog {
-  opts: BikelogOutputOpts = {};
-  stream: fs.WriteStream;
-  buffer: string = '';
-  bikes: Dict = {};
-  verbose: number = 9;
+  private opts: BikelogOutputOpts = {};
+  private stream: fs.WriteStream;
+  private buffer: string = '';
+  private bikes: Dict = {};
+  private verbose: number = 9;
 
   constructor(options: BikelogOutputOpts) {
     this.opts = options;
@@ -39,12 +39,12 @@ export class Bikelog {
    * @param activities Array of strava activities.
    * @returns {{}} Dictionary of bikelog data, with keys set to julian day.
    */
-  combineActivities(activities) {
-    let result = {};
+  public combineActivities(activities) {
+    let result: Dict = {};
     activities.forEach(activity => {
-      let d = new Date(activity.start_date_local);
-      let jd = julianDate(d);
-      let entry = result[jd] || { jd: jd, date: new Date(activity.start_date_local), events: [] };
+      const d: Date = new Date(activity.start_date_local);
+      const jd = julianDate(d);
+      const entry = result[jd] || { jd: jd, date: new Date(activity.start_date_local), events: [] };
       if (activity.wt) {
         entry.wt = activity.wt;
       }
@@ -73,6 +73,9 @@ export class Bikelog {
         if (activity.description) {
           note += '\n' + activity.description;
         }
+        if (activity.type === 'EBikeRide') {
+          note += '\nBiker energy: ' + Math.round(activity.kilojoules / 3.6) + ' Wh; max ' + activity.max_watts + ' W';
+        }
         if (Array.isArray(activity._segments)) {
           let segs = [];
           let up = 'Up ';
@@ -93,7 +96,8 @@ export class Bikelog {
             distance: Math.round(activity.distance / 10) / 100,
             bike: this.bikeMap(this.bikes[activity.gear_id].name),
             el: Math.round(activity.total_elevation_gain),
-            t: Math.round(activity.moving_time / 36) / 100
+            t: Math.round(activity.moving_time / 36) / 100,
+            wh: Math.round(activity.kilojoules / 3.6)
           };
         }
         if (entry.events.length < 2) {
@@ -175,6 +179,7 @@ export class Bikelog {
               group.ele('dist', event.distance);
               group.ele('el', event.el);
               group.ele('t', event.t);
+              group.ele('wh', event.wh);
             }
           }
           if (activity.note0) {

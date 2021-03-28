@@ -1,8 +1,8 @@
 /// <reference types="node" />
-import { Activity } from './models/activity';
-import { DateRange } from './main';
-import { Dict, Seconds } from './util';
 import fs from 'fs';
+import { DateRange } from './main';
+import { Activity } from './models/activity';
+import { Dict, Seconds } from './util';
 export declare type BikeDef = {
     name: string;
     pattern: string;
