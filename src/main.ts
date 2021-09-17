@@ -229,13 +229,15 @@ export class Main {
       });
   }
 
-  getActivitiesForDateRange(dateRange: DateRange): Promise<Activity[]> {
+  getActivitiesForDateRange(dateRange: DateRange, page: number = 1): Promise<Activity[]> {
+    let page_size: number = 200;
     let params: StravaActivityOpts = {
       athleteId: this.options.athleteId,
       query: {
-        per_page: 200,
+        per_page: page_size,
         after: dateRange.after,
-        before: dateRange.before
+        before: dateRange.before,
+	page: page
       }
     };
     return this.strava.getActivities(params).then(resp => {
@@ -247,7 +249,13 @@ export class Main {
           results.push(activity);
         }
       });
-      return Promise.resolve(results);
+      if(activities.length < page_size) {
+          return Promise.resolve(results);
+      } else {
+          return this.getActivitiesForDateRange(dateRange, page + 1).then(tail_results => {
+              return Promise.resolve(results.concat(tail_results));
+          });
+      }
     });
   }
 
