@@ -97,8 +97,6 @@ Notes:
 - Different activity types are rendered using different colors. Colors are
   defined by `lineStyle` in `user.settings.json`. The default set of colors is
   defined by `defaultLineStyles` in `lib/kml.ts`.
-- There is a Strava limit of 200 activities per call, so for date ranges that
-  include more than 200 activities, only the first 200 activities are returned.
 
 ### Example Command Line Use
 
@@ -188,7 +186,6 @@ been modified.
 
 ## ToDo
 
-- Handle paginated data, in other words, requests that exceed 200 activities.
 - I started working on a PDF report generator, however I have barely begun this
   effort and will probably not ever complete it. It is at `bin/pdfgen.js`.
 - Get `--segment` working again
