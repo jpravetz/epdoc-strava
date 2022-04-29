@@ -19,7 +19,7 @@
   "license": "BSD",
   "dependencies": {
     "assert": "~1.0.0",
-    "async": "~0.2.9",
+    "async": "~2.6.4",
     "commander": "^2.1.0",
     "dateutil": "git+ssh://git@github.com:jpravetz/dateutil.git#v1.0.5",
     "epdoc-util": "github:jpravetz/epdoc-util",
