@@ -1,4 +1,13 @@
 "use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
@@ -12,7 +21,8 @@ const epdoc_util_1 = require("epdoc-util");
 const fs = __importStar(require("fs"));
 const util_1 = require("./util");
 const REGEX = {
-    color: /^[a-zA-Z0-9]{8}$/
+    color: /^[a-zA-Z0-9]{8}$/,
+    moto: /^moto$/i
 };
 // Colors are aabbggrr
 const defaultLineStyles = {
@@ -28,7 +38,7 @@ const defaultLineStyles = {
         color: '7FFF00FF',
         width: 4
     },
-    moto: {
+    Moto: {
         color: '6414F0FF',
         width: 4
     },
@@ -125,28 +135,30 @@ class Kml {
         });
     }
     addActivities(activities) {
-        if (activities && activities.length) {
-            const dateString = this._dateString();
-            const indent = 2;
-            this.writeln(indent, '<Folder><name>Activities' + (dateString ? ' ' + dateString : '') + '</name><open>1</open>');
-            return activities
-                .reduce((promiseChain, activity) => {
-                return promiseChain.then(() => {
-                    const job = Promise.resolve().then(() => {
-                        if (activity.hasKmlData()) {
-                            this.outputActivity(indent + 1, activity);
-                        }
-                        return this.flush();
+        return __awaiter(this, void 0, void 0, function* () {
+            if (activities && activities.length) {
+                const dateString = this._dateString();
+                const indent = 2;
+                this.writeln(indent, '<Folder><name>Activities' + (dateString ? ' ' + dateString : '') + '</name><open>1</open>');
+                return activities
+                    .reduce((promiseChain, activity) => {
+                    return promiseChain.then(() => {
+                        const job = Promise.resolve().then(() => {
+                            if (activity.hasKmlData()) {
+                                this.outputActivity(indent + 1, activity);
+                            }
+                            return this.flush();
+                        });
+                        return job;
                     });
-                    return job;
+                }, Promise.resolve())
+                    .then(resp => {
+                    this.writeln(indent, '</Folder>');
+                    return this.flush();
                 });
-            }, Promise.resolve())
-                .then(resp => {
-                this.writeln(indent, '</Folder>');
-                return this.flush();
-            });
-        }
-        return Promise.resolve();
+            }
+            return Promise.resolve();
+        });
     }
     _dateString() {
         if (Array.isArray(this.opts.dates)) {
@@ -211,7 +223,13 @@ class Kml {
     outputActivity(indent, activity) {
         const t0 = activity.startDateLocal.substr(0, 10);
         let styleName = 'Default';
-        if (activity.commute && defaultLineStyles['Commute']) {
+        // tslint:disable-next-line: no-string-literal
+        const bike = activity.gearId ? this.opts.bikes[activity.gearId] : undefined;
+        const isMoto = bike ? REGEX.moto.test(bike.name) : false;
+        if (isMoto) {
+            styleName = 'Moto';
+        }
+        else if (activity.commute && defaultLineStyles['Commute']) {
             styleName = 'Commute';
         }
         else if (defaultLineStyles[activity.type]) {

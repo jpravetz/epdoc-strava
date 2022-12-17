@@ -72,6 +72,10 @@ export class Activity {
     return this._coordinates;
   }
 
+  public set coordinates(val: StravaCoord[]) {
+    this._coordinates = val;
+  }
+
   public get name(): string {
     return this.data.name;
   }

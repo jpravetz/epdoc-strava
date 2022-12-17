@@ -1,7 +1,6 @@
 import { DateRange } from './main';
 import { Activity } from './models/activity';
-import { StravaBike } from './models/athlete';
-import { Seconds } from './util';
+import { Dict, Seconds } from './util';
 export declare type BikeDef = {
     name: string;
     pattern: string;
@@ -11,8 +10,9 @@ export declare type BikelogOutputOpts = {
     dates?: DateRange[];
     imperial?: boolean;
     segmentsFlatFolder?: boolean;
-    bikes?: BikeDef[];
+    selectedBikes?: BikeDef[];
     verbose?: number;
+    bikes?: Dict;
 };
 /**
  * Interface to bikelog XML data that can be read/written from PDF files using
@@ -22,7 +22,6 @@ export declare class Bikelog {
     private opts;
     private stream;
     private buffer;
-    private bikes;
     private verbose;
     constructor(options: BikelogOutputOpts);
     /**
@@ -32,8 +31,7 @@ export declare class Bikelog {
      */
     private combineActivities;
     static secondsToString(seconds: Seconds): any;
-    registerBikes(bikes: StravaBike[]): void;
-    outputData(filepath: string, stravaActivities: Activity[], bikes: StravaBike[]): Promise<void>;
+    outputData(filepath: string, stravaActivities: Activity[]): Promise<void>;
     write(indent: any, s: any): void;
     writeln(indent: any, s: any): void;
     flush(): Promise<void>;

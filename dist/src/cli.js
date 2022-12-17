@@ -72,7 +72,7 @@ function run() {
             credentialsFile: credentialsFile,
             athleteId: parseInt(program.id, 10) || config.athleteId,
             athlete: program.athlete,
-            bikes: program.bikes,
+            selectedBikes: program.bikes,
             friends: program.friends,
             dates: program.dates || [],
             more: program.more,

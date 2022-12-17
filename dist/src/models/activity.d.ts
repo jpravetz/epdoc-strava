@@ -25,7 +25,7 @@ export declare class Activity {
     static newFromResponseData(data: Dict, main: Main): Activity;
     static isInstance(val: any): val is Activity;
     toString(): string;
-    readonly coordinates: StravaCoord[];
+    coordinates: StravaCoord[];
     readonly name: string;
     readonly id: number;
     readonly movingTime: Seconds;

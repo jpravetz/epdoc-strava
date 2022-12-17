@@ -97,7 +97,7 @@ function run(): Promise<void> {
         credentialsFile: credentialsFile,
         athleteId: parseInt(program.id, 10) || (config as StravaConfig).athleteId,
         athlete: program.athlete,
-        bikes: program.bikes,
+        selectedBikes: program.bikes,
         friends: program.friends,
         dates: program.dates || [], // array of date ranges, in seconds (not milliseconds)
         more: program.more,

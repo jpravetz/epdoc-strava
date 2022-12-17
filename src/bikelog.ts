@@ -4,7 +4,6 @@ import fs from 'fs';
 import * as builder from 'xmlbuilder';
 import { DateRange } from './main';
 import { Activity } from './models/activity';
-import { StravaBike } from './models/athlete';
 import { Dict, formatHMS, formatMS, julianDate, Seconds } from './util';
 
 export type BikeDef = {
@@ -17,8 +16,9 @@ export type BikelogOutputOpts = {
   dates?: DateRange[];
   imperial?: boolean;
   segmentsFlatFolder?: boolean;
-  bikes?: BikeDef[];
+  selectedBikes?: BikeDef[];
   verbose?: number;
+  bikes?: Dict;
 };
 
 const REGEX = {
@@ -33,7 +33,6 @@ export class Bikelog {
   private opts: BikelogOutputOpts = {};
   private stream: fs.WriteStream;
   private buffer: string = '';
-  private bikes: Dict = {};
   private verbose: number = 9;
 
   constructor(options: BikelogOutputOpts) {
@@ -58,7 +57,7 @@ export class Bikelog {
         entry.wt = activity.data.wt;
       }
       if (activity.isRide()) {
-        const bike: Dict = activity.gearId ? this.bikes[activity.gearId] : undefined;
+        const bike: Dict = activity.gearId ? this.opts.bikes[activity.gearId] : undefined;
         const isMoto: boolean = bike ? REGEX.moto.test(bike.name) : false;
         let note = '';
         // note += 'Ascend ' + Math.round(activity.total_elevation_gain) + 'm, time ';
@@ -151,15 +150,7 @@ export class Bikelog {
     return dateutil.formatMS(seconds * 1000, { seconds: false, ms: false, hours: true });
   }
 
-  public registerBikes(bikes: StravaBike[]) {
-    if (bikes && bikes.length) {
-      bikes.forEach(bike => {
-        this.bikes[bike.id] = bike;
-      });
-    }
-  }
-
-  public outputData(filepath: string, stravaActivities: Activity[], bikes: StravaBike[]): Promise<void> {
+  public outputData(filepath: string, stravaActivities: Activity[]): Promise<void> {
     const self = this;
     filepath = filepath ? filepath : 'bikelog.xml';
     let dateString: string;
@@ -173,7 +164,6 @@ export class Bikelog {
 
     this.buffer = ''; // new Buffer(8*1024);
 
-    this.registerBikes(bikes);
     const activities = this.combineActivities(stravaActivities);
 
     return new Promise((resolve, reject) => {
@@ -276,9 +266,9 @@ export class Bikelog {
   }
 
   public bikeMap(stravaBikeName: string): string {
-    if (Array.isArray(this.opts.bikes)) {
-      for (let idx = 0; idx < this.opts.bikes.length; ++idx) {
-        const item = this.opts.bikes[idx];
+    if (Array.isArray(this.opts.selectedBikes)) {
+      for (let idx = 0; idx < this.opts.selectedBikes.length; ++idx) {
+        const item = this.opts.selectedBikes[idx];
         if (item.pattern.toLowerCase() === stravaBikeName.toLowerCase()) {
           return item.name;
         }

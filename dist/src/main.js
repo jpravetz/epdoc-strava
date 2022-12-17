@@ -1,4 +1,13 @@
 "use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const bikelog_1 = require("./bikelog");
 const kml_1 = require("./kml");
@@ -15,29 +24,32 @@ const REQ_LIMIT = 10;
 class Main {
     constructor(options) {
         this.starredSegments = [];
+        this.bikes = {};
         this.options = options;
         this._config = options.config;
     }
     init() {
-        if (this.options.config && this.options.config.client) {
-            this.strava = new strava_api_1.StravaApi(this.options.config.client, this.options.credentialsFile);
-            return Promise.resolve()
-                .then(resp => {
-                if (this.options.kml) {
-                    // Run this first to validate line styles before pinging strava APIs
-                    this.kml = new kml_1.Kml({ verbose: this.options.verbose });
-                    if (this.options.config.lineStyles) {
-                        this.kml.setLineStyles(this.options.config.lineStyles);
+        return __awaiter(this, void 0, void 0, function* () {
+            if (this.options.config && this.options.config.client) {
+                this.strava = new strava_api_1.StravaApi(this.options.config.client, this.options.credentialsFile);
+                return Promise.resolve()
+                    .then(resp => {
+                    if (this.options.kml) {
+                        // Run this first to validate line styles before pinging strava APIs
+                        this.kml = new kml_1.Kml({ verbose: this.options.verbose });
+                        if (this.options.config.lineStyles) {
+                            this.kml.setLineStyles(this.options.config.lineStyles);
+                        }
                     }
-                }
-            })
-                .then(resp => {
-                return this.strava.initCreds();
-            });
-        }
-        else {
-            return Promise.reject(new Error('No config file or config file does not contain client id and secret'));
-        }
+                })
+                    .then(resp => {
+                    return this.strava.initCreds();
+                });
+            }
+            else {
+                return Promise.reject(new Error('No config file or config file does not contain client id and secret'));
+            }
+        });
     }
     get config() {
         return this._config;
@@ -235,9 +247,10 @@ class Main {
             return promiseChain.then(() => {
                 const jobs = [];
                 items.forEach(item => {
-                    const name = item.start_date_local;
-                    const job = this.strava.getStreamCoords(strava_api_1.StravaStreamSource.activities, item.id, name).then(resp => {
-                        item._coordinates = resp;
+                    const activity = item;
+                    const name = activity.startDateLocal;
+                    const job = this.strava.getStreamCoords(strava_api_1.StravaStreamSource.activities, activity.id, name).then(resp => {
+                        activity.coordinates = resp;
                     });
                     jobs.push(job);
                 });
@@ -252,39 +265,52 @@ class Main {
      * Call only when generating KML file with all segments
      */
     addStarredSegmentsCoordinates() {
-        console.log(`Retrieving coordinates for ${this.starredSegments.length} Starred Segments`);
-        return this.starredSegments
-            .reduce((promiseChain, item) => {
-            return promiseChain.then(() => {
-                return this.strava.getStreamCoords(strava_api_1.StravaStreamSource.segments, item.id, item.name).then(resp => {
-                    item.coordinates = resp;
+        return __awaiter(this, void 0, void 0, function* () {
+            console.log(`Retrieving coordinates for ${this.starredSegments.length} Starred Segments`);
+            return this.starredSegments
+                .reduce((promiseChain, item) => {
+                return promiseChain.then(() => {
+                    return this.strava.getStreamCoords(strava_api_1.StravaStreamSource.segments, item.id, item.name).then(resp => {
+                        item.coordinates = resp;
+                    });
                 });
+            }, Promise.resolve())
+                .then(resp => {
+                return Promise.resolve();
             });
-        }, Promise.resolve())
-            .then(resp => {
-            return Promise.resolve();
         });
     }
+    registerBikes(bikes) {
+        if (bikes && bikes.length) {
+            bikes.forEach(bike => {
+                this.bikes[bike.id] = bike;
+            });
+        }
+    }
     saveXml() {
+        this.registerBikes(this.athlete.bikes);
         const opts = {
             more: this.options.more,
             dates: this.options.dateRanges,
             imperial: this.options.imperial,
-            bikes: this.options.config.bikes
+            selectedBikes: this.options.config.bikes,
+            bikes: this.bikes
         };
         if (this.options.segments === 'flat') {
             opts.segmentsFlatFolder = true;
         }
         const bikelog = new bikelog_1.Bikelog(opts);
-        return bikelog.outputData(this.options.xml, this.activities, this.athlete.bikes);
+        return bikelog.outputData(this.options.xml, this.activities);
     }
     saveKml(options = {}) {
+        this.registerBikes(this.athlete.bikes);
         const opts = {
             more: this.options.more,
             dates: this.options.dateRanges,
             imperial: this.options.imperial,
             activities: options.activities,
-            segments: options.segments
+            segments: options.segments,
+            bikes: this.bikes
         };
         if (this.options.segments === 'flat') {
             opts.segmentsFlatFolder = true;

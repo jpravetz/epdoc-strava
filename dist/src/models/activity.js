@@ -53,6 +53,9 @@ class Activity {
     get coordinates() {
         return this._coordinates;
     }
+    set coordinates(val) {
+        this._coordinates = val;
+    }
     get name() {
         return this.data.name;
     }

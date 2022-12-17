@@ -26,7 +26,6 @@ class Bikelog {
     constructor(options) {
         this.opts = {};
         this.buffer = '';
-        this.bikes = {};
         this.verbose = 9;
         this.opts = options;
         if (epdoc_util_1.isNumber(options.verbose)) {
@@ -48,7 +47,7 @@ class Bikelog {
                 entry.wt = activity.data.wt;
             }
             if (activity.isRide()) {
-                const bike = activity.gearId ? this.bikes[activity.gearId] : undefined;
+                const bike = activity.gearId ? this.opts.bikes[activity.gearId] : undefined;
                 const isMoto = bike ? REGEX.moto.test(bike.name) : false;
                 let note = '';
                 // note += 'Ascend ' + Math.round(activity.total_elevation_gain) + 'm, time ';
@@ -145,14 +144,7 @@ class Bikelog {
     static secondsToString(seconds) {
         return dateutil.formatMS(seconds * 1000, { seconds: false, ms: false, hours: true });
     }
-    registerBikes(bikes) {
-        if (bikes && bikes.length) {
-            bikes.forEach(bike => {
-                this.bikes[bike.id] = bike;
-            });
-        }
-    }
-    outputData(filepath, stravaActivities, bikes) {
+    outputData(filepath, stravaActivities) {
         const self = this;
         filepath = filepath ? filepath : 'bikelog.xml';
         let dateString;
@@ -164,7 +156,6 @@ class Bikelog {
             dateString = ad.join(', ');
         }
         this.buffer = ''; // new Buffer(8*1024);
-        this.registerBikes(bikes);
         const activities = this.combineActivities(stravaActivities);
         return new Promise((resolve, reject) => {
             // @ts-ignore
@@ -263,9 +254,9 @@ class Bikelog {
         });
     }
     bikeMap(stravaBikeName) {
-        if (Array.isArray(this.opts.bikes)) {
-            for (let idx = 0; idx < this.opts.bikes.length; ++idx) {
-                const item = this.opts.bikes[idx];
+        if (Array.isArray(this.opts.selectedBikes)) {
+            for (let idx = 0; idx < this.opts.selectedBikes.length; ++idx) {
+                const item = this.opts.selectedBikes[idx];
                 if (item.pattern.toLowerCase() === stravaBikeName.toLowerCase()) {
                     return item.name;
                 }

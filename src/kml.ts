@@ -1,5 +1,5 @@
 import * as dateutil from 'dateutil';
-import { isNumber, isString } from 'epdoc-util';
+import { Dict, isNumber, isString } from 'epdoc-util';
 import * as fs from 'fs';
 import { DateRange, Main } from './main';
 import { Activity } from './models/activity';
@@ -26,6 +26,7 @@ export type KmlOpts = {
   segments?: boolean; // output segments
   segmentsFlatFolder?: boolean;
   verbose?: number; // log level (0 for none)
+  bikes?: Dict;
 };
 
 export type PlacemarkParams = {
@@ -37,7 +38,8 @@ export type PlacemarkParams = {
 };
 
 const REGEX = {
-  color: /^[a-zA-Z0-9]{8}$/
+  color: /^[a-zA-Z0-9]{8}$/,
+  moto: /^moto$/i
 };
 // Colors are aabbggrr
 const defaultLineStyles = {
@@ -53,7 +55,7 @@ const defaultLineStyles = {
     color: '7FFF00FF',
     width: 4
   },
-  moto: {
+  Moto: {
     color: '6414F0FF',
     width: 4
   },
@@ -164,7 +166,7 @@ export class Kml {
     });
   }
 
-  private addActivities(activities: Activity[]): Promise<void> {
+  private async addActivities(activities: Activity[]): Promise<void> {
     if (activities && activities.length) {
       const dateString = this._dateString();
 
@@ -256,7 +258,14 @@ export class Kml {
   public outputActivity(indent: number, activity: Activity): void {
     const t0 = activity.startDateLocal.substr(0, 10);
     let styleName = 'Default';
-    if (activity.commute && defaultLineStyles['Commute']) {
+    // tslint:disable-next-line: no-string-literal
+
+    const bike: Dict = activity.gearId ? this.opts.bikes[activity.gearId] : undefined;
+    const isMoto: boolean = bike ? REGEX.moto.test(bike.name) : false;
+
+    if (isMoto) {
+      styleName = 'Moto';
+    } else if (activity.commute && defaultLineStyles['Commute']) {
       styleName = 'Commute';
     } else if (defaultLineStyles[activity.type]) {
       styleName = activity.type;

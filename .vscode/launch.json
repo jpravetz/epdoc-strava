@@ -66,9 +66,9 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "strava -a -d 20191025 -k ~/Downloads/Activities.kml",
+      "name": "strava -a -d 20221201 -k ~/Downloads/Activities.kml -m",
       "program": "${workspaceFolder}/dist/src/cli.js",
-      "args": ["-a", "-d", "20191025", "-k", "~/Downloads/Activities.kml"],
+      "args": ["-a", "-d", "20221201", "-k", "~/Downloads/Activities.kml", "-m"],
       "console": "integratedTerminal",
       "preLaunchTask": "tsc: build - tsconfig.json",
       "outFiles": ["${workspaceFolder}/dist/**/*.js"]

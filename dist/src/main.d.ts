@@ -33,7 +33,7 @@ export declare type MainOpts = {
     credentialsFile?: string;
     athlete?: string;
     athleteId?: number;
-    bikes?: string[];
+    selectedBikes?: string[];
     friends?: string[];
     dates?: DateRange[];
     dateRanges?: DateRange[];
@@ -63,6 +63,7 @@ export declare class Main {
     private segmentEfforts;
     private starredSegments;
     segFile: SegmentFile;
+    bikes: Dict;
     constructor(options: MainOpts);
     init(): Promise<void>;
     readonly config: StravaConfig;
@@ -86,6 +87,7 @@ export declare class Main {
      * Call only when generating KML file with all segments
      */
     private addStarredSegmentsCoordinates;
+    private registerBikes;
     private saveXml;
     private saveKml;
 }

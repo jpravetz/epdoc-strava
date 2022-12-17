@@ -1,7 +1,7 @@
 import { BikeDef, Bikelog, BikelogOutputOpts } from './bikelog';
 import { Kml, KmlOpts, LineStyle } from './kml';
 import { Activity, ActivityFilter } from './models/activity';
-import { Athelete } from './models/athlete';
+import { Athelete, StravaBike } from './models/athlete';
 import { SegmentName } from './models/segment-base';
 import { SegmentData } from './models/segment-data';
 import { SummarySegment } from './models/summary-segment';
@@ -51,7 +51,7 @@ export type MainOpts = {
   credentialsFile?: string;
   athlete?: string;
   athleteId?: number;
-  bikes?: string[];
+  selectedBikes?: string[];
   friends?: string[];
   dates?: DateRange[];
   dateRanges?: DateRange[];
@@ -82,13 +82,14 @@ export class Main {
   private segmentEfforts: Record<string, any>;
   private starredSegments: SegmentData[] = [];
   public segFile: SegmentFile;
+  public bikes: Dict = {};
 
   constructor(options: MainOpts) {
     this.options = options;
     this._config = options.config;
   }
 
-  public init(): Promise<void> {
+  public async init(): Promise<void> {
     if (this.options.config && this.options.config.client) {
       this.strava = new StravaApi(this.options.config.client, this.options.credentialsFile);
       return Promise.resolve()
@@ -318,9 +319,10 @@ export class Main {
         return promiseChain.then(() => {
           const jobs = [];
           items.forEach(item => {
-            const name = item.start_date_local;
-            const job = this.strava.getStreamCoords(StravaStreamSource.activities, item.id, name).then(resp => {
-              item._coordinates = resp;
+            const activity: Activity = item as Activity;
+            const name = activity.startDateLocal;
+            const job = this.strava.getStreamCoords(StravaStreamSource.activities, activity.id, name).then(resp => {
+              activity.coordinates = resp;
             });
             jobs.push(job);
           });
@@ -335,7 +337,7 @@ export class Main {
   /**
    * Call only when generating KML file with all segments
    */
-  private addStarredSegmentsCoordinates() {
+  private async addStarredSegmentsCoordinates() {
     console.log(`Retrieving coordinates for ${this.starredSegments.length} Starred Segments`);
 
     return this.starredSegments
@@ -351,27 +353,39 @@ export class Main {
       });
   }
 
+  private registerBikes(bikes: StravaBike[]) {
+    if (bikes && bikes.length) {
+      bikes.forEach(bike => {
+        this.bikes[bike.id] = bike;
+      });
+    }
+  }
+
   private saveXml() {
+    this.registerBikes(this.athlete.bikes);
     const opts: BikelogOutputOpts = {
       more: this.options.more,
       dates: this.options.dateRanges,
       imperial: this.options.imperial,
-      bikes: this.options.config.bikes
+      selectedBikes: this.options.config.bikes,
+      bikes: this.bikes
     };
     if (this.options.segments === 'flat') {
       opts.segmentsFlatFolder = true;
     }
     const bikelog = new Bikelog(opts);
-    return bikelog.outputData(this.options.xml, this.activities, this.athlete.bikes);
+    return bikelog.outputData(this.options.xml, this.activities);
   }
 
   private saveKml(options: { activities?: boolean; segments?: boolean } = {}) {
+    this.registerBikes(this.athlete.bikes);
     const opts: KmlOpts = {
       more: this.options.more,
       dates: this.options.dateRanges,
       imperial: this.options.imperial,
       activities: options.activities,
-      segments: options.segments
+      segments: options.segments,
+      bikes: this.bikes
     };
     if (this.options.segments === 'flat') {
       opts.segmentsFlatFolder = true;

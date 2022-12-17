@@ -1,3 +1,4 @@
+import { Dict } from 'epdoc-util';
 import { DateRange } from './main';
 import { Activity } from './models/activity';
 import { SegmentData } from './models/segment-data';
@@ -13,6 +14,7 @@ export declare type KmlOpts = {
     segments?: boolean;
     segmentsFlatFolder?: boolean;
     verbose?: number;
+    bikes?: Dict;
 };
 export declare type PlacemarkParams = {
     description?: string;
