@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<fields xmlns:xfdf="http://ns.adobe.com/xfdf-transition/">
+  <day>
+    <group xfdf:original="2459915">
+      <group xfdf:original="0">
+        <bike>Levo</bike>
+        <dist>NaN</dist>
+        <el>438</el>
+        <t>1.15</t>
+        <wh>118</wh>
+      </group>
+      <note0>Moving: 01:09, Elapsed: 01:22
+Moto: undefined
+Still nursing the sit bone </note0>
+    </group>
+    <group xfdf:original="2459918">
+      <group xfdf:original="0">
+        <bike>Levo</bike>
+        <dist>NaN</dist>
+        <el>237</el>
+        <t>0.46</t>
+        <wh>56</wh>
+      </group>
+      <note0>Moving: 00:27, Elapsed: 00:27
+Moto: undefined
+Quick up and down before world cup game</note0>
+    </group>
+    <group xfdf:original="2459919">
+      <note0>Swim: NaNkm undefined, moving time 00:20</note0>
+    </group>
+    <group xfdf:original="2459920">
+      <note0>Swim: NaNkm undefined, moving time 00:31</note0>
+    </group>
+    <group xfdf:original="2459921">
+      <group xfdf:original="0">
+        <bike>moto</bike>
+        <dist>NaN</dist>
+        <el>1316</el>
+        <t>1.8</t>
+        <wh>983</wh>
+      </group>
+      <note0>Moving: 01:48, Elapsed: 02:22
+Moto: undefined</note0>
+    </group>
+    <group xfdf:original="2459922">
+      <group xfdf:original="0">
+        <bike>Levo</bike>
+        <dist>NaN</dist>
+        <el>470</el>
+        <t>1.43</t>
+        <wh>124</wh>
+      </group>
+      <note0>Moving: 01:25, Elapsed: 02:42
+Moto: undefined</note0>
+    </group>
+    <group xfdf:original="2459923">
+      <group xfdf:original="0">
+        <bike>Levo</bike>
+        <dist>NaN</dist>
+        <el>370</el>
+        <t>1.04</t>
+        <wh>101</wh>
+      </group>
+      <note0>Moving: 01:02, Elapsed: 01:05
+Moto: undefined
+Demasiado erosión para el camino de quebrada piñuela</note0>
+    </group>
+    <group xfdf:original="2459926">
+      <group xfdf:original="0">
+        <bike>Levo</bike>
+        <dist>NaN</dist>
+        <el>511</el>
+        <t>1.4</t>
+        <wh>116</wh>
+      </group>
+      <note0>Moving: 01:23, Elapsed: 02:09
+Moto: undefined</note0>
+    </group>
+    <group xfdf:original="2459927">
+      <note0>Swim: NaNkm undefined, moving time 00:32</note0>
+    </group>
+    <group xfdf:original="2459928">
+      <group xfdf:original="0">
+        <bike>Levo</bike>
+        <dist>NaN</dist>
+        <el>526</el>
+        <t>1.52</t>
+        <wh>133</wh>
+      </group>
+      <note0>Moving: 01:31, Elapsed: 02:35
+Moto: undefined</note0>
+    </group>
+    <group xfdf:original="2459929">
+      <group xfdf:original="0">
+        <bike>moto</bike>
+        <dist>NaN</dist>
+        <el>4784</el>
+        <t>5.34</t>
+        <wh>2472</wh>
+      </group>
+      <note0>Moving: 05:20, Elapsed: 06:44
+Moto: undefined
+Beautiful moto tour</note0>
+    </group>
+    <group xfdf:original="2459930">
+      <group xfdf:original="0">
+        <bike>Levo</bike>
+        <dist>NaN</dist>
+        <el>450</el>
+        <t>0.93</t>
+        <wh>75</wh>
+      </group>
+      <note0>Moving: 00:55, Elapsed: 01:52
+Moto: undefined</note0>
+    </group>
+  </day>
+</fields>

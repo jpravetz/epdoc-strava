@@ -1,11 +1,9 @@
-import { StravaCoord } from './strava-api';
-import { Athelete } from './models/athlete';
 import { Activity } from './models/activity';
-import { Dict, EpochSeconds } from './util';
-import request = require('superagent');
-import { StravaCreds } from './strava-creds';
 import { DetailedActivity } from './models/detailed-activity';
 import { SummarySegment } from './models/summary-segment';
+import { StravaCoord } from './strava-api';
+import { StravaCreds } from './strava-creds';
+import { Dict, EpochSeconds } from './util';
 export declare type StravaCode = string;
 export declare type StravaSecret = string;
 export declare type StravaAccessToken = string;
@@ -62,20 +60,20 @@ export declare class StravaApi {
     private _creds;
     constructor(clientConfig: StravaClientConfig, credsFile: string);
     toString(): string;
-    initCreds(): Promise<void>;
+    private initCreds;
     readonly creds: StravaCreds;
-    getAuthorizationUrl(options?: AuthorizationUrlOpts): string;
-    getTokenUrl(options?: TokenUrlOpts): string;
+    private getAuthorizationUrl;
+    private getTokenUrl;
     /**
      * Exchanges code for refresh and access tokens from Strava. Writes these
      * tokens to ~/.strava/credentials.json.
      * @param code
      */
-    getTokens(code: StravaCode): Promise<void>;
-    acquireToken(code: string): Promise<string>;
-    authHeaders: () => Record<string, any>;
-    getAthlete(athleteId?: number): Promise<Athelete>;
-    getActivities(options: StravaActivityOpts, callback: any): Promise<Dict[]>;
+    private getTokens;
+    private acquireToken;
+    private authHeaders;
+    private getAthlete;
+    getActivities(options: StravaActivityOpts): Promise<Dict[]>;
     getStarredSegments(accum: SummarySegment[], page?: number): Promise<void>;
     getStreamCoords(source: StravaStreamSource, objId: StravaObjId, name: string): Promise<any[]>;
     getDetailedActivity(activity: Activity): Promise<DetailedActivity>;
@@ -84,10 +82,9 @@ export declare class StravaApi {
      * @param objId The activity or segement ID
      * @param types An array, usually [ 'latlng' ]
      * @param options Additional query string parameters, if any
-     * @param callback
      * @returns {*}
      */
-    getStreams(source: StravaStreamSource, objId: StravaSegmentId, options: Query): Promise<Record<string, any>>;
-    getSegment(segmentId: StravaSegmentId): request.SuperAgentRequest;
-    getSegmentEfforts(segmentId: StravaSegmentId, params: Query): request.SuperAgentRequest;
+    private getStreams;
+    private getSegment;
+    private getSegmentEfforts;
 }

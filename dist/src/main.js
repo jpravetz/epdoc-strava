@@ -1,11 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const segment_file_1 = require("./segment-file");
-const activity_1 = require("./models/activity");
-const strava_api_1 = require("./strava-api");
-const kml_1 = require("./kml");
-const server_1 = require("./server");
 const bikelog_1 = require("./bikelog");
+const kml_1 = require("./kml");
+const activity_1 = require("./models/activity");
+const segment_file_1 = require("./segment-file");
+const server_1 = require("./server");
+const strava_api_1 = require("./strava-api");
 // let _ = require('underscore');
 // let async = require('async');
 // let dateutil = require('dateutil');
@@ -16,7 +16,7 @@ class Main {
     constructor(options) {
         this.starredSegments = [];
         this.options = options;
-        this.config = options.config;
+        this._config = options.config;
     }
     init() {
         if (this.options.config && this.options.config.client) {
@@ -38,6 +38,9 @@ class Main {
         else {
             return Promise.reject(new Error('No config file or config file does not contain client id and secret'));
         }
+    }
+    get config() {
+        return this._config;
     }
     run() {
         return this.init()
@@ -136,8 +139,7 @@ class Main {
     }
     getActivities() {
         let results = [];
-        let count = 0;
-        let dateRanges = Array.isArray(this.options.dates) ? this.options.dates : [];
+        const dateRanges = Array.isArray(this.options.dates) ? this.options.dates : [];
         return dateRanges
             .reduce((promiseChain, dateRange) => {
             return promiseChain.then(() => {
@@ -154,7 +156,7 @@ class Main {
         });
     }
     getActivitiesForDateRange(dateRange) {
-        let params = {
+        const params = {
             athleteId: this.options.athleteId,
             query: {
                 per_page: 200,
@@ -163,10 +165,10 @@ class Main {
             }
         };
         return this.strava.getActivities(params).then(resp => {
-            let activities = resp;
-            let results = [];
+            const activities = resp;
+            const results = [];
             resp.forEach(data => {
-                let activity = activity_1.Activity.newFromResponseData(data, this);
+                const activity = activity_1.Activity.newFromResponseData(data, this);
                 if (activity) {
                     results.push(activity);
                 }
@@ -175,12 +177,12 @@ class Main {
         });
     }
     filterActivities(activities) {
-        let filter = {
+        const filter = {
             commuteOnly: this.options.commuteOnly,
             nonCommuteOnly: this.options.nonCommuteOnly,
             include: this.options.activityFilter
         };
-        let results = activities.filter(activity => {
+        const results = activities.filter(activity => {
             return activity.include(filter);
         });
         return results;
@@ -192,7 +194,7 @@ class Main {
     addActivitiesDetails() {
         console.log(`Retrieving activity details for ${this.activities.length} Activities`);
         // Break into chunks to limit to REQ_LIMIT parallel requests.
-        let activitiesChunks = [];
+        const activitiesChunks = [];
         for (let idx = 0; idx < this.activities.length; idx += REQ_LIMIT) {
             const tmpArray = this.activities.slice(idx, idx + REQ_LIMIT);
             activitiesChunks.push(tmpArray);
@@ -200,9 +202,9 @@ class Main {
         return activitiesChunks
             .reduce((promiseChain, activities) => {
             return promiseChain.then(() => {
-                let jobs = [];
+                const jobs = [];
                 activities.forEach(activity => {
-                    let job = this.addActivityDetail(activity);
+                    const job = this.addActivityDetail(activity);
                     jobs.push(job);
                 });
                 return Promise.all(jobs);
@@ -223,7 +225,7 @@ class Main {
     addActivitiesCoordinates() {
         console.log(`Retrieving coordinates for ${this.activities.length} Activities`);
         // Break into chunks to limit to REQ_LIMIT parallel requests.
-        let activitiesChunks = [];
+        const activitiesChunks = [];
         for (let idx = 0; idx < this.activities.length; idx += REQ_LIMIT) {
             const tmpArray = this.activities.slice(idx, idx + REQ_LIMIT);
             activitiesChunks.push(tmpArray);
@@ -231,10 +233,10 @@ class Main {
         return activitiesChunks
             .reduce((promiseChain, items) => {
             return promiseChain.then(() => {
-                let jobs = [];
+                const jobs = [];
                 items.forEach(item => {
-                    let name = item.start_date_local;
-                    let job = this.strava.getStreamCoords(strava_api_1.StravaStreamSource.activities, item.id, name).then(resp => {
+                    const name = item.start_date_local;
+                    const job = this.strava.getStreamCoords(strava_api_1.StravaStreamSource.activities, item.id, name).then(resp => {
                         item._coordinates = resp;
                     });
                     jobs.push(job);
@@ -264,7 +266,7 @@ class Main {
         });
     }
     saveXml() {
-        let opts = {
+        const opts = {
             more: this.options.more,
             dates: this.options.dateRanges,
             imperial: this.options.imperial,
@@ -273,11 +275,11 @@ class Main {
         if (this.options.segments === 'flat') {
             opts.segmentsFlatFolder = true;
         }
-        let bikelog = new bikelog_1.Bikelog(opts);
+        const bikelog = new bikelog_1.Bikelog(opts);
         return bikelog.outputData(this.options.xml, this.activities, this.athlete.bikes);
     }
     saveKml(options = {}) {
-        let opts = {
+        const opts = {
             more: this.options.more,
             dates: this.options.dateRanges,
             imperial: this.options.imperial,
@@ -287,7 +289,7 @@ class Main {
         if (this.options.segments === 'flat') {
             opts.segmentsFlatFolder = true;
         }
-        let kml = new kml_1.Kml(opts);
+        const kml = new kml_1.Kml(opts);
         return kml.outputData(this.options.kml, this.activities, this.starredSegments);
     }
 }

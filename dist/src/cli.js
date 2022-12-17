@@ -4,14 +4,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const env = process.env['NODE_ENV'] || 'development';
-const path_1 = __importDefault(require("path"));
-const fs_1 = __importDefault(require("fs"));
 const commander_1 = require("commander");
+const fs_1 = __importDefault(require("fs"));
+const path_1 = __importDefault(require("path"));
 const package_json_1 = __importDefault(require("../package.json"));
 const project_settings_json_1 = __importDefault(require("./config/project.settings.json"));
 const main_1 = require("./main");
 const util_1 = require("./util");
-let dateutil = require('dateutil');
+const dateutil = require('dateutil');
 const DAY = 24 * 3600 * 1000;
 // let root = Path.resolve(__dirname, '..');
 const home = process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE;
@@ -41,9 +41,9 @@ function run() {
         return Promise.resolve({});
     })
         .then(resp => {
-        let userConfig = resp;
-        let config = Object.assign({}, project_settings_json_1.default, userConfig);
-        let program = new commander_1.Command('strava');
+        const userConfig = resp;
+        const config = Object.assign({}, project_settings_json_1.default, userConfig);
+        const program = new commander_1.Command('strava');
         program
             .version(package_json_1.default.version)
             .option('-d, --dates <dates>', "Comma separated list of activity date or date ranges in format '20141231-20150105,20150107'. " +
@@ -54,16 +54,16 @@ function run() {
             .option('-k, --kml <file>', 'Create KML file for specified date range')
             .option('-x, --xml <file>', 'Create Acroforms XML file for specified date range, this is specific to a particular unpublished PDF form document')
             .option('-r, --refresh', 'Refresh list of starred segments rather than using local stored copy. Will automatically refresh from server if there is no locally stored copy.')
-            .option('-a, --activities [filter]', "Output activities to kml file, optionally filtering by activity type (as defined by Strava, 'Ride', 'EBikeRide', 'Hike', 'Walk', etc), plus 'commute' and 'nocommute')", commaList)
-            //.option('-f, --filter <types>', "Filter based on comma-separated list of activity types (as defined by Strava, 'Ride', 'Hike', 'Walk', etc), plus 'commute' and 'nocommute'", commaList)
-            //.option('-p, --prompt', "With --show, when adding segments, prompt user whether to include or exclude a segment.")
+            .option('-a, --activities [filter]', "Output activities to kml file, optionally filtering by activity type (as defined by Strava, 'Ride', 'EBikeRide', 'Hike', 'Walk', etc), plus 'commute', 'nocommute' and 'moto')", commaList)
+            // .option('-f, --filter <types>', "Filter based on comma-separated list of activity types (as defined by Strava, 'Ride', 'Hike', 'Walk', etc), plus 'commute' and 'nocommute'", commaList)
+            // .option('-p, --prompt', "With --show, when adding segments, prompt user whether to include or exclude a segment.")
             .option('-s, --segments [opts]', "Output starred segments to KML, adding efforts within date range to description if --more. Segments are grouped into folders by location unless opts is set to 'flat'.")
             .option('-m, --more', 'When generating KML file, include additional detail info in KML description field')
             .option('-y, --imperial', 'Use imperial units')
             .option('-p, --path <cwd>', 'Current folder')
             .option('-v, --verbose', 'Verbose messages')
             .parse(process.argv);
-        let opts = {
+        const opts = {
             home: home,
             cwd: program.cwd,
             config: config,
@@ -90,13 +90,13 @@ function run() {
         if (opts.dates && opts.dates.length) {
             console.log('Date ranges: ');
             opts.dates.forEach(range => {
-                let tAfter = dateutil.toSortableString(1000 * range.after).replace(/\//g, '-');
-                let tBefore = dateutil.toSortableString(1000 * range.before).replace(/\//g, '-');
+                const tAfter = dateutil.toSortableString(1000 * range.after).replace(/\//g, '-');
+                const tBefore = dateutil.toSortableString(1000 * range.before).replace(/\//g, '-');
                 console.log('  From ' + tAfter + ' to ' + tBefore);
                 opts.dateRanges.push({ after: tAfter.slice(0, 10), before: tBefore.slice(0, 10) });
             });
         }
-        let main = new main_1.Main(opts);
+        const main = new main_1.Main(opts);
         return main.run();
     })
         .then(resp => {
@@ -111,11 +111,11 @@ function commaList(val) {
     return val.split(',');
 }
 function dateList(val) {
-    let result = [];
-    let ranges = val.split(',');
+    const result = [];
+    const ranges = val.split(',');
     for (let idx = 0; idx < ranges.length; ++idx) {
-        let range = ranges[idx];
-        let p = range.split('-');
+        const range = ranges[idx];
+        const p = range.split('-');
         let t0;
         let t1;
         try {
@@ -141,7 +141,7 @@ function dateList(val) {
     return result;
 }
 function dateStringToDate(s) {
-    let p = s.match(/^(\d{4})(\d\d)(\d\d)$/);
+    const p = s.match(/^(\d{4})(\d\d)(\d\d)$/);
     if (p) {
         return new Date(parseInt(p[1], 10), parseInt(p[2], 10) - 1, parseInt(p[3], 10)).getTime();
     }
@@ -150,12 +150,12 @@ function dateStringToDate(s) {
     }
 }
 run();
-//function promptSingleLine(str, fn) {
+// function promptSingleLine(str, fn) {
 //    process.stdout.write(str);
 //    process.stdin.setEncoding('utf8');
 //    process.stdin.once('data', function (val) {
 //        fn(val);
 //    }).resume();
-//}
-[];
+// }
+// [];
 //# sourceMappingURL=cli.js.map

@@ -12,8 +12,8 @@ export declare type StravaCredsData = {
     };
 };
 export declare class StravaCreds {
-    data: StravaCredsData;
-    path: string;
+    private data;
+    private path;
     constructor(tokenFile: string);
     readonly expiresAt: EpochSeconds;
     readonly refreshToken: string;

@@ -1,14 +1,13 @@
-import { StravaCoord } from './strava-api';
-import { Athelete } from './models/athlete';
-import { Activity } from './models/activity';
-import { Dict, EpochSeconds, Metres } from './util';
 import * as assert from 'assert';
-import request = require('superagent');
 import { isNumber } from 'epdoc-util';
-import { StravaCreds } from './strava-creds';
+import { Activity } from './models/activity';
+import { Athelete } from './models/athlete';
 import { DetailedActivity } from './models/detailed-activity';
-import { SegmentId } from './models/segment';
 import { SummarySegment } from './models/summary-segment';
+import { StravaCoord } from './strava-api';
+import { StravaCreds } from './strava-creds';
+import { Dict, EpochSeconds } from './util';
+import request = require('superagent');
 
 const STRAVA_URL_PREFIX = process.env.STRAVA_URL_PREFIX || 'https://www.strava.com';
 const STRAVA_API_PREFIX = STRAVA_URL_PREFIX + '/api/v3';
@@ -85,8 +84,8 @@ export type StravaActivityOpts = {
 };
 
 export class StravaApi {
-  id: StravaClientId;
-  secret: StravaSecret;
+  public id: StravaClientId;
+  public secret: StravaSecret;
   private _credsFile: string;
   private _creds: StravaCreds;
 
@@ -97,11 +96,11 @@ export class StravaApi {
     this._credsFile = credsFile;
   }
 
-  toString() {
+  public toString() {
     return '[Strava]';
   }
 
-  initCreds(): Promise<void> {
+  private initCreds(): Promise<void> {
     this._creds = new StravaCreds(this._credsFile);
     return this._creds.read();
   }
@@ -110,10 +109,10 @@ export class StravaApi {
     return this._creds;
   }
 
-  getAuthorizationUrl(options: AuthorizationUrlOpts = {}): string {
+  private getAuthorizationUrl(options: AuthorizationUrlOpts = {}): string {
     assert.ok(this.id, 'A client ID is required.');
 
-    let opts = Object.assign(defaultAuthOpts, options);
+    const opts = Object.assign(defaultAuthOpts, options);
 
     return (
       `${STRAVA_URL.authorize}?client_id=${this.id}` +
@@ -125,8 +124,8 @@ export class StravaApi {
     );
   }
 
-  getTokenUrl(options: TokenUrlOpts = {}): string {
-    let opts = Object.assign(defaultAuthOpts, options);
+  private getTokenUrl(options: TokenUrlOpts = {}): string {
+    const opts = Object.assign(defaultAuthOpts, options);
 
     return (
       `${STRAVA_URL.token}?client_id=${this.id}` +
@@ -141,8 +140,9 @@ export class StravaApi {
    * tokens to ~/.strava/credentials.json.
    * @param code
    */
-  getTokens(code: StravaCode) {
-    let payload = {
+  private async getTokens(code: StravaCode) {
+    const payload = {
+      // tslint:disable-next-line: object-literal-shorthand
       code: code,
       client_id: this.id,
       client_secret: this.secret,
@@ -162,13 +162,14 @@ export class StravaApi {
       });
   }
 
-  acquireToken(code: string): Promise<string> {
+  private async acquireToken(code: string): Promise<string> {
     assert.ok(this.id, 'A client ID is required.');
     assert.ok(this.secret, 'A client secret is required.');
 
     const query = {
       client_id: this.id,
       client_secret: this.secret,
+      // tslint:disable-next-line: object-literal-shorthand
       code: code
     };
 
@@ -183,15 +184,15 @@ export class StravaApi {
       });
   }
 
-  authHeaders = function(): Dict {
+  private authHeaders(): Dict {
     assert.ok(this.secret, 'An access token is required.');
 
     return {
       Authorization: 'access_token ' + this.creds.accessToken
     };
-  };
+  }
 
-  getAthlete(athleteId?: number): Promise<Athelete> {
+  private async getAthlete(athleteId?: number): Promise<Athelete> {
     let url = STRAVA_URL.athlete;
     if (isNumber(athleteId)) {
       url = url + '/' + athleteId;
@@ -207,7 +208,7 @@ export class StravaApi {
       });
   }
 
-  getActivities(options: StravaActivityOpts, callback): Promise<Dict[]> {
+  public async getActivities(options: StravaActivityOpts): Promise<Dict[]> {
     let url = STRAVA_URL.activities;
     if (isNumber(options.athleteId)) {
       url = url + '/' + options.athleteId;
@@ -228,7 +229,7 @@ export class StravaApi {
       });
   }
 
-  getStarredSegments(accum: SummarySegment[], page: number = 1): Promise<void> {
+  public async getStarredSegments(accum: SummarySegment[], page: number = 1): Promise<void> {
     const perPage = 200;
     return request
       .get(STRAVA_URL.starred)
@@ -238,7 +239,7 @@ export class StravaApi {
         if (resp && Array.isArray(resp.body)) {
           console.log(`  Retrieved ${resp.body.length} starred segments for page ${page}`);
           resp.body.forEach(item => {
-            let result = SummarySegment.newFromResponseData(item);
+            const result = SummarySegment.newFromResponseData(item);
             accum.push(result);
           });
           if (resp.body.length >= perPage) {
@@ -250,9 +251,9 @@ export class StravaApi {
       });
   }
 
-  getStreamCoords(source: StravaStreamSource, objId: StravaObjId, name: string) {
-    let result: StravaCoord[] = [];
-    let query = {
+  public getStreamCoords(source: StravaStreamSource, objId: StravaObjId, name: string) {
+    const result: StravaCoord[] = [];
+    const query: Dict = {
       keys: StravaStreamType.latlng,
       key_by_type: ''
     };
@@ -271,9 +272,9 @@ export class StravaApi {
       });
   }
 
-  getDetailedActivity(activity: Activity) {
+  public async getDetailedActivity(activity: Activity): Promise<DetailedActivity> {
     return request
-      .get(STRAVA_URL.activities + '/' + activity.id)
+      .get(STRAVA_URL.activities + '/' + activity.data.id)
       .set('Authorization', 'access_token ' + this.creds.accessToken)
       .then(resp => {
         if (resp && DetailedActivity.isInstance(resp.body)) {
@@ -282,7 +283,7 @@ export class StravaApi {
         throw new Error('Invalid DetailedActivity return value');
       })
       .catch(err => {
-        err.message = `getActivity ${activity.id} ${err.message} (${activity.toString()})`;
+        err.message = `getActivity id='${activity.data.id}' ${err.message} (${activity.toString()})`;
         throw err;
       });
   }
@@ -292,17 +293,16 @@ export class StravaApi {
    * @param objId The activity or segement ID
    * @param types An array, usually [ 'latlng' ]
    * @param options Additional query string parameters, if any
-   * @param callback
    * @returns {*}
    */
-  getStreams(source: StravaStreamSource, objId: StravaSegmentId, options: Query) {
+  private async getStreams(source: StravaStreamSource, objId: StravaSegmentId, options: Query) {
     return request
       .get(`${STRAVA_API_PREFIX}/${source}/${objId}/streams`)
       .set('Authorization', 'access_token ' + this.creds.accessToken)
       .query(options)
       .then(resp => {
         if (resp && Array.isArray(resp.body)) {
-          let result: Dict = {};
+          const result: Dict = {};
           resp.body.forEach(item => {
             if (Array.isArray(item.data)) {
               result[item.type] = item.data;
@@ -314,13 +314,13 @@ export class StravaApi {
       });
   }
 
-  getSegment(segmentId: StravaSegmentId) {
+  private async getSegment(segmentId: StravaSegmentId): Promise<any> {
     return request
       .get(STRAVA_API_PREFIX + '/segments/' + segmentId)
       .set('Authorization', 'access_token ' + this.creds.accessToken);
   }
 
-  getSegmentEfforts(segmentId: StravaSegmentId, params: Query) {
+  private async getSegmentEfforts(segmentId: StravaSegmentId, params: Query) {
     return request.get(STRAVA_API_PREFIX + '/segments/' + segmentId + '/all_efforts').query(params);
   }
 }

@@ -1,15 +1,14 @@
 const env = process.env['NODE_ENV'] || 'development';
 
-import path from 'path';
-import fs from 'fs';
 import { Command } from 'commander';
+import fs from 'fs';
+import path from 'path';
 import pkg from '../package.json';
 import projectConfig from './config/project.settings.json';
-import { Main, MainOpts, DateRange, StravaConfig } from './main';
-import { readJson, Dict, EpochMilliseconds } from './util';
-import { runCLI } from 'jest-runtime';
+import { DateRange, Main, MainOpts, StravaConfig } from './main';
+import { Dict, EpochMilliseconds, readJson } from './util';
 
-let dateutil = require('dateutil');
+const dateutil = require('dateutil');
 
 const DAY = 24 * 3600 * 1000;
 
@@ -45,10 +44,10 @@ function run(): Promise<void> {
       return Promise.resolve({});
     })
     .then(resp => {
-      let userConfig = resp;
-      let config = Object.assign({}, projectConfig, userConfig);
+      const userConfig = resp;
+      const config = Object.assign({}, projectConfig, userConfig);
 
-      let program: Dict = new Command('strava');
+      const program: Dict = new Command('strava');
       program
         .version(pkg.version)
         .option(
@@ -74,11 +73,11 @@ function run(): Promise<void> {
         )
         .option(
           '-a, --activities [filter]',
-          "Output activities to kml file, optionally filtering by activity type (as defined by Strava, 'Ride', 'EBikeRide', 'Hike', 'Walk', etc), plus 'commute' and 'nocommute')",
+          "Output activities to kml file, optionally filtering by activity type (as defined by Strava, 'Ride', 'EBikeRide', 'Hike', 'Walk', etc), plus 'commute', 'nocommute' and 'moto')",
           commaList
         )
-        //.option('-f, --filter <types>', "Filter based on comma-separated list of activity types (as defined by Strava, 'Ride', 'Hike', 'Walk', etc), plus 'commute' and 'nocommute'", commaList)
-        //.option('-p, --prompt', "With --show, when adding segments, prompt user whether to include or exclude a segment.")
+        // .option('-f, --filter <types>', "Filter based on comma-separated list of activity types (as defined by Strava, 'Ride', 'Hike', 'Walk', etc), plus 'commute' and 'nocommute'", commaList)
+        // .option('-p, --prompt', "With --show, when adding segments, prompt user whether to include or exclude a segment.")
         .option(
           '-s, --segments [opts]',
           "Output starred segments to KML, adding efforts within date range to description if --more. Segments are grouped into folders by location unless opts is set to 'flat'."
@@ -89,7 +88,7 @@ function run(): Promise<void> {
         .option('-v, --verbose', 'Verbose messages')
         .parse(process.argv);
 
-      let opts: MainOpts = {
+      const opts: MainOpts = {
         home: home,
         cwd: program.cwd,
         config: config,
@@ -117,14 +116,14 @@ function run(): Promise<void> {
       if (opts.dates && opts.dates.length) {
         console.log('Date ranges: ');
         opts.dates.forEach(range => {
-          let tAfter = dateutil.toSortableString(1000 * range.after).replace(/\//g, '-');
-          let tBefore = dateutil.toSortableString(1000 * range.before).replace(/\//g, '-');
+          const tAfter = dateutil.toSortableString(1000 * range.after).replace(/\//g, '-');
+          const tBefore = dateutil.toSortableString(1000 * range.before).replace(/\//g, '-');
           console.log('  From ' + tAfter + ' to ' + tBefore);
           opts.dateRanges.push({ after: tAfter.slice(0, 10), before: tBefore.slice(0, 10) });
         });
       }
 
-      let main = new Main(opts);
+      const main = new Main(opts);
       return main.run();
     })
     .then(resp => {
@@ -141,13 +140,13 @@ function commaList(val) {
 }
 
 function dateList(val): DateRange[] {
-  let result: DateRange[] = [];
-  let ranges = val.split(',');
+  const result: DateRange[] = [];
+  const ranges = val.split(',');
   for (let idx = 0; idx < ranges.length; ++idx) {
-    let range = ranges[idx];
-    let p = range.split('-');
-    let t0;
-    let t1;
+    const range = ranges[idx];
+    const p = range.split('-');
+    let t0: EpochMilliseconds;
+    let t1: EpochMilliseconds;
     try {
       if (p && p.length > 1) {
         t0 = dateStringToDate(p[0]);
@@ -169,7 +168,7 @@ function dateList(val): DateRange[] {
 }
 
 function dateStringToDate(s: string): EpochMilliseconds {
-  let p: string[] = s.match(/^(\d{4})(\d\d)(\d\d)$/);
+  const p: string[] = s.match(/^(\d{4})(\d\d)(\d\d)$/);
   if (p) {
     return new Date(parseInt(p[1], 10), parseInt(p[2], 10) - 1, parseInt(p[3], 10)).getTime();
   } else {
@@ -179,11 +178,12 @@ function dateStringToDate(s: string): EpochMilliseconds {
 
 run();
 
-//function promptSingleLine(str, fn) {
+// function promptSingleLine(str, fn) {
 //    process.stdout.write(str);
 //    process.stdin.setEncoding('utf8');
 //    process.stdin.once('data', function (val) {
 //        fn(val);
 //    }).resume();
-//}
-[];
+// }
+
+// [];

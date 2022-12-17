@@ -1,14 +1,10 @@
+import { BikeDef } from './bikelog';
+import { LineStyle } from './kml';
+import { Activity } from './models/activity';
 import { SegmentName } from './models/segment-base';
 import { SegmentFile } from './segment-file';
-import { SummarySegment } from './models/summary-segment';
-import { StravaCreds } from './strava-creds';
-import { Athelete } from './models/athlete';
-import { Activity } from './models/activity';
 import { StravaClientConfig } from './strava-api';
-import { Kml, LineStyle } from './kml';
 import { Dict, EpochSeconds } from './util';
-import { BikeDef } from './bikelog';
-import { SegmentData } from './models/segment-data';
 export declare type SegmentConfig = {
     description: string;
     alias: Dict;
@@ -53,22 +49,23 @@ export declare type MainOpts = {
     verbose?: number;
 };
 export declare class Main {
-    options: MainOpts;
-    config: StravaConfig;
-    strava: any;
-    stravaCreds: StravaCreds;
-    kml: Kml;
-    athlete: Athelete;
-    activities: Activity[];
-    segments: SummarySegment[];
-    segmentsFileLastModified: Date;
-    segmentConfig: Record<string, any>;
-    gear: any[];
-    segmentEfforts: Record<string, any>;
-    starredSegments: SegmentData[];
+    private options;
+    private _config;
+    private strava;
+    private stravaCreds;
+    private kml;
+    private athlete;
+    private activities;
+    private segments;
+    private segmentsFileLastModified;
+    private segmentConfig;
+    private gear;
+    private segmentEfforts;
+    private starredSegments;
     segFile: SegmentFile;
     constructor(options: MainOpts);
     init(): Promise<void>;
+    readonly config: StravaConfig;
     run(): Promise<void>;
     getAthlete(): Promise<void>;
     logAthlete(): void;
@@ -84,14 +81,11 @@ export declare class Main {
     /**
      * Add coordinates for the activity or segment. Limits to REQ_LIMIT parallel requests.
      */
-    addActivitiesCoordinates(): any;
+    private addActivitiesCoordinates;
     /**
      * Call only when generating KML file with all segments
      */
-    addStarredSegmentsCoordinates(): Promise<void>;
-    saveXml(): Promise<void>;
-    saveKml(options?: {
-        activities?: boolean;
-        segments?: boolean;
-    }): Promise<void>;
+    private addStarredSegmentsCoordinates;
+    private saveXml;
+    private saveKml;
 }

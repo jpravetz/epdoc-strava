@@ -1,12 +1,11 @@
-import { StravaCoord } from './../strava-api';
-import { DetailedActivity } from './detailed-activity';
-import { Metres, IsoDateString } from './../util';
-import { MainOpts, Main } from '../main';
 import * as dateutil from 'dateutil';
-import { pick, isString, isNumber, isBoolean } from 'epdoc-util';
-import { SegmentEffort } from './segment-effort';
+import { Dict, isBoolean, isNumber, isString } from 'epdoc-util';
+import { Main } from '../main';
+import { StravaCoord } from './../strava-api';
+import { IsoDateString, Metres, Seconds } from './../util';
+import { DetailedActivity } from './detailed-activity';
 import { SegmentData } from './segment-data';
-import { types } from '@babel/core';
+import { SegmentEffort } from './segment-effort';
 
 export type ActivityFilter = {
   commuteOnly?: boolean;
@@ -20,44 +19,107 @@ const REGEX = {
 };
 
 export class Activity {
-  keys: string[] = ['distance', 'total_elevation_gain', 'moving_time', 'elapsed_time', 'average_temp', 'device_name'];
-  id: number;
-  name: string;
-  description: string;
-  main: Main;
-  commute: boolean;
-  type: string;
-  distance: Metres;
-  startDate: Date;
-  start_date: IsoDateString;
-  start_date_local: IsoDateString;
+  public keys: string[] = [
+    'distance',
+    'total_elevation_gain',
+    'moving_time',
+    'elapsed_time',
+    'average_temp',
+    'device_name'
+  ];
+  public keyDict: Dict = {
+    distance: 'distance',
+    totalElevationGain: 'total_elevation_gain',
+    movingTime: 'moving_time',
+    elapsedTime: 'elapsed_time',
+    averageTemp: 'average_temp',
+    deviceName: 'device_name'
+  };
+  public data: Dict = {};
 
-  _asString: string;
-  _segments: SegmentData[]; // list of starred segments for this Activity
-  _coordinates: StravaCoord[] = []; // will contain the latlng coordinates for the activity
+  public id: number;
+  public name: string;
+  public description: string;
+  public main: Main;
+  public commute: boolean;
+  // public type: string;
+  public distance: Metres;
+  public startDate: Date;
 
-  constructor(data) {
-    Object.assign(this, data);
-    this.startDate = new Date(this.start_date);
-    let d = Math.round(this.distance / 100) / 10;
-    this._asString = `${this.start_date_local.slice(0, 10)}, ${this.type} ${d} km, ${this.name}`;
+  private _asString: string;
+  private _segments: SegmentData[]; // list of starred segments for this Activity
+  private _coordinates: StravaCoord[] = []; // will contain the latlng coordinates for the activity
+
+  constructor(data: Dict) {
+    Object.assign(this.data, data);
+    this.startDate = new Date(this.data.start_date);
+    const d = Math.round(this.distance / 100) / 10;
+    this._asString = `${this.data.start_date_local.slice(0, 10)}, ${this.type} ${d} km, ${this.name}`;
   }
 
-  static newFromResponseData(data, main: Main): Activity {
-    let result = new Activity(data);
+  public static newFromResponseData(data: Dict, main: Main): Activity {
+    const result = new Activity(data);
     result.main = main;
     return result;
   }
 
-  static isInstance(val: any): val is Activity {
+  public static isInstance(val: any): val is Activity {
     return val && isNumber(val.id) && isBoolean(val.commute);
   }
 
-  toString(): string {
+  public toString(): string {
     return this._asString;
   }
 
-  hasKmlData(): boolean {
+  public get coordinates(): StravaCoord[] {
+    return this._coordinates;
+  }
+
+  public get movingTime(): Seconds {
+    return this.data.moving_time;
+  }
+
+  public get elapsedTime(): Seconds {
+    return this.data.elapsed_time;
+  }
+
+  public get totalElevationGain(): Metres {
+    return this.data.total_elevation_gain;
+  }
+
+  public get averageTemp(): number {
+    return this.data.average_temp;
+  }
+
+  public get deviceName(): string {
+    return this.data.device_name;
+  }
+
+  public get gearId(): string {
+    return this.data.gear_id;
+  }
+
+  public get startDateLocal(): IsoDateString {
+    return this.data.start_date_local;
+  }
+
+  public get segments(): SegmentData[] {
+    return this._segments;
+  }
+
+  public get type(): string {
+    return this.data.type;
+  }
+
+  public isRide(): boolean {
+    return this.data.type === 'Ride' || this.data.type === 'EBikeRide';
+  }
+
+  public isMoto(): boolean {
+    return this.data.type === 'Ride' || this.data.type === 'EBikeRide';
+  }
+
+  public hasKmlData(): boolean {
     if (!isString(this.type) || REGEX.noKmlData.test(this.type)) {
       return false;
     }
@@ -69,7 +131,7 @@ export class Activity {
    * object and add to Acivity.
    * @param data
    */
-  addFromDetailedActivity(data: DetailedActivity) {
+  public addFromDetailedActivity(data: DetailedActivity) {
     console.log('  Adding activity details for ' + this.toString());
     if (DetailedActivity.isInstance(data)) {
       if (isString(data.description)) {
@@ -81,14 +143,14 @@ export class Activity {
     }
   }
 
-  _addDescriptionFromDetailedActivity(data: DetailedActivity): void {
+  private _addDescriptionFromDetailedActivity(data: DetailedActivity): void {
     if (isString(data.description)) {
-      let p: string[] = data.description.split(/\r\n/);
-      //console.log(p)
+      const p: string[] = data.description.split(/\r\n/);
+      // console.log(p)
       if (p && p.length) {
-        let a = [];
+        const a = [];
         p.forEach(line => {
-          let kv = line.match(/^([^\s\=]+)\s*=\s*(.*)+$/);
+          const kv = line.match(/^([^\s\=]+)\s*=\s*(.*)+$/);
           if (kv) {
             this.keys.push(kv[1]);
             this[kv[1]] = kv[2];
@@ -106,12 +168,12 @@ export class Activity {
     }
   }
 
-  _addDetailSegmentsFromDetailedActivity(data: DetailedActivity) {
+  private _addDetailSegmentsFromDetailedActivity(data: DetailedActivity) {
     this._segments = [];
     data.segment_efforts.forEach(effort => {
       // @ts-ignore
       if (this.main.segFile) {
-        let seg = this.main.segFile.getSegment(effort.name);
+        const seg = this.main.segFile.getSegment(effort.name);
         if (seg) {
           console.log('  Found starred segment', effort.name);
           this._addDetailSegment(effort);
@@ -120,27 +182,23 @@ export class Activity {
     });
   }
 
-  _addDetailSegment(segEffort: SegmentEffort) {
+  private _addDetailSegment(segEffort: SegmentEffort) {
     let name = String(segEffort.name).trim();
-    let aliases = this.main.config.aliases;
+    const aliases = this.main.config.aliases;
     if (aliases && aliases[name]) {
       name = aliases[name];
       segEffort.name = name;
     }
-    console.log(
-      "  Adding segment '" +
-        name +
-        "', elapsed time " +
-        dateutil.formatMS(segEffort.elapsed_time * 1000, {
-          ms: false,
-          hours: true
-        })
-    );
+    const sd: string = dateutil.formatMS(segEffort.elapsed_time * 1000, {
+      ms: false,
+      hours: true
+    });
+    console.log(`  Adding segment '${name}, elapsed time ${sd}`);
     // Add segment to this activity
     this._segments.push(new SegmentData(segEffort));
   }
 
-  include(filter: ActivityFilter) {
+  public include(filter: ActivityFilter) {
     if (
       (!filter.commuteOnly && !filter.nonCommuteOnly) ||
       (filter.commuteOnly && this.commute) ||
@@ -161,7 +219,7 @@ export class Activity {
     return false;
   }
 
-  static compareStartDate(a, b) {
+  public static compareStartDate(a, b) {
     if (a.start_date < b.start_date) {
       return -1;
     }

@@ -7,10 +7,10 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const dateutil = __importStar(require("dateutil"));
 const epdoc_util_1 = require("epdoc-util");
 const fs = __importStar(require("fs"));
 const util_1 = require("./util");
-const dateutil = __importStar(require("dateutil"));
 const REGEX = {
     color: /^[a-zA-Z0-9]{8}$/
 };
@@ -26,6 +26,10 @@ const defaultLineStyles = {
     },
     EBikeRide: {
         color: '7FFF00FF',
+        width: 4
+    },
+    moto: {
+        color: '6414F0FF',
         width: 4
     },
     Segment: {
@@ -80,7 +84,7 @@ class Kml {
         });
     }
     outputData(filepath, activities, segments) {
-        let file = filepath || 'Activities.kml';
+        const file = filepath || 'Activities.kml';
         return new Promise((resolve, reject) => {
             this.stream = fs.createWriteStream(file);
             this.stream.once('open', fd => {
@@ -116,19 +120,19 @@ class Kml {
                 console.log('Finish ' + file);
             });
             this.stream.on('drain', () => {
-                this._flush;
+                this._flush();
             });
         });
     }
     addActivities(activities) {
         if (activities && activities.length) {
-            let dateString = this._dateString();
-            let indent = 2;
+            const dateString = this._dateString();
+            const indent = 2;
             this.writeln(indent, '<Folder><name>Activities' + (dateString ? ' ' + dateString : '') + '</name><open>1</open>');
             return activities
                 .reduce((promiseChain, activity) => {
                 return promiseChain.then(() => {
-                    let job = Promise.resolve().then(() => {
+                    const job = Promise.resolve().then(() => {
                         if (activity.hasKmlData()) {
                             this.outputActivity(indent + 1, activity);
                         }
@@ -146,7 +150,7 @@ class Kml {
     }
     _dateString() {
         if (Array.isArray(this.opts.dates)) {
-            let ad = [];
+            const ad = [];
             this.opts.dates.forEach(range => {
                 ad.push(range.after + ' to ' + range.before);
             });
@@ -156,15 +160,15 @@ class Kml {
     }
     addSegments(segments) {
         if (segments && segments.length) {
-            let indent = 2;
-            let sortedSegments = segments.sort((a, b) => {
+            const indent = 2;
+            const sortedSegments = segments.sort((a, b) => {
                 return util_1.compare(a, b, 'name');
             });
             if (this.opts.segmentsFlatFolder === true) {
                 this.outputSegments(indent, sortedSegments);
             }
             else {
-                let regions = this.getSegmentRegionList(segments);
+                const regions = this.getSegmentRegionList(segments);
                 Object.keys(regions).forEach(country => {
                     Object.keys(regions[country]).forEach(state => {
                         this.outputSegments(indent, sortedSegments, country, state);
@@ -194,7 +198,7 @@ class Kml {
         this.writeln(indent, '</Folder>');
     }
     getSegmentRegionList(segments) {
-        let regions = {};
+        const regions = {};
         segments.forEach(segment => {
             regions[segment.country] = regions[segment.country] || {};
             if (segment.state) {
@@ -205,7 +209,7 @@ class Kml {
         return regions;
     }
     outputActivity(indent, activity) {
-        let t0 = activity.start_date_local.substr(0, 10);
+        const t0 = activity.startDateLocal.substr(0, 10);
         let styleName = 'Default';
         if (activity.commute && defaultLineStyles['Commute']) {
             styleName = 'Commute';
@@ -213,21 +217,21 @@ class Kml {
         else if (defaultLineStyles[activity.type]) {
             styleName = activity.type;
         }
-        let params = {
+        const params = {
             placemarkId: 'StravaTrack' + ++this.trackIndex,
             name: t0 + ' - ' + util_1.escapeHtml(activity.name),
             description: this._buildActivityDescription(activity),
             styleName: styleName,
-            coordinates: activity._coordinates
+            coordinates: activity.coordinates
         };
         this.placemark(indent, params);
     }
     _buildActivityDescription(activity) {
-        //console.log(this.opts)
-        //console.log(activity.keys)
+        // console.log(this.opts)
+        // console.log(activity.keys)
         if (this.more) {
-            let arr = [];
-            activity.keys.forEach(field => {
+            const arr = [];
+            Object.keys(activity.keyDict).forEach(field => {
                 // console.log(field + ' = ' + activity[field]);
                 if (activity[field]) {
                     let key = field;
@@ -235,21 +239,21 @@ class Kml {
                     if (field === 'distance') {
                         value = util_1.getDistanceString(value, this.imperial);
                     }
-                    else if (field === 'moving_time' || field === 'elapsed_time') {
+                    else if (field === 'movingTime' || field === 'elapsedTime') {
                         value = dateutil.formatMS(activity[field] * 1000, { ms: false, hours: true });
                     }
-                    else if (field === 'total_elevation_gain') {
+                    else if (field === 'totalElevationGain') {
                         key = 'elevation_gain';
                         value = util_1.getElevationString(value, this.imperial);
                     }
-                    else if (field === 'average_temp' && typeof value === 'number') {
+                    else if (field === 'averageTemp' && epdoc_util_1.isNumber(value)) {
                         value = util_1.getTemperatureString(value, this.imperial); //  escapeHtml("˚C");
                     }
                     else if (field === '_segments' && activity[field].length) {
-                        let segs = [];
+                        const segs = [];
                         segs.push('<b>Segments:</b><br><ul>');
                         activity[field].forEach(segment => {
-                            let s = '<li><b>' +
+                            const s = '<li><b>' +
                                 segment.name +
                                 ':</b> ' +
                                 dateutil.formatMS(segment.elapsedTime * 1000, { ms: false, hours: true }) +
@@ -268,7 +272,7 @@ class Kml {
                     }
                 }
             });
-            //console.log(arr);
+            // console.log(arr);
             return '<![CDATA[' + arr.join('<br>\n') + ']]>';
         }
     }
@@ -278,7 +282,7 @@ class Kml {
      * @returns {string}
      */
     outputSegment(indent, segment) {
-        let params = {
+        const params = {
             placemarkId: 'StravaSegment' + ++this.trackIndex,
             name: util_1.escapeHtml(segment.name),
             description: this.buildSegmentDescription(segment),
@@ -336,7 +340,7 @@ class Kml {
             this.buffer += s;
         }
         else {
-            let indent2 = new Array(indent + 1).join('  ');
+            const indent2 = new Array(indent + 1).join('  ');
             this.buffer += indent2 + s;
         }
     }
@@ -345,10 +349,10 @@ class Kml {
             this.buffer += s + '\n';
         }
         else {
-            let indent2 = new Array(indent + 1).join('  ');
+            const indent2 = new Array(indent + 1).join('  ');
             this.buffer += indent2 + s + '\n';
         }
-        //this.buffer.write( indent + s + "\n", 'utf8' );
+        // this.buffer.write( indent + s + "\n", 'utf8' );
     }
     flush() {
         if (this.verbose) {
@@ -358,9 +362,9 @@ class Kml {
     }
     _flush() {
         return new Promise((resolve, reject) => {
-            let tbuf = this.buffer;
+            const tbuf = this.buffer;
             this.buffer = '';
-            let bOk = this.stream.write(tbuf, () => {
+            const bOk = this.stream.write(tbuf, () => {
                 resolve();
             });
         });

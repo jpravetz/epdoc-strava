@@ -1,8 +1,8 @@
-import { StravaCoord } from './../strava-api';
-import { DetailedActivity } from './detailed-activity';
-import { Metres, IsoDateString } from './../util';
+import { Dict } from 'epdoc-util';
 import { Main } from '../main';
-import { SegmentEffort } from './segment-effort';
+import { StravaCoord } from './../strava-api';
+import { IsoDateString, Metres, Seconds } from './../util';
+import { DetailedActivity } from './detailed-activity';
 import { SegmentData } from './segment-data';
 export declare type ActivityFilter = {
     commuteOnly?: boolean;
@@ -12,23 +12,34 @@ export declare type ActivityFilter = {
 };
 export declare class Activity {
     keys: string[];
+    keyDict: Dict;
+    data: Dict;
     id: number;
     name: string;
     description: string;
     main: Main;
     commute: boolean;
-    type: string;
     distance: Metres;
     startDate: Date;
-    start_date: IsoDateString;
-    start_date_local: IsoDateString;
-    _asString: string;
-    _segments: SegmentData[];
-    _coordinates: StravaCoord[];
-    constructor(data: any);
-    static newFromResponseData(data: any, main: Main): Activity;
+    private _asString;
+    private _segments;
+    private _coordinates;
+    constructor(data: Dict);
+    static newFromResponseData(data: Dict, main: Main): Activity;
     static isInstance(val: any): val is Activity;
     toString(): string;
+    readonly coordinates: StravaCoord[];
+    readonly movingTime: Seconds;
+    readonly elapsedTime: Seconds;
+    readonly totalElevationGain: Metres;
+    readonly averageTemp: number;
+    readonly deviceName: string;
+    readonly gearId: string;
+    readonly startDateLocal: IsoDateString;
+    readonly segments: SegmentData[];
+    readonly type: string;
+    isRide(): boolean;
+    isMoto(): boolean;
     hasKmlData(): boolean;
     /**
      * Get starred segment_efforts and descriptions from the DetailedActivity
@@ -36,9 +47,9 @@ export declare class Activity {
      * @param data
      */
     addFromDetailedActivity(data: DetailedActivity): void;
-    _addDescriptionFromDetailedActivity(data: DetailedActivity): void;
-    _addDetailSegmentsFromDetailedActivity(data: DetailedActivity): void;
-    _addDetailSegment(segEffort: SegmentEffort): void;
+    private _addDescriptionFromDetailedActivity;
+    private _addDetailSegmentsFromDetailedActivity;
+    private _addDetailSegment;
     include(filter: ActivityFilter): boolean;
     static compareStartDate(a: any, b: any): 1 | -1 | 0;
 }

@@ -1,7 +1,7 @@
-import { SegmentName } from './models/segment-base';
-import { StravaApi } from './strava-api';
-import { SummarySegment } from './models/summary-segment';
 import fs from 'fs';
+import { SegmentName } from './models/segment-base';
+import { SummarySegment } from './models/summary-segment';
+import { StravaApi } from './strava-api';
 import { Metres, readJson, writeJson } from './util';
 
 export type GpsDegrees = number;
@@ -14,17 +14,17 @@ export type SegmentCacheEntry = {
 };
 
 export class SegmentFile {
-  filepath: string;
-  api: StravaApi;
-  lastModified: Date;
-  segments: Record<string, SegmentCacheEntry> = {};
+  private filepath: string;
+  private api: StravaApi;
+  private lastModified: Date;
+  private segments: Record<string, SegmentCacheEntry> = {};
 
   constructor(filepath: string, stravaApi: StravaApi) {
     this.filepath = filepath;
     this.api = stravaApi;
   }
 
-  get(opts: { refresh?: boolean }) {
+  public async get(opts: { refresh?: boolean }): Promise<void> {
     console.log('Retrieving list of starred segments');
     if (opts.refresh) {
       return this.getFromServer().then(resp => {
@@ -41,7 +41,7 @@ export class SegmentFile {
     }
   }
 
-  read(): Promise<void> {
+  public async read(): Promise<void> {
     return new Promise((resolve, reject) => {
       if (fs.existsSync(this.filepath)) {
         fs.stat(this.filepath, (err, stats) => {
@@ -68,9 +68,9 @@ export class SegmentFile {
     });
   }
 
-  getFromServer(): Promise<void> {
+  private async getFromServer(): Promise<void> {
     // this.starredSegments = [];
-    let summarySegments: SummarySegment[] = [];
+    const summarySegments: SummarySegment[] = [];
     console.log('  Retrieving starred segments from Strava ...');
     return this.api
       .getStarredSegments(summarySegments)
@@ -79,7 +79,7 @@ export class SegmentFile {
         console.log('  Found %s starred segments', summarySegments.length);
         this.segments = {};
         summarySegments.forEach(seg => {
-          let newEntry = seg.asCacheEntry();
+          const newEntry = seg.asCacheEntry();
           if (this.segments[seg.name]) {
             console.log(
               `Segment ${seg.name} (${this.segments[seg.name].distance},${this.segments[seg.name].elevation}) already exists. Overwriting with (${newEntry.distance},${newEntry.elevation}).`
@@ -94,8 +94,8 @@ export class SegmentFile {
       });
   }
 
-  write(): Promise<void> {
-    let json: Record<string, any> = {
+  public async write(): Promise<void> {
+    const json: Record<string, any> = {
       description: 'Strava segments',
       segments: this.segments
     };
@@ -104,7 +104,7 @@ export class SegmentFile {
     });
   }
 
-  getSegment(name: string): SegmentCacheEntry {
+  public getSegment(name: string): SegmentCacheEntry {
     return this.segments[name];
   }
 }
