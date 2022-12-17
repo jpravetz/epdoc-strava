@@ -263,7 +263,7 @@ export class StravaApi {
           console.log(`  Get ${name} Found ${resp.latlng.length} coordinates`);
           return Promise.resolve(resp.latlng);
         }
-        console.log(`  Get ${name} did not find any coordinates`);
+        console.log(`  Get ${name} did not contain any coordinates`);
         return Promise.resolve([]);
       })
       .catch(err => {

@@ -56,7 +56,7 @@ const defaultLineStyles = {
     width: 4
   },
   Moto: {
-    color: '6414F0FF',
+    color: '641478FF',
     width: 4
   },
   Segment: {

@@ -84,7 +84,7 @@ class Main {
             }
         })
             .then(resp => {
-            if (this.options.athlete || this.options.xml) {
+            if (this.options.athlete || this.options.xml || this.options.kml) {
                 return this.getAthlete().then(resp => {
                     if (!this.options.xml) {
                         this.logAthlete();
@@ -140,6 +140,7 @@ class Main {
             .getAthlete(this.options.athleteId)
             .then(resp => {
             this.athlete = resp;
+            this.registerBikes(this.athlete.bikes);
         })
             .catch(err => {
             err.message = 'Athlete ' + err.message;
@@ -288,7 +289,6 @@ class Main {
         }
     }
     saveXml() {
-        this.registerBikes(this.athlete.bikes);
         const opts = {
             more: this.options.more,
             dates: this.options.dateRanges,
@@ -303,7 +303,6 @@ class Main {
         return bikelog.outputData(this.options.xml, this.activities);
     }
     saveKml(options = {}) {
-        this.registerBikes(this.athlete.bikes);
         const opts = {
             more: this.options.more,
             dates: this.options.dateRanges,
