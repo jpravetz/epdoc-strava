@@ -1,7 +1,7 @@
 import { Dict } from 'epdoc-util';
 import { Main } from '../main';
 import { StravaCoord } from './../strava-api';
-import { IsoDateString, Metres, Seconds } from './../util';
+import { IsoDateString, Kilometres, Metres, Seconds } from './../util';
 import { DetailedActivity } from './detailed-activity';
 import { SegmentData } from './segment-data';
 export declare type ActivityFilter = {
@@ -14,12 +14,9 @@ export declare class Activity {
     keys: string[];
     keyDict: Dict;
     data: Dict;
-    id: number;
-    name: string;
     description: string;
     main: Main;
     commute: boolean;
-    distance: Metres;
     startDate: Date;
     private _asString;
     private _segments;
@@ -29,8 +26,12 @@ export declare class Activity {
     static isInstance(val: any): val is Activity;
     toString(): string;
     readonly coordinates: StravaCoord[];
+    readonly name: string;
+    readonly id: number;
     readonly movingTime: Seconds;
     readonly elapsedTime: Seconds;
+    readonly distance: Metres;
+    distanceRoundedKm(): Kilometres;
     readonly totalElevationGain: Metres;
     readonly averageTemp: number;
     readonly deviceName: string;
@@ -39,7 +40,6 @@ export declare class Activity {
     readonly segments: SegmentData[];
     readonly type: string;
     isRide(): boolean;
-    isMoto(): boolean;
     hasKmlData(): boolean;
     /**
      * Get starred segment_efforts and descriptions from the DetailedActivity
@@ -51,5 +51,5 @@ export declare class Activity {
     private _addDetailSegmentsFromDetailedActivity;
     private _addDetailSegment;
     include(filter: ActivityFilter): boolean;
-    static compareStartDate(a: any, b: any): 1 | -1 | 0;
+    static compareStartDate(a: Activity, b: Activity): 1 | -1 | 0;
 }

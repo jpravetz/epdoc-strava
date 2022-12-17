@@ -36,7 +36,7 @@ class Activity {
         this._coordinates = []; // will contain the latlng coordinates for the activity
         Object.assign(this.data, data);
         this.startDate = new Date(this.data.start_date);
-        const d = Math.round(this.distance / 100) / 10;
+        const d = Math.round(this.data.distance / 100) / 10;
         this._asString = `${this.data.start_date_local.slice(0, 10)}, ${this.type} ${d} km, ${this.name}`;
     }
     static newFromResponseData(data, main) {
@@ -53,11 +53,23 @@ class Activity {
     get coordinates() {
         return this._coordinates;
     }
+    get name() {
+        return this.data.name;
+    }
+    get id() {
+        return this.data.id;
+    }
     get movingTime() {
         return this.data.moving_time;
     }
     get elapsedTime() {
         return this.data.elapsed_time;
+    }
+    get distance() {
+        return this.data.distance;
+    }
+    distanceRoundedKm() {
+        return Math.round(this.data.distance / 10) / 100;
     }
     get totalElevationGain() {
         return this.data.total_elevation_gain;
@@ -81,9 +93,6 @@ class Activity {
         return this.data.type;
     }
     isRide() {
-        return this.data.type === 'Ride' || this.data.type === 'EBikeRide';
-    }
-    isMoto() {
         return this.data.type === 'Ride' || this.data.type === 'EBikeRide';
     }
     hasKmlData() {
@@ -181,10 +190,10 @@ class Activity {
         return false;
     }
     static compareStartDate(a, b) {
-        if (a.start_date < b.start_date) {
+        if (a.startDate < b.startDate) {
             return -1;
         }
-        if (a.start_date > b.start_date) {
+        if (a.startDate > b.startDate) {
             return 1;
         }
         return 0;

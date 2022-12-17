@@ -15,6 +15,9 @@ const epdoc_util_1 = require("epdoc-util");
 const fs_1 = __importDefault(require("fs"));
 const builder = __importStar(require("xmlbuilder"));
 const util_1 = require("./util");
+const REGEX = {
+    moto: /^moto$/i
+};
 /**
  * Interface to bikelog XML data that can be read/written from PDF files using
  * Acrobat.
@@ -45,6 +48,8 @@ class Bikelog {
                 entry.wt = activity.data.wt;
             }
             if (activity.isRide()) {
+                const bike = activity.gearId ? this.bikes[activity.gearId] : undefined;
+                const isMoto = bike ? REGEX.moto.test(bike.name) : false;
                 let note = '';
                 // note += 'Ascend ' + Math.round(activity.total_elevation_gain) + 'm, time ';
                 // note += this.formatHMS(activity.moving_time, { seconds: false });
@@ -56,42 +61,39 @@ class Bikelog {
                 if (activity.elapsedTime) {
                     times.push('Elapsed: ' + Bikelog.secondsToString(activity.elapsedTime));
                 }
-                if (times.length) {
-                    note += times.join(', ') + '\n';
-                }
-                if (activity.commute) {
-                    note += 'Commute: ' + activity.name;
-                }
-                else if (activity.isMoto()) {
+                if (isMoto) {
                     note += 'Moto: ' + activity.name;
+                    note += `\nDistance: ${activity.distanceRoundedKm()}, Elevation: ${Math.round(activity.totalElevationGain)}`;
+                }
+                else if (activity.commute) {
+                    note += 'Commute: ' + activity.name;
                 }
                 else if (activity.type === 'EBikeRide') {
                     note += 'EBike: ' + activity.name;
                 }
                 else {
-                    note += activity.name;
+                    note += 'Bike: ' + activity.name;
+                }
+                note += times.length ? '\n' + times.join(', ') : '';
+                if (!isMoto && activity.type === 'EBikeRide') {
+                    if (activity.data.kilojoules) {
+                        note += '\nBiker Energy: ' + Math.round(activity.data.kilojoules / 3.6) + ' Wh';
+                        if (activity.data.max_watts) {
+                            note += '; Max: ' + activity.data.max_watts + ' W';
+                        }
+                    }
                 }
                 if (activity.description) {
                     note += '\n' + activity.description;
                 }
-                if (!activity.isMoto()) {
-                    if (activity.type === 'EBikeRide') {
-                        note +=
-                            '\nBiker energy: ' +
-                                Math.round(activity.data.kilojoules / 3.6) +
-                                ' Wh; max ' +
-                                activity.data.max_watts +
-                                ' W';
-                    }
-                    if (Array.isArray(activity.segments)) {
-                        const segs = [];
-                        let up = 'Up ';
-                        activity.segments.forEach(segment => {
-                            segs.push(up + segment.name + ' [' + util_1.formatMS(segment.movingTime) + ']');
-                            up = 'up ';
-                        });
-                        note += '\n' + segs.join(', ') + '\n';
-                    }
+                if (Array.isArray(activity.segments)) {
+                    const segs = [];
+                    let up = 'Up ';
+                    activity.segments.forEach(segment => {
+                        segs.push(up + segment.name + ' [' + util_1.formatMS(segment.movingTime) + ']');
+                        up = 'up ';
+                    });
+                    note += '\n' + segs.join(', ') + '\n';
                 }
                 if (entry.note0) {
                     entry.note0 += note;
@@ -100,10 +102,10 @@ class Bikelog {
                     entry.note0 = note;
                 }
                 let dobj;
-                if (activity.gearId && this.bikes[activity.gearId]) {
+                if (bike && !isMoto) {
                     dobj = {
-                        distance: Math.round(activity.distance / 10) / 100,
-                        bike: this.bikeMap(this.bikes[activity.gearId].name),
+                        distance: activity.distanceRoundedKm(),
+                        bike: this.bikeMap(bike.name),
                         el: Math.round(activity.totalElevationGain),
                         t: Math.round(activity.movingTime / 36) / 100,
                         wh: Math.round(activity.data.kilojoules / 3.6)
@@ -124,8 +126,8 @@ class Bikelog {
             }
             else {
                 const distance = Math.round(activity.distance / 10) / 100;
-                let note = activity.type + ': ' + distance + 'km ' + activity.name;
-                note += ', moving time ' + util_1.formatHMS(activity.movingTime, { seconds: false });
+                let note = activity.type + ': ' + activity.name + '\n';
+                note += 'Distance: ' + distance + ' km; Duration: ' + util_1.formatHMS(activity.movingTime, { seconds: false });
                 if (activity.description) {
                     note += '\n' + activity.description;
                 }

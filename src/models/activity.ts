@@ -2,7 +2,7 @@ import * as dateutil from 'dateutil';
 import { Dict, isBoolean, isNumber, isString } from 'epdoc-util';
 import { Main } from '../main';
 import { StravaCoord } from './../strava-api';
-import { IsoDateString, Metres, Seconds } from './../util';
+import { IsoDateString, Kilometres, Metres, Seconds } from './../util';
 import { DetailedActivity } from './detailed-activity';
 import { SegmentData } from './segment-data';
 import { SegmentEffort } from './segment-effort';
@@ -37,13 +37,10 @@ export class Activity {
   };
   public data: Dict = {};
 
-  public id: number;
-  public name: string;
   public description: string;
   public main: Main;
   public commute: boolean;
   // public type: string;
-  public distance: Metres;
   public startDate: Date;
 
   private _asString: string;
@@ -53,7 +50,7 @@ export class Activity {
   constructor(data: Dict) {
     Object.assign(this.data, data);
     this.startDate = new Date(this.data.start_date);
-    const d = Math.round(this.distance / 100) / 10;
+    const d = Math.round(this.data.distance / 100) / 10;
     this._asString = `${this.data.start_date_local.slice(0, 10)}, ${this.type} ${d} km, ${this.name}`;
   }
 
@@ -75,12 +72,28 @@ export class Activity {
     return this._coordinates;
   }
 
+  public get name(): string {
+    return this.data.name;
+  }
+
+  public get id(): number {
+    return this.data.id;
+  }
+
   public get movingTime(): Seconds {
     return this.data.moving_time;
   }
 
   public get elapsedTime(): Seconds {
     return this.data.elapsed_time;
+  }
+
+  public get distance(): Metres {
+    return this.data.distance;
+  }
+
+  public distanceRoundedKm(): Kilometres {
+    return Math.round(this.data.distance / 10) / 100;
   }
 
   public get totalElevationGain(): Metres {
@@ -112,10 +125,6 @@ export class Activity {
   }
 
   public isRide(): boolean {
-    return this.data.type === 'Ride' || this.data.type === 'EBikeRide';
-  }
-
-  public isMoto(): boolean {
     return this.data.type === 'Ride' || this.data.type === 'EBikeRide';
   }
 
@@ -219,11 +228,11 @@ export class Activity {
     return false;
   }
 
-  public static compareStartDate(a, b) {
-    if (a.start_date < b.start_date) {
+  public static compareStartDate(a: Activity, b: Activity) {
+    if (a.startDate < b.startDate) {
       return -1;
     }
-    if (a.start_date > b.start_date) {
+    if (a.startDate > b.startDate) {
       return 1;
     }
     return 0;
