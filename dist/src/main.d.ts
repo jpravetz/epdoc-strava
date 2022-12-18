@@ -5,12 +5,12 @@ import { SegmentName } from './models/segment-base';
 import { SegmentFile } from './segment-file';
 import { StravaClientConfig } from './strava-api';
 import { Dict, EpochSeconds } from './util';
-export declare type SegmentConfig = {
+export type SegmentConfig = {
     description: string;
     alias: Dict;
     data: Dict;
 };
-export declare type StravaConfig = {
+export type StravaConfig = {
     description: string;
     client: StravaClientConfig;
     athleteId?: number;
@@ -19,11 +19,11 @@ export declare type StravaConfig = {
     bikes?: BikeDef[];
     aliases?: Record<SegmentName, SegmentName>;
 };
-export declare type DateRange = {
+export type DateRange = {
     before: EpochSeconds;
     after: EpochSeconds;
 };
-export declare type MainOpts = {
+export type MainOpts = {
     home: string;
     cwd: string;
     config?: StravaConfig;
@@ -66,7 +66,7 @@ export declare class Main {
     bikes: Dict;
     constructor(options: MainOpts);
     init(): Promise<void>;
-    readonly config: StravaConfig;
+    get config(): StravaConfig;
     run(): Promise<void>;
     getAthlete(): Promise<void>;
     logAthlete(): void;

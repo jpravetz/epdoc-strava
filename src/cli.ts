@@ -18,7 +18,7 @@ const home = process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE
 //let Config = require('a5config').init(env, [__dirname + '/../config/project.settings.json'], {excludeGlobals: true});
 //let config = Config.get();
 
-function run(): Promise<void> {
+async function run(): Promise<void> {
   const segmentsFile = path.resolve(home, '.strava', 'segments.json');
   const credentialsFile = path.resolve(home, '.strava', 'credentials.json');
   const userSettingsFile = path.resolve(home, '.strava', 'user.settings.json');
@@ -30,20 +30,20 @@ function run(): Promise<void> {
   let segments: Dict;
 
   return Promise.resolve()
-    .then(resp => {
+    .then((resp) => {
       if (fs.existsSync(segmentsFile)) {
         return readJson(segmentsFile);
       }
       return Promise.resolve({});
     })
-    .then(resp => {
+    .then((resp) => {
       segments = resp;
       if (fs.existsSync(userSettingsFile)) {
         return readJson(userSettingsFile);
       }
       return Promise.resolve({});
     })
-    .then(resp => {
+    .then((resp) => {
       const userConfig = resp;
       const config = Object.assign({}, projectConfig, userConfig);
 
@@ -83,39 +83,43 @@ function run(): Promise<void> {
           "Output starred segments to KML, adding efforts within date range to description if --more. Segments are grouped into folders by location unless opts is set to 'flat'."
         )
         .option('-m, --more', 'When generating KML file, include additional detail info in KML description field')
+        // .option('--auth', 'Authenticate to Strava API (this is run automatically when required)')
         .option('-y, --imperial', 'Use imperial units')
         .option('-p, --path <cwd>', 'Current folder')
         .option('-v, --verbose', 'Verbose messages')
         .parse(process.argv);
 
+      const cmdOpts: Dict = program.opts();
+
       const opts: MainOpts = {
         home: home,
-        cwd: program.cwd,
+        cwd: cmdOpts.cwd,
         config: config,
-        refreshStarredSegments: program.refresh,
+        refreshStarredSegments: cmdOpts.refresh,
         segmentsFile: segmentsFile,
         credentialsFile: credentialsFile,
-        athleteId: parseInt(program.id, 10) || (config as StravaConfig).athleteId,
-        athlete: program.athlete,
-        selectedBikes: program.bikes,
-        friends: program.friends,
-        dates: program.dates || [], // array of date ranges, in seconds (not milliseconds)
-        more: program.more,
-        kml: program.path && program.kml ? path.resolve(program.path, program.kml) : program.kml,
-        xml: program.path && program.xml ? path.resolve(program.path, program.xml) : program.xml,
-        activities: program.activities,
-        // activityFilter: _.without(program.filter || [], 'commute', 'nocommute'),
-        commuteOnly: (program.filter || []).indexOf('commute') >= 0 ? true : false,
-        nonCommuteOnly: (program.filter || []).indexOf('nocommute') >= 0 ? true : false,
-        imperial: program.imperial,
-        segments: program.segments, // Will be true or 'flat'
-        verbose: program.verbose || 9
+        athleteId: parseInt(cmdOpts.id, 10) || (config as StravaConfig).athleteId,
+        athlete: cmdOpts.athlete,
+        selectedBikes: cmdOpts.bikes,
+        friends: cmdOpts.friends,
+        dates: cmdOpts.dates || [], // array of date ranges, in seconds (not milliseconds)
+        more: cmdOpts.more,
+        kml: cmdOpts.path && cmdOpts.kml ? path.resolve(cmdOpts.path, cmdOpts.kml) : cmdOpts.kml,
+        xml: cmdOpts.path && cmdOpts.xml ? path.resolve(cmdOpts.path, cmdOpts.xml) : cmdOpts.xml,
+        activities: cmdOpts.activities,
+        // activityFilter: _.without(cmdOpts.filter || [], 'commute', 'nocommute'),
+        commuteOnly: (cmdOpts.filter || []).indexOf('commute') >= 0 ? true : false,
+        nonCommuteOnly: (cmdOpts.filter || []).indexOf('nocommute') >= 0 ? true : false,
+        imperial: cmdOpts.imperial,
+        auth: cmdOpts.auth,
+        segments: cmdOpts.segments, // Will be true or 'flat'
+        verbose: cmdOpts.verbose || 9,
       };
 
       opts.dateRanges = []; // used for kml file
       if (opts.dates && opts.dates.length) {
         console.log('Date ranges: ');
-        opts.dates.forEach(range => {
+        opts.dates.forEach((range) => {
           const tAfter = dateutil.toSortableString(1000 * range.after).replace(/\//g, '-');
           const tBefore = dateutil.toSortableString(1000 * range.before).replace(/\//g, '-');
           console.log('  From ' + tAfter + ' to ' + tBefore);
@@ -126,20 +130,20 @@ function run(): Promise<void> {
       const main = new Main(opts);
       return main.run();
     })
-    .then(resp => {
+    .then((resp) => {
       console.log('done');
       // process.exit(0);     // don't do this else files will not be saved
     })
-    .catch(err => {
+    .catch((err) => {
       console.log('Error: ' + err.message);
     });
 }
 
-function commaList(val) {
+function commaList(val: string) {
   return val.split(',');
 }
 
-function dateList(val): DateRange[] {
+function dateList(val: string): DateRange[] {
   const result: DateRange[] = [];
   const ranges = val.split(',');
   for (let idx = 0; idx < ranges.length; ++idx) {

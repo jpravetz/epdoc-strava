@@ -1,12 +1,29 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
-    result["default"] = mod;
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.SegmentEffort = void 0;
 const segment_base_1 = require("./segment-base");
 const segment_data_1 = require("./segment-data");
 const epdoc_util_1 = require("epdoc-util");
@@ -21,7 +38,7 @@ class SegmentEffort extends segment_base_1.SegmentBase {
         return new SegmentEffort(data);
     }
     static isInstance(val) {
-        return val && epdoc_util_1.isNumber(val.id) && epdoc_util_1.isString(val.country);
+        return val && (0, epdoc_util_1.isNumber)(val.id) && (0, epdoc_util_1.isString)(val.country);
     }
     toSegmentData() {
         return new segment_data_1.SegmentData({
@@ -37,9 +54,9 @@ class SegmentEffort extends segment_base_1.SegmentBase {
         //console.log(segment.keys)
         if (this.more) {
             let arr = [];
-            arr.push(SegmentEffort.kvString('Distance', util_1.getDistanceString(this.distance)));
-            arr.push(SegmentEffort.kvString('Elevation', util_1.getElevationString(this.elevation_high - this.elevation_low)));
-            arr.push(SegmentEffort.kvString('Gradient', util_1.precision(this.average_grade, 100, '%')));
+            arr.push(SegmentEffort.kvString('Distance', (0, util_1.getDistanceString)(this.distance)));
+            arr.push(SegmentEffort.kvString('Elevation', (0, util_1.getElevationString)(this.elevation_high - this.elevation_low)));
+            arr.push(SegmentEffort.kvString('Gradient', (0, util_1.precision)(this.average_grade, 100, '%')));
             this.efforts.forEach(effort => {
                 let key = effort.start_date_local.replace(/T.*$/, '');
                 let value = SegmentEffort.timeString(effort.elapsed_time);

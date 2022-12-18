@@ -1,4 +1,27 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -8,14 +31,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
-    result["default"] = mod;
-    return result;
-};
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.Kml = void 0;
 const dateutil = __importStar(require("dateutil"));
 const epdoc_util_1 = require("epdoc-util");
 const fs = __importStar(require("fs"));
@@ -85,7 +102,7 @@ class Kml {
     setLineStyles(styles) {
         Object.keys(styles).forEach(name => {
             const style = styles[name];
-            if (style && epdoc_util_1.isString(style.color) && epdoc_util_1.isNumber(style.width) && REGEX.color.test(style.color)) {
+            if (style && (0, epdoc_util_1.isString)(style.color) && (0, epdoc_util_1.isNumber)(style.width) && REGEX.color.test(style.color)) {
                 this.lineStyles[name] = style;
             }
             else {
@@ -174,7 +191,7 @@ class Kml {
         if (segments && segments.length) {
             const indent = 2;
             const sortedSegments = segments.sort((a, b) => {
-                return util_1.compare(a, b, 'name');
+                return (0, util_1.compare)(a, b, 'name');
             });
             if (this.opts.segmentsFlatFolder === true) {
                 this.outputSegments(indent, sortedSegments);
@@ -237,7 +254,7 @@ class Kml {
         }
         const params = {
             placemarkId: 'StravaTrack' + ++this.trackIndex,
-            name: t0 + ' - ' + util_1.escapeHtml(activity.name),
+            name: t0 + ' - ' + (0, util_1.escapeHtml)(activity.name),
             description: this._buildActivityDescription(activity),
             styleName: styleName,
             coordinates: activity.coordinates
@@ -255,17 +272,17 @@ class Kml {
                     let key = field;
                     let value = activity[field];
                     if (field === 'distance') {
-                        value = util_1.getDistanceString(value, this.imperial);
+                        value = (0, util_1.getDistanceString)(value, this.imperial);
                     }
                     else if (field === 'movingTime' || field === 'elapsedTime') {
                         value = dateutil.formatMS(activity[field] * 1000, { ms: false, hours: true });
                     }
                     else if (field === 'totalElevationGain') {
                         key = 'elevation_gain';
-                        value = util_1.getElevationString(value, this.imperial);
+                        value = (0, util_1.getElevationString)(value, this.imperial);
                     }
-                    else if (field === 'averageTemp' && epdoc_util_1.isNumber(value)) {
-                        value = util_1.getTemperatureString(value, this.imperial); //  escapeHtml("˚C");
+                    else if (field === 'averageTemp' && (0, epdoc_util_1.isNumber)(value)) {
+                        value = (0, util_1.getTemperatureString)(value, this.imperial); //  escapeHtml("˚C");
                     }
                     else if (field === '_segments' && activity[field].length) {
                         const segs = [];
@@ -286,7 +303,7 @@ class Kml {
                         value = value.replace('\n', '<br>');
                     }
                     if (value) {
-                        arr.push('<b>' + util_1.fieldCapitalize(key) + ':</b> ' + value);
+                        arr.push('<b>' + (0, util_1.fieldCapitalize)(key) + ':</b> ' + value);
                     }
                 }
             });
@@ -302,7 +319,7 @@ class Kml {
     outputSegment(indent, segment) {
         const params = {
             placemarkId: 'StravaSegment' + ++this.trackIndex,
-            name: util_1.escapeHtml(segment.name),
+            name: (0, util_1.escapeHtml)(segment.name),
             description: this.buildSegmentDescription(segment),
             styleName: 'Segment',
             coordinates: segment.coordinates
@@ -354,7 +371,7 @@ class Kml {
         return this.flush();
     }
     write(indent, s) {
-        if (epdoc_util_1.isString(indent)) {
+        if ((0, epdoc_util_1.isString)(indent)) {
             this.buffer += s;
         }
         else {
@@ -363,7 +380,7 @@ class Kml {
         }
     }
     writeln(indent, s) {
-        if (epdoc_util_1.isString(indent)) {
+        if ((0, epdoc_util_1.isString)(indent)) {
             this.buffer += s + '\n';
         }
         else {

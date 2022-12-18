@@ -2,7 +2,7 @@ import { SegmentBase } from './segment-base';
 import { SegmentData } from './segment-data';
 import { Dict } from './../util';
 import { StravaObjId } from '../strava-api';
-export declare type SegmentEffortId = StravaObjId;
+export type SegmentEffortId = StravaObjId;
 export declare class SegmentEffort extends SegmentBase {
     klass: string;
     country: string;

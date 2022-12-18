@@ -1,6 +1,6 @@
 import { StravaCoord, StravaObjId } from './../strava-api';
 import { SegmentBase } from './segment-base';
-export declare type SegmentId = StravaObjId;
+export type SegmentId = StravaObjId;
 export declare class Segment extends SegmentBase {
     klass: string;
     elevation_high: number;

@@ -4,7 +4,6 @@ import { Activity } from './models/activity';
 import { Athelete } from './models/athlete';
 import { DetailedActivity } from './models/detailed-activity';
 import { SummarySegment } from './models/summary-segment';
-import { StravaCoord } from './strava-api';
 import { StravaCreds } from './strava-creds';
 import { Dict, EpochSeconds } from './util';
 import request = require('superagent');

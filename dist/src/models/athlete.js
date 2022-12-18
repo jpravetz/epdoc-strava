@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.Athelete = void 0;
 const epdoc_util_1 = require("epdoc-util");
 class Athelete {
     constructor(data) {
@@ -9,7 +10,7 @@ class Athelete {
         return new Athelete(data);
     }
     static isInstance(val) {
-        return val && epdoc_util_1.isNumber(val.id) && epdoc_util_1.isString(val.username);
+        return val && (0, epdoc_util_1.isNumber)(val.id) && (0, epdoc_util_1.isString)(val.username);
     }
 }
 exports.Athelete = Athelete;

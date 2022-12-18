@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.SummarySegment = void 0;
 const segment_base_1 = require("./segment-base");
 class SummarySegment extends segment_base_1.SegmentBase {
     constructor(data) {

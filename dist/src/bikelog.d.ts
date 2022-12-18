@@ -1,11 +1,11 @@
 import { DateRange } from './main';
 import { Activity } from './models/activity';
 import { Dict, Seconds } from './util';
-export declare type BikeDef = {
+export type BikeDef = {
     name: string;
     pattern: string;
 };
-export declare type BikelogOutputOpts = {
+export type BikelogOutputOpts = {
     more?: boolean;
     dates?: DateRange[];
     imperial?: boolean;
