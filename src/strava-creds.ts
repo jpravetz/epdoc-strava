@@ -1,5 +1,5 @@
-import { EpochSeconds, readJson, writeJson, Seconds } from './util';
 import { isNumber } from 'epdoc-util';
+import { EpochSeconds, readJson, Seconds, writeJson } from './util';
 
 export type StravaCredsData = {
   token_type: string;
@@ -24,8 +24,8 @@ const defaultStravaToken: StravaCredsData = {
 };
 
 export class StravaCreds {
-  data: StravaCredsData = defaultStravaToken;
-  path: string;
+  private data: StravaCredsData = defaultStravaToken;
+  private path: string;
 
   constructor(tokenFile: string) {
     this.path = tokenFile;
@@ -43,16 +43,16 @@ export class StravaCreds {
     return this.data.access_token;
   }
 
-  areValid(t: Seconds = 2 * 60 * 60) {
-    let tLimit: EpochSeconds = Date.now() / 1000 + t;
+  public areValid(t: Seconds = 2 * 60 * 60) {
+    const tLimit: EpochSeconds = Date.now() / 1000 + t;
     return this.data && this.data.token_type === 'Bearer' && this.data.expires_at > tLimit;
   }
 
-  static validCredData(val: any): val is StravaCredsData {
+  public static validCredData(val: any): val is StravaCredsData {
     return val && val.token_type === 'Bearer' && isNumber(val.expires_at);
   }
 
-  read(): Promise<void> {
+  public read(): Promise<void> {
     return readJson(this.path)
       .then(resp => {
         if (StravaCreds.validCredData(resp)) {
@@ -67,7 +67,7 @@ export class StravaCreds {
       });
   }
 
-  write(data: any): Promise<void> {
+  public write(data: any): Promise<void> {
     if (StravaCreds.validCredData(data)) {
       this.data = data;
       return writeJson(this.path, this.data);

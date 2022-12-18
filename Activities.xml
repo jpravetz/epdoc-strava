@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<fields xmlns:xfdf="http://ns.adobe.com/xfdf-transition/">
+  <day>
+    <group xfdf:original="2459915">
+      <group xfdf:original="0">
+        <bike>Levo</bike>
+        <dist>22.02</dist>
+        <el>438</el>
+        <t>1.15</t>
+        <wh>118</wh>
+      </group>
+      <note0>EBike: Vuelta de Ojochal
+Moving: 01:09, Elapsed: 01:22
+Biker Energy: 118 Wh; Max: 392 W
+Still nursing the sit bone 
+
+</note0>
+    </group>
+    <group xfdf:original="2459918">
+      <group xfdf:original="0">
+        <bike>Levo</bike>
+        <dist>6.33</dist>
+        <el>237</el>
+        <t>0.46</t>
+        <wh>56</wh>
+      </group>
+      <note0>EBike: Calle Cascada
+Moving: 00:27, Elapsed: 00:27
+Biker Energy: 56 Wh; Max: 378 W
+Quick up and down before world cup game
+
+</note0>
+    </group>
+    <group xfdf:original="2459919">
+      <note0>Swim: Lunch Swim
+Distance: 0.95 km; Duration: 00:20</note0>
+    </group>
+    <group xfdf:original="2459920">
+      <note0>Swim: Morning Swim
+Distance: 1.5 km; Duration: 00:31</note0>
+    </group>
+    <group xfdf:original="2459921">
+      <note0>Moto: Moto de San isidro via 243 y Carretera
+Distance: 79.26, Elevation: 1316
+Moving: 01:48, Elapsed: 02:22
+
+</note0>
+    </group>
+    <group xfdf:original="2459922">
+      <group xfdf:original="0">
+        <bike>Levo</bike>
+        <dist>25.13</dist>
+        <el>470</el>
+        <t>1.43</t>
+        <wh>124</wh>
+      </group>
+      <note0>EBike: Vuelta de Ojochal y Playa Tortuga
+Moving: 01:25, Elapsed: 02:42
+Biker Energy: 124 Wh; Max: 415 W
+
+</note0>
+    </group>
+    <group xfdf:original="2459923">
+      <group xfdf:original="0">
+        <bike>Levo</bike>
+        <dist>20.03</dist>
+        <el>370</el>
+        <t>1.04</t>
+        <wh>101</wh>
+      </group>
+      <note0>EBike: Ohochal a Uvita para Quebrada Piñuela
+Moving: 01:02, Elapsed: 01:05
+Biker Energy: 101 Wh; Max: 418 W
+Demasiado erosión para el camino de quebrada piñuela
+
+</note0>
+    </group>
+    <group xfdf:original="2459926">
+      <group xfdf:original="0">
+        <bike>Levo</bike>
+        <dist>22.23</dist>
+        <el>511</el>
+        <t>1.4</t>
+        <wh>116</wh>
+      </group>
+      <note0>EBike: Vuelta de Ojochal
+Moving: 01:23, Elapsed: 02:09
+Biker Energy: 116 Wh; Max: 392 W
+
+</note0>
+    </group>
+    <group xfdf:original="2459927">
+      <note0>Swim: Swim
+Distance: 1.2 km; Duration: 00:32</note0>
+    </group>
+    <group xfdf:original="2459928">
+      <group xfdf:original="0">
+        <bike>Levo</bike>
+        <dist>27.95</dist>
+        <el>526</el>
+        <t>1.52</t>
+        <wh>133</wh>
+      </group>
+      <note0>EBike: El Pavon con Nancita
+Moving: 01:31, Elapsed: 02:35
+Biker Energy: 133 Wh; Max: 461 W
+
+</note0>
+    </group>
+    <group xfdf:original="2459929">
+      <note0>Moto: Palmar Norte, Rio Terraba, Boruca, Pejibaye, San Josecito, Uvita
+Distance: 189.47, Elevation: 4784
+Moving: 05:20, Elapsed: 06:44
+Beautiful moto tour
+
+</note0>
+    </group>
+    <group xfdf:original="2459930">
+      <group xfdf:original="0">
+        <bike>Levo</bike>
+        <dist>19.3</dist>
+        <el>450</el>
+        <t>0.93</t>
+        <wh>75</wh>
+      </group>
+      <note0>EBike: Vuelta de Ojochal y Desayuno con Nancita
+Moving: 00:55, Elapsed: 01:52
+Biker Energy: 75 Wh; Max: 439 W
+
+</note0>
+    </group>
+  </day>
+</fields>

@@ -1,8 +1,7 @@
-/// <reference types="node" />
-import { SegmentData } from './models/segment-data';
-import { DateRange, Main } from './main';
+import { Dict } from 'epdoc-util';
+import { DateRange } from './main';
 import { Activity } from './models/activity';
-import * as fs from 'fs';
+import { SegmentData } from './models/segment-data';
 export declare type LineStyle = {
     color: string;
     width: number;
@@ -15,6 +14,7 @@ export declare type KmlOpts = {
     segments?: boolean;
     segmentsFlatFolder?: boolean;
     verbose?: number;
+    bikes?: Dict;
 };
 export declare type PlacemarkParams = {
     description?: string;
@@ -24,38 +24,38 @@ export declare type PlacemarkParams = {
     styleName?: string;
 };
 export declare class Kml {
-    main: Main;
-    opts: KmlOpts;
-    lineStyles: Record<string, LineStyle>;
-    verbose: number;
-    buffer: string;
-    stream: fs.WriteStream;
-    trackIndex: number;
+    private main;
+    private opts;
+    private lineStyles;
+    private verbose;
+    private buffer;
+    private stream;
+    private trackIndex;
     constructor(opts?: KmlOpts);
     readonly imperial: boolean;
     readonly more: boolean;
     setLineStyles(styles: Record<string, LineStyle>): void;
     outputData(filepath: string, activities: Activity[], segments: SegmentData[]): Promise<void>;
-    addActivities(activities: Activity[]): Promise<void>;
-    _dateString(): string;
+    private addActivities;
+    private _dateString;
     addSegments(segments: SegmentData[]): Promise<void>;
     outputSegments(indent: number, segments: SegmentData[], country?: string, state?: string): void;
-    getSegmentRegionList(segments: any): {};
+    private getSegmentRegionList;
     outputActivity(indent: number, activity: Activity): void;
-    _buildActivityDescription(activity: Activity): string;
+    private _buildActivityDescription;
     /**
      * Add one segment to the KML file.
      * @param segment
      * @returns {string}
      */
-    outputSegment(indent: number, segment: SegmentData): void;
-    buildSegmentDescription(segment: SegmentData): string;
-    _addLineStyle(name: any, style: any): void;
-    placemark(indent: number, params: PlacemarkParams): void;
-    header(): Promise<void>;
-    footer(): Promise<void>;
-    write(indent: string | number, s: string): void;
-    writeln(indent: string | number, s: string): void;
+    private outputSegment;
+    private buildSegmentDescription;
+    private _addLineStyle;
+    private placemark;
+    private header;
+    private footer;
+    private write;
+    private writeln;
     flush(): Promise<void>;
-    _flush(): Promise<void>;
+    private _flush;
 }

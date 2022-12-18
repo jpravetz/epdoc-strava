@@ -3,8 +3,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const fs_1 = __importDefault(require("fs"));
 const epdoc_util_1 = require("epdoc-util");
+const fs_1 = __importDefault(require("fs"));
 function compare(a, b, key) {
     if (a[key] < b[key]) {
         return -1;
@@ -17,9 +17,9 @@ function compare(a, b, key) {
 exports.compare = compare;
 function formatHMS(s, options) {
     options || (options = {});
-    let seconds = s % 60;
-    let minutes = Math.floor(s / 60) % 60;
-    let hours = Math.floor(s / (60 * 60));
+    const seconds = s % 60;
+    const minutes = Math.floor(s / 60) % 60;
+    const hours = Math.floor(s / (60 * 60));
     let result = epdoc_util_1.pad(hours, 2) + ':';
     result += epdoc_util_1.pad(minutes, 2);
     if (options.seconds !== false) {
@@ -29,8 +29,8 @@ function formatHMS(s, options) {
 }
 exports.formatHMS = formatHMS;
 function formatMS(s) {
-    let seconds = s % 60;
-    let minutes = Math.floor(s / 60);
+    const seconds = s % 60;
+    const minutes = Math.floor(s / 60);
     let result = minutes + ':';
     result += epdoc_util_1.pad(seconds, 2);
     return result;
@@ -57,7 +57,7 @@ function readJson(path) {
 exports.readJson = readJson;
 function writeJson(path, data) {
     return new Promise((resolve, reject) => {
-        let buf = new Buffer(JSON.stringify(data, null, '  '));
+        const buf = new Buffer(JSON.stringify(data, null, '  '));
         fs_1.default.writeFile(path, buf, err => {
             if (err) {
                 reject(err);

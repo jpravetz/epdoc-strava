@@ -1,5 +1,5 @@
-import fs from 'fs';
 import { pad } from 'epdoc-util';
+import fs from 'fs';
 
 export function compare(a: Dict, b: Dict, key: string) {
   if (a[key] < b[key]) {
@@ -26,9 +26,9 @@ export type formatHMSOpts = {
 
 export function formatHMS(s: Seconds, options?: formatHMSOpts): string {
   options || (options = {});
-  let seconds = s % 60;
-  let minutes = Math.floor(s / 60) % 60;
-  let hours = Math.floor(s / (60 * 60));
+  const seconds = s % 60;
+  const minutes = Math.floor(s / 60) % 60;
+  const hours = Math.floor(s / (60 * 60));
   let result = pad(hours, 2) + ':';
   result += pad(minutes, 2);
   if (options.seconds !== false) {
@@ -38,8 +38,8 @@ export function formatHMS(s: Seconds, options?: formatHMSOpts): string {
 }
 
 export function formatMS(s: Seconds): string {
-  let seconds = s % 60;
-  let minutes = Math.floor(s / 60);
+  const seconds = s % 60;
+  const minutes = Math.floor(s / 60);
   let result = minutes + ':';
   result += pad(seconds, 2);
   return result;
@@ -64,7 +64,7 @@ export function readJson(path: string): Promise<any> {
 
 export function writeJson(path: string, data): Promise<void> {
   return new Promise((resolve, reject) => {
-    let buf = new Buffer(JSON.stringify(data, null, '  '));
+    const buf = new Buffer(JSON.stringify(data, null, '  '));
     fs.writeFile(path, buf, err => {
       if (err) {
         reject(err);

@@ -7,24 +7,40 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const detailed_activity_1 = require("./detailed-activity");
 const dateutil = __importStar(require("dateutil"));
 const epdoc_util_1 = require("epdoc-util");
+const detailed_activity_1 = require("./detailed-activity");
 const segment_data_1 = require("./segment-data");
 const REGEX = {
     noKmlData: /^(Workout|Yoga|Weight Training)$/i
 };
 class Activity {
     constructor(data) {
-        this.keys = ['distance', 'total_elevation_gain', 'moving_time', 'elapsed_time', 'average_temp', 'device_name'];
+        this.keys = [
+            'distance',
+            'total_elevation_gain',
+            'moving_time',
+            'elapsed_time',
+            'average_temp',
+            'device_name'
+        ];
+        this.keyDict = {
+            distance: 'distance',
+            totalElevationGain: 'total_elevation_gain',
+            movingTime: 'moving_time',
+            elapsedTime: 'elapsed_time',
+            averageTemp: 'average_temp',
+            deviceName: 'device_name'
+        };
+        this.data = {};
         this._coordinates = []; // will contain the latlng coordinates for the activity
-        Object.assign(this, data);
-        this.startDate = new Date(this.start_date);
-        let d = Math.round(this.distance / 100) / 10;
-        this._asString = `${this.start_date_local.slice(0, 10)}, ${this.type} ${d} km, ${this.name}`;
+        Object.assign(this.data, data);
+        this.startDate = new Date(this.data.start_date);
+        const d = Math.round(this.data.distance / 100) / 10;
+        this._asString = `${this.data.start_date_local.slice(0, 10)}, ${this.type} ${d} km, ${this.name}`;
     }
     static newFromResponseData(data, main) {
-        let result = new Activity(data);
+        const result = new Activity(data);
         result.main = main;
         return result;
     }
@@ -33,6 +49,54 @@ class Activity {
     }
     toString() {
         return this._asString;
+    }
+    get coordinates() {
+        return this._coordinates;
+    }
+    set coordinates(val) {
+        this._coordinates = val;
+    }
+    get name() {
+        return this.data.name;
+    }
+    get id() {
+        return this.data.id;
+    }
+    get movingTime() {
+        return this.data.moving_time;
+    }
+    get elapsedTime() {
+        return this.data.elapsed_time;
+    }
+    get distance() {
+        return this.data.distance;
+    }
+    distanceRoundedKm() {
+        return Math.round(this.data.distance / 10) / 100;
+    }
+    get totalElevationGain() {
+        return this.data.total_elevation_gain;
+    }
+    get averageTemp() {
+        return this.data.average_temp;
+    }
+    get deviceName() {
+        return this.data.device_name;
+    }
+    get gearId() {
+        return this.data.gear_id;
+    }
+    get startDateLocal() {
+        return this.data.start_date_local;
+    }
+    get segments() {
+        return this._segments;
+    }
+    get type() {
+        return this.data.type;
+    }
+    isRide() {
+        return this.data.type === 'Ride' || this.data.type === 'EBikeRide';
     }
     hasKmlData() {
         if (!epdoc_util_1.isString(this.type) || REGEX.noKmlData.test(this.type)) {
@@ -58,12 +122,12 @@ class Activity {
     }
     _addDescriptionFromDetailedActivity(data) {
         if (epdoc_util_1.isString(data.description)) {
-            let p = data.description.split(/\r\n/);
-            //console.log(p)
+            const p = data.description.split(/\r\n/);
+            // console.log(p)
             if (p && p.length) {
-                let a = [];
+                const a = [];
                 p.forEach(line => {
-                    let kv = line.match(/^([^\s\=]+)\s*=\s*(.*)+$/);
+                    const kv = line.match(/^([^\s\=]+)\s*=\s*(.*)+$/);
                     if (kv) {
                         this.keys.push(kv[1]);
                         this[kv[1]] = kv[2];
@@ -87,7 +151,7 @@ class Activity {
         data.segment_efforts.forEach(effort => {
             // @ts-ignore
             if (this.main.segFile) {
-                let seg = this.main.segFile.getSegment(effort.name);
+                const seg = this.main.segFile.getSegment(effort.name);
                 if (seg) {
                     console.log('  Found starred segment', effort.name);
                     this._addDetailSegment(effort);
@@ -97,18 +161,16 @@ class Activity {
     }
     _addDetailSegment(segEffort) {
         let name = String(segEffort.name).trim();
-        let aliases = this.main.config.aliases;
+        const aliases = this.main.config.aliases;
         if (aliases && aliases[name]) {
             name = aliases[name];
             segEffort.name = name;
         }
-        console.log("  Adding segment '" +
-            name +
-            "', elapsed time " +
-            dateutil.formatMS(segEffort.elapsed_time * 1000, {
-                ms: false,
-                hours: true
-            }));
+        const sd = dateutil.formatMS(segEffort.elapsed_time * 1000, {
+            ms: false,
+            hours: true
+        });
+        console.log(`  Adding segment '${name}, elapsed time ${sd}`);
         // Add segment to this activity
         this._segments.push(new segment_data_1.SegmentData(segEffort));
     }
@@ -131,10 +193,10 @@ class Activity {
         return false;
     }
     static compareStartDate(a, b) {
-        if (a.start_date < b.start_date) {
+        if (a.startDate < b.startDate) {
             return -1;
         }
-        if (a.start_date > b.start_date) {
+        if (a.startDate > b.startDate) {
             return 1;
         }
         return 0;

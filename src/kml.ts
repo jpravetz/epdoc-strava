@@ -1,18 +1,17 @@
-import { SegmentData } from './models/segment-data';
+import * as dateutil from 'dateutil';
+import { Dict, isNumber, isString } from 'epdoc-util';
+import * as fs from 'fs';
 import { DateRange, Main } from './main';
 import { Activity } from './models/activity';
-import { isString, isNumber } from 'epdoc-util';
-import * as fs from 'fs';
+import { SegmentData } from './models/segment-data';
 import {
-  precision,
+  compare,
   escapeHtml,
   fieldCapitalize,
-  compare,
   getDistanceString,
-  getTemperatureString,
-  getElevationString
+  getElevationString,
+  getTemperatureString
 } from './util';
-import * as dateutil from 'dateutil';
 
 export type LineStyle = {
   color: string;
@@ -27,6 +26,7 @@ export type KmlOpts = {
   segments?: boolean; // output segments
   segmentsFlatFolder?: boolean;
   verbose?: number; // log level (0 for none)
+  bikes?: Dict;
 };
 
 export type PlacemarkParams = {
@@ -38,7 +38,8 @@ export type PlacemarkParams = {
 };
 
 const REGEX = {
-  color: /^[a-zA-Z0-9]{8}$/
+  color: /^[a-zA-Z0-9]{8}$/,
+  moto: /^moto$/i
 };
 // Colors are aabbggrr
 const defaultLineStyles = {
@@ -48,6 +49,14 @@ const defaultLineStyles = {
   },
   Ride: {
     color: 'C00000A0',
+    width: 4
+  },
+  EBikeRide: {
+    color: '7FFF00FF',
+    width: 4
+  },
+  Moto: {
+    color: '6414F03C',
     width: 4
   },
   Segment: {
@@ -77,13 +86,13 @@ const defaultLineStyles = {
 };
 
 export class Kml {
-  main: Main;
-  opts: KmlOpts;
-  lineStyles: Record<string, LineStyle> = defaultLineStyles;
-  verbose: number = 9;
-  buffer: string = '';
-  stream: fs.WriteStream;
-  trackIndex: number = 0;
+  private main: Main;
+  private opts: KmlOpts;
+  private lineStyles: Record<string, LineStyle> = defaultLineStyles;
+  private verbose: number = 9;
+  private buffer: string = '';
+  private stream: fs.WriteStream;
+  private trackIndex: number = 0;
 
   constructor(opts: KmlOpts = {}) {
     this.opts = opts;
@@ -98,7 +107,7 @@ export class Kml {
     return this.opts && this.opts.more === true;
   }
 
-  setLineStyles(styles: Record<string, LineStyle>) {
+  public setLineStyles(styles: Record<string, LineStyle>) {
     Object.keys(styles).forEach(name => {
       const style = styles[name];
       if (style && isString(style.color) && isNumber(style.width) && REGEX.color.test(style.color)) {
@@ -112,8 +121,8 @@ export class Kml {
     });
   }
 
-  outputData(filepath: string, activities: Activity[], segments: SegmentData[]): Promise<void> {
-    let file = filepath || 'Activities.kml';
+  public outputData(filepath: string, activities: Activity[], segments: SegmentData[]): Promise<void> {
+    const file = filepath || 'Activities.kml';
 
     return new Promise((resolve, reject) => {
       this.stream = fs.createWriteStream(file);
@@ -152,22 +161,22 @@ export class Kml {
         console.log('Finish ' + file);
       });
       this.stream.on('drain', () => {
-        this._flush;
+        this._flush();
       });
     });
   }
 
-  addActivities(activities: Activity[]): Promise<void> {
+  private async addActivities(activities: Activity[]): Promise<void> {
     if (activities && activities.length) {
-      let dateString = this._dateString();
+      const dateString = this._dateString();
 
-      let indent = 2;
+      const indent = 2;
       this.writeln(indent, '<Folder><name>Activities' + (dateString ? ' ' + dateString : '') + '</name><open>1</open>');
 
       return activities
         .reduce((promiseChain, activity: Activity) => {
           return promiseChain.then(() => {
-            let job = Promise.resolve().then(() => {
+            const job = Promise.resolve().then(() => {
               if (activity.hasKmlData()) {
                 this.outputActivity(indent + 1, activity);
               }
@@ -184,9 +193,9 @@ export class Kml {
     return Promise.resolve();
   }
 
-  _dateString() {
+  private _dateString() {
     if (Array.isArray(this.opts.dates)) {
-      let ad = [];
+      const ad = [];
       this.opts.dates.forEach(range => {
         ad.push(range.after + ' to ' + range.before);
       });
@@ -195,16 +204,16 @@ export class Kml {
     return '';
   }
 
-  addSegments(segments: SegmentData[]): Promise<void> {
+  public addSegments(segments: SegmentData[]): Promise<void> {
     if (segments && segments.length) {
-      let indent = 2;
-      let sortedSegments: SegmentData[] = segments.sort((a, b) => {
+      const indent = 2;
+      const sortedSegments: SegmentData[] = segments.sort((a, b) => {
         return compare(a, b, 'name');
       });
       if (this.opts.segmentsFlatFolder === true) {
         this.outputSegments(indent, sortedSegments);
       } else {
-        let regions = this.getSegmentRegionList(segments);
+        const regions = this.getSegmentRegionList(segments);
         Object.keys(regions).forEach(country => {
           Object.keys(regions[country]).forEach(state => {
             this.outputSegments(indent, sortedSegments, country, state);
@@ -216,7 +225,7 @@ export class Kml {
     return Promise.resolve();
   }
 
-  outputSegments(indent: number, segments: SegmentData[], country?: string, state?: string): void {
+  public outputSegments(indent: number, segments: SegmentData[], country?: string, state?: string): void {
     let title = 'Segments';
     const dateString = this._dateString();
     if (country && state) {
@@ -234,8 +243,8 @@ export class Kml {
     this.writeln(indent, '</Folder>');
   }
 
-  getSegmentRegionList(segments) {
-    let regions = {};
+  private getSegmentRegionList(segments) {
+    const regions = {};
     segments.forEach(segment => {
       regions[segment.country] = regions[segment.country] || {};
       if (segment.state) {
@@ -246,49 +255,56 @@ export class Kml {
     return regions;
   }
 
-  outputActivity(indent: number, activity: Activity): void {
-    let t0 = activity.start_date_local.substr(0, 10);
+  public outputActivity(indent: number, activity: Activity): void {
+    const t0 = activity.startDateLocal.substr(0, 10);
     let styleName = 'Default';
-    if (activity.commute && defaultLineStyles['Commute']) {
+    // tslint:disable-next-line: no-string-literal
+
+    const bike: Dict = activity.gearId ? this.opts.bikes[activity.gearId] : undefined;
+    const isMoto: boolean = bike ? REGEX.moto.test(bike.name) : false;
+
+    if (isMoto) {
+      styleName = 'Moto';
+    } else if (activity.commute && defaultLineStyles['Commute']) {
       styleName = 'Commute';
     } else if (defaultLineStyles[activity.type]) {
       styleName = activity.type;
     }
 
-    let params: PlacemarkParams = {
+    const params: PlacemarkParams = {
       placemarkId: 'StravaTrack' + ++this.trackIndex,
       name: t0 + ' - ' + escapeHtml(activity.name),
       description: this._buildActivityDescription(activity),
       styleName: styleName,
-      coordinates: activity._coordinates
+      coordinates: activity.coordinates
     };
     this.placemark(indent, params);
   }
 
-  _buildActivityDescription(activity: Activity): string {
-    //console.log(this.opts)
-    //console.log(activity.keys)
+  private _buildActivityDescription(activity: Activity): string {
+    // console.log(this.opts)
+    // console.log(activity.keys)
     if (this.more) {
-      let arr = [];
-      activity.keys.forEach(field => {
+      const arr = [];
+      Object.keys(activity.keyDict).forEach(field => {
         // console.log(field + ' = ' + activity[field]);
         if (activity[field]) {
           let key = field;
           let value = activity[field];
           if (field === 'distance') {
             value = getDistanceString(value, this.imperial);
-          } else if (field === 'moving_time' || field === 'elapsed_time') {
+          } else if (field === 'movingTime' || field === 'elapsedTime') {
             value = dateutil.formatMS(activity[field] * 1000, { ms: false, hours: true });
-          } else if (field === 'total_elevation_gain') {
+          } else if (field === 'totalElevationGain') {
             key = 'elevation_gain';
             value = getElevationString(value, this.imperial);
-          } else if (field === 'average_temp' && typeof value === 'number') {
+          } else if (field === 'averageTemp' && isNumber(value)) {
             value = getTemperatureString(value, this.imperial); //  escapeHtml("˚C");
           } else if (field === '_segments' && activity[field].length) {
-            let segs = [];
+            const segs = [];
             segs.push('<b>Segments:</b><br><ul>');
             activity[field].forEach(segment => {
-              let s =
+              const s =
                 '<li><b>' +
                 segment.name +
                 ':</b> ' +
@@ -307,7 +323,7 @@ export class Kml {
           }
         }
       });
-      //console.log(arr);
+      // console.log(arr);
       return '<![CDATA[' + arr.join('<br>\n') + ']]>';
     }
   }
@@ -317,8 +333,8 @@ export class Kml {
    * @param segment
    * @returns {string}
    */
-  outputSegment(indent: number, segment: SegmentData): void {
-    let params = {
+  private outputSegment(indent: number, segment: SegmentData): void {
+    const params = {
       placemarkId: 'StravaSegment' + ++this.trackIndex,
       name: escapeHtml(segment.name),
       description: this.buildSegmentDescription(segment),
@@ -328,18 +344,18 @@ export class Kml {
     this.placemark(indent, params);
   }
 
-  buildSegmentDescription(segment: SegmentData) {
+  private buildSegmentDescription(segment: SegmentData) {
     return '';
   }
 
-  _addLineStyle(name, style) {
+  private _addLineStyle(name, style) {
     this.write(2, '<Style id="StravaLineStyle' + name + '">\n');
     this.write(3, '<LineStyle><color>' + style.color + '</color><width>' + style.width + '</width></LineStyle>\n');
     this.write(3, '<PolyStyle><color>' + style.color + '</color></PolyStyle>\n');
     this.write(2, '</Style>\n');
   }
 
-  placemark(indent: number, params: PlacemarkParams): void {
+  private placemark(indent: number, params: PlacemarkParams): void {
     this.writeln(indent, '<Placemark id="' + params.placemarkId + '">');
     this.writeln(indent + 1, '<name>' + params.name + '</name>');
     if (params.description) {
@@ -361,7 +377,7 @@ export class Kml {
     this.writeln(indent, '</Placemark>');
   }
 
-  header(): Promise<void> {
+  private header(): Promise<void> {
     this.write(0, '<?xml version="1.0" encoding="UTF-8"?>\n');
     this.write(
       1,
@@ -376,42 +392,42 @@ export class Kml {
     return this.flush();
   }
 
-  footer(): Promise<void> {
+  private footer(): Promise<void> {
     this.write(1, '</Document>\n</kml>\n');
     return this.flush();
   }
 
-  write(indent: string | number, s: string): void {
+  private write(indent: string | number, s: string): void {
     if (isString(indent)) {
       this.buffer += s;
     } else {
-      let indent2 = new Array(indent + 1).join('  ');
+      const indent2 = new Array(indent + 1).join('  ');
       this.buffer += indent2 + s;
     }
   }
 
-  writeln(indent: string | number, s: string): void {
+  private writeln(indent: string | number, s: string): void {
     if (isString(indent)) {
       this.buffer += s + '\n';
     } else {
-      let indent2 = new Array(indent + 1).join('  ');
+      const indent2 = new Array(indent + 1).join('  ');
       this.buffer += indent2 + s + '\n';
     }
-    //this.buffer.write( indent + s + "\n", 'utf8' );
+    // this.buffer.write( indent + s + "\n", 'utf8' );
   }
 
-  flush(): Promise<void> {
+  public flush(): Promise<void> {
     if (this.verbose) {
       console.log('  Flushing %d bytes', this.buffer.length);
     }
     return this._flush();
   }
 
-  _flush(): Promise<void> {
+  private _flush(): Promise<void> {
     return new Promise((resolve, reject) => {
-      let tbuf = this.buffer;
+      const tbuf = this.buffer;
       this.buffer = '';
-      let bOk = this.stream.write(tbuf, () => {
+      const bOk = this.stream.write(tbuf, () => {
         resolve();
       });
     });

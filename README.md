@@ -13,8 +13,7 @@ information:
   times
 - Your efforts for segments that you have [starred in
   Strava](http://blog.strava.com/keep-track-of-your-favorites-with-starred-segments-6260/),
-  optionally including a description that lists all your times
-  - Currently this feature is broken
+  optionally including a description that lists all your times (__NOT WORKING__ )
 
 ## Installation
 
@@ -24,15 +23,18 @@ on your computer.
 
 - [Install node](http://nodejs.org/download/)
 - [Install npm](https://www.npmjs.com/get-npm)
-- [Install and use git](http://git-scm.com/downloads) to clone or download a zip of [this project](https://github.com/jpravetz/strava)
-- Install this project's nodejs library dependencies
+- [Install and use git](http://git-scm.com/downloads)
+- Clone or download a zip of [this project](https://github.com/jpravetz/strava)
+  and install it's nodejs library dependencies
 
 ```bash
+cd $HOME/dev      # for example
+git clone https://github.com/jpravetz/strava.git
 cd strava
 npm install
 ```
 
-- Create the folder `$HOME/.strava` (used to store credentials)
+- Create the folder `$HOME/.strava` (used to store `credentials.json` and `segments.json`)
 - Optionally create a `$HOME/.strava/user.settings.json` config file as show under User Settings
 - If not already compiled, compile the application (compiler output is written to the `/dist` folder)
 
@@ -57,6 +59,7 @@ strava -h
     -g, --friends [opt]        Show athlete friends list (Use --more a complete summary, otherwise id and name are displayed)
     -k, --kml <file>           Create KML file for specified date range
     -x, --xml <file>           Create Acroforms XML file for specified date range, this is specific to a particular unpublished PDF form document
+    -r, --refresh              Refresh list of starred segments rather than using local stored copy. Will automatically refresh from server if there is no locally stored copy.
     -a, --activities [filter]  Output activities to kml file, optionally filtering by activity type (as defined by Strava, 'Ride', 'Hike', 'Walk', etc), plus 'commute' and 'nocommute')
     -s, --segments [opts]      Output starred segments to KML, adding efforts within date range to description if --more. Segments are grouped into folders by location unless opts is set to 'flat'.
     -m, --more                 When generating KML file, include additional detail info in KML description field
@@ -67,36 +70,27 @@ strava -h
 
 Notes:
 
+1. `$HOME` is resolved by trying, in order, the `ENV` variables: `HOME`, `HOMEPATH`
+   and `USERPROFILE`.
 1. `bin/strava` is a `bash` script that adds the `--path` option and executes the nodejs application.
-1. `bin/strava` will try to resolve the location of
-   `.strava/user.settings.json` by resolving `$HOME`. `$HOME` is resolved by
-   trying, in order, the ENV variables `HOME`, `HOMEPATH` and `USERPROFILE`.
-1. athleteId will be automatically determined from your authentication (the `--id` option is ignored for now).
-1. The settings file's lineStyles object allows you to customize colors for
-   segments and routes. The keys in this object are Strava [Activity
-   types](http://strava.github.io/api/v3/activities/), and the values include
-   KML line color ('aabbggrr', alpha, blue, green, red hex values) and width.
-   There are additional keys for 'Segment' and 'Commute' that are not in the
-   list of Strava activity types.
-1. Outputing segments (`--segments`) is currently broken
+1. `athleteId` will be automatically determined from your authentication (the `--id` option is ignored for now).
+1. Output of starred segments (`--segments`) is currently broken
 
 ## Strava Command Line Application
 
 The command line application can be used to query Strava and:
 
-- Return details for an athlete
+- Return details for an athlete (`--athlete`)
 - Return your list of bikes (currently not working)
+- Refresh your list of starred segments (`--refresh`)
 - Generate a KML file that contains activity routes for the range of dates
   and/or starred segments and corresponding segment efforts within the date
-  range.
+  range (`-a -m --kml myfile.kml -d 20191015`)
 
 Notes:
 
 - You will be required to authenticate by logging into your Strava account.
   - Tokens retrieved from this login are stored in`~/.strava/credentials.json`.
-- Different activity types are rendered using different colors. Colors are
-  defined by `lineStyle` in `user.settings.json`. The default set of colors is
-  defined by `defaultLineStyles` in `lib/kml.ts`.
 - There is a Strava limit of 200 activities per call, so for date ranges that
   include more than 200 activities, only the first 200 activities are returned.
 
@@ -127,14 +121,9 @@ The user settings file is stored at `$HOME/.strava/user.settings.json`.
 }
 ```
 
-Use this file to override default lineStyles for segments and routes. The keys
-in the `lineStyles` object are Strava [Activity
-types](http://strava.github.io/api/v3/activities/), and the values include KML
-line color ('aabbggrr', alpha, blue, green, red hex values) and line width. This
-application has added additional keys for 'Segment' and 'Commute' that are not
-in the list of Strava activity types.
+`lineStyles` defines the colors used for different activities (_e.g._ `Ride`, `Hike`, etc.), commutes and segments.
 
-Defaults settings are shown below
+Defaults line styles are set in `defaultLineStyles` in [src/kml.ts](https://github.com/jpravetz/strava/blob/master/src/kml.ts) and [src/config/project.settings.json](https://github.com/jpravetz/strava/blob/master/src/config/project.settings.json)/
 
 ```json
 {
@@ -151,9 +140,14 @@ Defaults settings are shown below
 }
 ```
 
+`user.settings.json` is used to override default `lineStyles`. The keys in the `lineStyles`
+object are the full activity name , and the values include KML line color
+(`aabbggrr`, alpha, blue, green, red hex values) and line width.
+
+
 ### KML Description
 
-Using _--more_ will result in a description field being added to the KML activity or segment.
+Using `--more` will result in a description field being added to the KML activity or segment.
 For activities this will include the following fields (see notes afterwards):
 
 ```
@@ -163,6 +157,7 @@ For activities this will include the following fields (see notes afterwards):
   Average Temp: 22°C
   Grizzly Flat Fire Road: 00:23:08
   Tires: Knobbies
+  Wt: 84.5kg
   Description: 1 garter snake, 1 banana slug, 1 deer, lots of California Salamanders
 ```
 
@@ -183,13 +178,16 @@ these will be output as part of the activity description.
 
 ## Credits
 
-The `strava-api.ts` file is originally from [mojodna](https://github.com/mojodna/node-strav3/blob/master/index.js) and has
-been modified.
+The
+[strava-api.ts](https://github.com/jpravetz/strava/blob/master/src/strava-api.ts)
+file is munged from an original implementation at
+[mojodna](https://github.com/mojodna/node-strav3/blob/master/index.js).
 
 ## ToDo
 
 - Handle paginated data, in other words, requests that exceed 200 activities.
+  - Done for starred segments
 - I started working on a PDF report generator, however I have barely begun this
   effort and will probably not ever complete it. It is at `bin/pdfgen.js`.
 - Get `--segment` working again
-- Improve authentication experience
+- Fix authentication experience so tokens are held for longer

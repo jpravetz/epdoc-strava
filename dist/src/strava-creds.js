@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const util_1 = require("./util");
 const epdoc_util_1 = require("epdoc-util");
+const util_1 = require("./util");
 const defaultStravaToken = {
     token_type: null,
     expires_at: 0,
@@ -25,7 +25,7 @@ class StravaCreds {
         return this.data.access_token;
     }
     areValid(t = 2 * 60 * 60) {
-        let tLimit = Date.now() / 1000 + t;
+        const tLimit = Date.now() / 1000 + t;
         return this.data && this.data.token_type === 'Bearer' && this.data.expires_at > tLimit;
     }
     static validCredData(val) {
