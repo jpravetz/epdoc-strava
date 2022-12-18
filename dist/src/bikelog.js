@@ -1,15 +1,32 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
-    result["default"] = mod;
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
     return result;
 };
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.Bikelog = void 0;
 const dateutil = __importStar(require("dateutil"));
 const epdoc_util_1 = require("epdoc-util");
 const fs_1 = __importDefault(require("fs"));
@@ -28,7 +45,7 @@ class Bikelog {
         this.buffer = '';
         this.verbose = 9;
         this.opts = options;
-        if (epdoc_util_1.isNumber(options.verbose)) {
+        if ((0, epdoc_util_1.isNumber)(options.verbose)) {
             this.verbose = options.verbose;
         }
     }
@@ -41,7 +58,7 @@ class Bikelog {
         const result = {};
         activities.forEach(activity => {
             const d = new Date(activity.startDateLocal);
-            const jd = util_1.julianDate(d);
+            const jd = (0, util_1.julianDate)(d);
             const entry = result[jd] || { jd: jd, date: new Date(activity.startDateLocal), events: [] };
             if (activity.data.wt) {
                 entry.wt = activity.data.wt;
@@ -89,7 +106,7 @@ class Bikelog {
                     const segs = [];
                     let up = 'Up ';
                     activity.segments.forEach(segment => {
-                        segs.push(up + segment.name + ' [' + util_1.formatMS(segment.movingTime) + ']');
+                        segs.push(up + segment.name + ' [' + (0, util_1.formatMS)(segment.movingTime) + ']');
                         up = 'up ';
                     });
                     note += '\n' + segs.join(', ') + '\n';
@@ -126,7 +143,7 @@ class Bikelog {
             else {
                 const distance = Math.round(activity.distance / 10) / 100;
                 let note = activity.type + ': ' + activity.name + '\n';
-                note += 'Distance: ' + distance + ' km; Duration: ' + util_1.formatHMS(activity.movingTime, { seconds: false });
+                note += 'Distance: ' + distance + ' km; Duration: ' + (0, util_1.formatHMS)(activity.movingTime, { seconds: false });
                 if (activity.description) {
                     note += '\n' + activity.description;
                 }

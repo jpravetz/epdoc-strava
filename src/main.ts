@@ -114,12 +114,12 @@ export class Main {
     return this._config;
   }
 
-  public run(): Promise<void> {
+  public async run(): Promise<void> {
     return this.init()
       .then(resp => {
         if (!this.strava.creds.areValid()) {
           console.log('Authorization required. Opening web authorization page');
-          let authServer = new Server(this.strava);
+          const authServer = new Server(this.strava);
           return authServer.run().then(resp => {
             console.log('Closing server');
             authServer.close();
@@ -195,7 +195,7 @@ export class Main {
       });
   }
 
-  public getAthlete(): Promise<void> {
+  public async getAthlete(): Promise<void> {
     return this.strava
       .getAthlete(this.options.athleteId)
       .then(resp => {
@@ -212,7 +212,7 @@ export class Main {
     console.log('Athlete', JSON.stringify(this.athlete, null, '  '));
   }
 
-  public getActivities(): Promise<Activity[]> {
+  public async getActivities(): Promise<Activity[]> {
     let results: Activity[] = [];
     const dateRanges: DateRange[] = Array.isArray(this.options.dates) ? this.options.dates : [];
 
@@ -232,7 +232,7 @@ export class Main {
       });
   }
 
-  public getActivitiesForDateRange(dateRange: DateRange): Promise<Activity[]> {
+  public async getActivitiesForDateRange(dateRange: DateRange): Promise<Activity[]> {
     const params: StravaActivityOpts = {
       athleteId: this.options.athleteId,
       query: {
@@ -270,7 +270,7 @@ export class Main {
    * Read more information using the DetailedActivity object and add these
    * details to the Activity object.
    */
-  public addActivitiesDetails(): Promise<any> {
+  public async addActivitiesDetails(): Promise<any> {
     console.log(`Retrieving activity details for ${this.activities.length} Activities`);
 
     // Break into chunks to limit to REQ_LIMIT parallel requests.
@@ -296,7 +296,7 @@ export class Main {
       });
   }
 
-  public addActivityDetail(activity: Activity): Promise<void> {
+  public async addActivityDetail(activity: Activity): Promise<void> {
     return this.strava.getDetailedActivity(activity).then(data => {
       activity.addFromDetailedActivity(data);
     });

@@ -1,5 +1,5 @@
 import { Metres } from './../util';
-export declare type StravaBike = {
+export type StravaBike = {
     id?: string;
     primary?: boolean;
     name?: string;

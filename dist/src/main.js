@@ -9,6 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.Main = void 0;
 const bikelog_1 = require("./bikelog");
 const kml_1 = require("./kml");
 const activity_1 = require("./models/activity");
@@ -55,138 +56,146 @@ class Main {
         return this._config;
     }
     run() {
-        return this.init()
-            .then(resp => {
-            if (!this.strava.creds.areValid()) {
-                console.log('Authorization required. Opening web authorization page');
-                let authServer = new server_1.Server(this.strava);
-                return authServer.run().then(resp => {
-                    console.log('Closing server');
-                    authServer.close();
-                });
-            }
-            else {
-                console.log('Authorization not required');
-            }
-        })
-            .then(resp => {
-            if (!this.strava.creds.areValid()) {
-                throw new Error('Invalid credentials');
-            }
-        })
-            .then(resp => {
-            this.segFile = new segment_file_1.SegmentFile(this.options.segmentsFile, this.strava);
-            return this.segFile.get({ refresh: this.options.refreshStarredSegments });
-        })
-            .then(resp => {
-            if (this.options.kml && !this.options.activities && !this.options.segments) {
-                throw new Error('When writing kml select either segments, activities or both');
-            }
-        })
-            .then(resp => {
-            if (this.options.athlete || this.options.xml || this.options.kml) {
-                return this.getAthlete().then(resp => {
-                    if (!this.options.xml) {
-                        this.logAthlete();
-                    }
-                });
-            }
-        })
-            .then(resp => {
-            if (this.options.activities || this.options.xml) {
-                return this.getActivities().then(resp => {
-                    this.activities = resp;
-                    console.log(`Found ${resp.length} Activities`);
-                    if (!this.options.xml) {
-                        resp.forEach(i => {
-                            console.log('  ' + i.toString());
-                        });
-                    }
-                });
-            }
-        })
-            .then(resp => {
-            if (this.options.xml) {
-                return this.addActivitiesDetails();
-            }
-        })
-            .then(resp => {
-            if (this.options.xml) {
-                return this.saveXml();
-            }
-        })
-            .then(resp => {
-            if (this.options.kml && this.options.activities) {
-                return this.addActivitiesCoordinates();
-            }
-        })
-            .then(resp => {
-            if (this.options.kml && this.options.segments) {
-                return this.addStarredSegmentsCoordinates();
-            }
-        })
-            .then(resp => {
-            if (this.options.kml) {
-                let opts = {
-                    activities: true,
-                    segments: this.options.segments ? true : false
-                };
-                return this.saveKml(opts);
-            }
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.init()
+                .then(resp => {
+                if (!this.strava.creds.areValid()) {
+                    console.log('Authorization required. Opening web authorization page');
+                    const authServer = new server_1.Server(this.strava);
+                    return authServer.run().then(resp => {
+                        console.log('Closing server');
+                        authServer.close();
+                    });
+                }
+                else {
+                    console.log('Authorization not required');
+                }
+            })
+                .then(resp => {
+                if (!this.strava.creds.areValid()) {
+                    throw new Error('Invalid credentials');
+                }
+            })
+                .then(resp => {
+                this.segFile = new segment_file_1.SegmentFile(this.options.segmentsFile, this.strava);
+                return this.segFile.get({ refresh: this.options.refreshStarredSegments });
+            })
+                .then(resp => {
+                if (this.options.kml && !this.options.activities && !this.options.segments) {
+                    throw new Error('When writing kml select either segments, activities or both');
+                }
+            })
+                .then(resp => {
+                if (this.options.athlete || this.options.xml || this.options.kml) {
+                    return this.getAthlete().then(resp => {
+                        if (!this.options.xml) {
+                            this.logAthlete();
+                        }
+                    });
+                }
+            })
+                .then(resp => {
+                if (this.options.activities || this.options.xml) {
+                    return this.getActivities().then(resp => {
+                        this.activities = resp;
+                        console.log(`Found ${resp.length} Activities`);
+                        if (!this.options.xml) {
+                            resp.forEach(i => {
+                                console.log('  ' + i.toString());
+                            });
+                        }
+                    });
+                }
+            })
+                .then(resp => {
+                if (this.options.xml) {
+                    return this.addActivitiesDetails();
+                }
+            })
+                .then(resp => {
+                if (this.options.xml) {
+                    return this.saveXml();
+                }
+            })
+                .then(resp => {
+                if (this.options.kml && this.options.activities) {
+                    return this.addActivitiesCoordinates();
+                }
+            })
+                .then(resp => {
+                if (this.options.kml && this.options.segments) {
+                    return this.addStarredSegmentsCoordinates();
+                }
+            })
+                .then(resp => {
+                if (this.options.kml) {
+                    let opts = {
+                        activities: true,
+                        segments: this.options.segments ? true : false
+                    };
+                    return this.saveKml(opts);
+                }
+            });
         });
     }
     getAthlete() {
-        return this.strava
-            .getAthlete(this.options.athleteId)
-            .then(resp => {
-            this.athlete = resp;
-            this.registerBikes(this.athlete.bikes);
-        })
-            .catch(err => {
-            err.message = 'Athlete ' + err.message;
-            throw err;
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.strava
+                .getAthlete(this.options.athleteId)
+                .then(resp => {
+                this.athlete = resp;
+                this.registerBikes(this.athlete.bikes);
+            })
+                .catch(err => {
+                err.message = 'Athlete ' + err.message;
+                throw err;
+            });
         });
     }
     logAthlete() {
         console.log('Athlete', JSON.stringify(this.athlete, null, '  '));
     }
     getActivities() {
-        let results = [];
-        const dateRanges = Array.isArray(this.options.dates) ? this.options.dates : [];
-        return dateRanges
-            .reduce((promiseChain, dateRange) => {
-            return promiseChain.then(() => {
-                let job = this.getActivitiesForDateRange(dateRange).then(resp => {
-                    results = results.concat(resp);
+        return __awaiter(this, void 0, void 0, function* () {
+            let results = [];
+            const dateRanges = Array.isArray(this.options.dates) ? this.options.dates : [];
+            return dateRanges
+                .reduce((promiseChain, dateRange) => {
+                return promiseChain.then(() => {
+                    let job = this.getActivitiesForDateRange(dateRange).then(resp => {
+                        results = results.concat(resp);
+                    });
+                    return job;
                 });
-                return job;
+            }, Promise.resolve())
+                .then(resp => {
+                results = this.filterActivities(results);
+                results = results.sort(activity_1.Activity.compareStartDate);
+                return Promise.resolve(results);
             });
-        }, Promise.resolve())
-            .then(resp => {
-            results = this.filterActivities(results);
-            results = results.sort(activity_1.Activity.compareStartDate);
-            return Promise.resolve(results);
         });
     }
     getActivitiesForDateRange(dateRange) {
-        const params = {
-            athleteId: this.options.athleteId,
-            query: {
-                per_page: 200,
-                after: dateRange.after,
-                before: dateRange.before
-            }
-        };
-        return this.strava.getActivities(params).then(resp => {
-            const activities = resp;
-            const results = [];
-            resp.forEach(data => {
-                const activity = activity_1.Activity.newFromResponseData(data, this);
-                if (activity) {
-                    results.push(activity);
+        return __awaiter(this, void 0, void 0, function* () {
+            const params = {
+                athleteId: this.options.athleteId,
+                query: {
+                    per_page: 200,
+                    after: dateRange.after,
+                    before: dateRange.before
                 }
+            };
+            return this.strava.getActivities(params).then(resp => {
+                const activities = resp;
+                const results = [];
+                resp.forEach(data => {
+                    const activity = activity_1.Activity.newFromResponseData(data, this);
+                    if (activity) {
+                        results.push(activity);
+                    }
+                });
+                return Promise.resolve(results);
             });
-            return Promise.resolve(results);
         });
     }
     filterActivities(activities) {
@@ -205,31 +214,35 @@ class Main {
      * details to the Activity object.
      */
     addActivitiesDetails() {
-        console.log(`Retrieving activity details for ${this.activities.length} Activities`);
-        // Break into chunks to limit to REQ_LIMIT parallel requests.
-        const activitiesChunks = [];
-        for (let idx = 0; idx < this.activities.length; idx += REQ_LIMIT) {
-            const tmpArray = this.activities.slice(idx, idx + REQ_LIMIT);
-            activitiesChunks.push(tmpArray);
-        }
-        return activitiesChunks
-            .reduce((promiseChain, activities) => {
-            return promiseChain.then(() => {
-                const jobs = [];
-                activities.forEach(activity => {
-                    const job = this.addActivityDetail(activity);
-                    jobs.push(job);
+        return __awaiter(this, void 0, void 0, function* () {
+            console.log(`Retrieving activity details for ${this.activities.length} Activities`);
+            // Break into chunks to limit to REQ_LIMIT parallel requests.
+            const activitiesChunks = [];
+            for (let idx = 0; idx < this.activities.length; idx += REQ_LIMIT) {
+                const tmpArray = this.activities.slice(idx, idx + REQ_LIMIT);
+                activitiesChunks.push(tmpArray);
+            }
+            return activitiesChunks
+                .reduce((promiseChain, activities) => {
+                return promiseChain.then(() => {
+                    const jobs = [];
+                    activities.forEach(activity => {
+                        const job = this.addActivityDetail(activity);
+                        jobs.push(job);
+                    });
+                    return Promise.all(jobs);
                 });
-                return Promise.all(jobs);
+            }, Promise.resolve())
+                .then(resp => {
+                return Promise.resolve();
             });
-        }, Promise.resolve())
-            .then(resp => {
-            return Promise.resolve();
         });
     }
     addActivityDetail(activity) {
-        return this.strava.getDetailedActivity(activity).then(data => {
-            activity.addFromDetailedActivity(data);
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.strava.getDetailedActivity(activity).then(data => {
+                activity.addFromDetailedActivity(data);
+            });
         });
     }
     /**

@@ -1,12 +1,12 @@
-export declare function compare(a: Dict, b: Dict, key: string): 1 | -1 | 0;
-export declare type Dict = Record<string, any>;
-export declare type EpochMilliseconds = number;
-export declare type EpochSeconds = number;
-export declare type Seconds = number;
-export declare type Metres = number;
-export declare type Kilometres = number;
-export declare type IsoDateString = string;
-export declare type formatHMSOpts = {
+export declare function compare(a: Dict, b: Dict, key: string): 0 | 1 | -1;
+export type Dict = Record<string, any>;
+export type EpochMilliseconds = number;
+export type EpochSeconds = number;
+export type Seconds = number;
+export type Metres = number;
+export type Kilometres = number;
+export type IsoDateString = string;
+export type formatHMSOpts = {
     seconds?: boolean;
 };
 export declare function formatHMS(s: Seconds, options?: formatHMSOpts): string;

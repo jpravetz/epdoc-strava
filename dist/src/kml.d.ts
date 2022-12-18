@@ -2,11 +2,11 @@ import { Dict } from 'epdoc-util';
 import { DateRange } from './main';
 import { Activity } from './models/activity';
 import { SegmentData } from './models/segment-data';
-export declare type LineStyle = {
+export type LineStyle = {
     color: string;
     width: number;
 };
-export declare type KmlOpts = {
+export type KmlOpts = {
     more?: boolean;
     dates?: DateRange[];
     imperial?: boolean;
@@ -16,7 +16,7 @@ export declare type KmlOpts = {
     verbose?: number;
     bikes?: Dict;
 };
-export declare type PlacemarkParams = {
+export type PlacemarkParams = {
     description?: string;
     coordinates?: any[];
     placemarkId?: string;
@@ -32,8 +32,8 @@ export declare class Kml {
     private stream;
     private trackIndex;
     constructor(opts?: KmlOpts);
-    readonly imperial: boolean;
-    readonly more: boolean;
+    get imperial(): boolean;
+    get more(): boolean;
     setLineStyles(styles: Record<string, LineStyle>): void;
     outputData(filepath: string, activities: Activity[], segments: SegmentData[]): Promise<void>;
     private addActivities;

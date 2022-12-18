@@ -1,12 +1,29 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
-    result["default"] = mod;
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.Activity = void 0;
 const dateutil = __importStar(require("dateutil"));
 const epdoc_util_1 = require("epdoc-util");
 const detailed_activity_1 = require("./detailed-activity");
@@ -45,7 +62,7 @@ class Activity {
         return result;
     }
     static isInstance(val) {
-        return val && epdoc_util_1.isNumber(val.id) && epdoc_util_1.isBoolean(val.commute);
+        return val && (0, epdoc_util_1.isNumber)(val.id) && (0, epdoc_util_1.isBoolean)(val.commute);
     }
     toString() {
         return this._asString;
@@ -99,7 +116,7 @@ class Activity {
         return this.data.type === 'Ride' || this.data.type === 'EBikeRide';
     }
     hasKmlData() {
-        if (!epdoc_util_1.isString(this.type) || REGEX.noKmlData.test(this.type)) {
+        if (!(0, epdoc_util_1.isString)(this.type) || REGEX.noKmlData.test(this.type)) {
             return false;
         }
         return this._coordinates.length > 0 ? true : false;
@@ -112,7 +129,7 @@ class Activity {
     addFromDetailedActivity(data) {
         console.log('  Adding activity details for ' + this.toString());
         if (detailed_activity_1.DetailedActivity.isInstance(data)) {
-            if (epdoc_util_1.isString(data.description)) {
+            if ((0, epdoc_util_1.isString)(data.description)) {
                 this._addDescriptionFromDetailedActivity(data);
             }
             if (Array.isArray(data.segment_efforts)) {
@@ -121,7 +138,7 @@ class Activity {
         }
     }
     _addDescriptionFromDetailedActivity(data) {
-        if (epdoc_util_1.isString(data.description)) {
+        if ((0, epdoc_util_1.isString)(data.description)) {
             const p = data.description.split(/\r\n/);
             // console.log(p)
             if (p && p.length) {

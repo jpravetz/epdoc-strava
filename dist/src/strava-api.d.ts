@@ -1,14 +1,13 @@
 import { Activity } from './models/activity';
 import { DetailedActivity } from './models/detailed-activity';
 import { SummarySegment } from './models/summary-segment';
-import { StravaCoord } from './strava-api';
 import { StravaCreds } from './strava-creds';
 import { Dict, EpochSeconds } from './util';
-export declare type StravaCode = string;
-export declare type StravaSecret = string;
-export declare type StravaAccessToken = string;
-export declare type StravaRefreshToken = string;
-export declare type StravaClientId = number;
+export type StravaCode = string;
+export type StravaSecret = string;
+export type StravaAccessToken = string;
+export type StravaRefreshToken = string;
+export type StravaClientId = number;
 export declare enum StravaStreamSource {
     activities = "activities",
     segments = "segments",
@@ -20,31 +19,31 @@ export declare enum StravaStreamType {
     distance = "distance",
     altitude = "altitude"
 }
-export declare type StravaObjId = number;
-export declare type StravaSegmentId = StravaObjId;
-export declare type Query = Dict;
-export declare type StravaCoord = [number, number];
-export declare type StravaCoordData = {
+export type StravaObjId = number;
+export type StravaSegmentId = StravaObjId;
+export type Query = Dict;
+export type StravaCoord = [number, number];
+export type StravaCoordData = {
     type: string;
     data: StravaCoord[];
 };
-export declare type StravaClientConfig = {
+export type StravaClientConfig = {
     id: StravaClientId;
     secret: StravaSecret;
 };
-export declare type StravaApiOpts = StravaClientConfig & {
+export type StravaApiOpts = StravaClientConfig & {
     token: StravaAccessToken;
 };
-export declare type AuthorizationUrlOpts = {
+export type AuthorizationUrlOpts = {
     redirectUri?: string;
     scope?: string;
     state?: string;
     approvalPrompt?: string;
 };
-export declare type TokenUrlOpts = {
+export type TokenUrlOpts = {
     code?: string;
 };
-export declare type StravaActivityOpts = {
+export type StravaActivityOpts = {
     athleteId: number;
     query: {
         after: EpochSeconds;
@@ -61,7 +60,7 @@ export declare class StravaApi {
     constructor(clientConfig: StravaClientConfig, credsFile: string);
     toString(): string;
     private initCreds;
-    readonly creds: StravaCreds;
+    get creds(): StravaCreds;
     private getAuthorizationUrl;
     private getTokenUrl;
     /**
