@@ -1,5 +1,6 @@
-import { isNumber } from 'epdoc-util';
-import { EpochSeconds, readJson, Seconds, writeJson } from './util';
+import { isDict, isNonEmptyArray, isNonEmptyString, isNumber } from 'epdoc-util';
+import { EpochSeconds, FilePath, isEpochSeconds, readJson, Seconds, writeJson } from './util';
+import fs from 'fs';
 
 export type StravaCredsData = {
   token_type: string;
@@ -14,63 +15,71 @@ export type StravaCredsData = {
   };
 };
 
+export function isStravaCredsData(val: any): val is StravaCredsData {
+  if (isDict(val) && isNonEmptyString(val.token_type) && isEpochSeconds(val.expires_at)) {
+    return true;
+  }
+  return false;
+}
+
 const defaultStravaToken: StravaCredsData = {
   token_type: null,
   expires_at: 0,
   expires_in: 0,
   refresh_token: null,
   access_token: null,
-  athlete: {}
+  athlete: {},
 };
 
 export class StravaCreds {
-  private data: StravaCredsData = defaultStravaToken;
-  private path: string;
+  private _data: StravaCredsData = defaultStravaToken;
+  private _path: FilePath;
 
-  constructor(tokenFile: string) {
-    this.path = tokenFile;
+  constructor(tokenFile: FilePath) {
+    this._path = tokenFile;
   }
 
   get expiresAt(): EpochSeconds {
-    return this.data.expires_at;
+    return this._data.expires_at;
   }
 
   get refreshToken(): string {
-    return this.data.refresh_token;
+    return this._data.refresh_token;
   }
 
   get accessToken(): string {
-    return this.data.access_token;
+    return this._data.access_token;
   }
 
   public areValid(t: Seconds = 2 * 60 * 60) {
     const tLimit: EpochSeconds = Date.now() / 1000 + t;
-    return this.data && this.data.token_type === 'Bearer' && this.data.expires_at > tLimit;
+    return this._data && this._data.token_type === 'Bearer' && this._data.expires_at > tLimit;
   }
 
   public static validCredData(val: any): val is StravaCredsData {
     return val && val.token_type === 'Bearer' && isNumber(val.expires_at);
   }
 
-  public read(): Promise<void> {
-    return readJson(this.path)
-      .then(resp => {
+  public async read(): Promise<void> {
+    if (fs.existsSync(this._path)) {
+      try {
+        const resp = await readJson(this._path);
         if (StravaCreds.validCredData(resp)) {
-          this.data = resp;
+          this._data = resp;
         } else {
           console.log('Invalid token auth response');
         }
-      })
-      .catch(err => {
+      } catch (err) {
         console.log('No local credentials cached');
-        return Promise.resolve();
-      });
+        return await Promise.resolve();
+      }
+    }
   }
 
-  public write(data: any): Promise<void> {
+  public async write(data: any): Promise<void> {
     if (StravaCreds.validCredData(data)) {
-      this.data = data;
-      return writeJson(this.path, this.data);
+      this._data = data;
+      return writeJson(this._path, this._data);
     } else {
       throw new Error('No token data to write');
     }

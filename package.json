@@ -3,6 +3,11 @@
   "version": "1.2.4",
   "description": "Strava v3 API application outputs kml files for Google Earth",
   "main": "index.js",
+  "node-red": {
+    "nodes": {
+      "strava": "node.js"
+    }
+  },
   "scripts": {
     "start": "node bin/strava.js",
     "clean": "rm -rf dist",
@@ -22,7 +27,7 @@
     "async": "^3.2.4",
     "commander": "^9.4.1",
     "dateutil": "git+ssh://git@github.com:jpravetz/dateutil.git#v1.0.5",
-    "epdoc-util": "github:jpravetz/epdoc-util",
+    "epdoc-util": "^0.1.17",
     "koa": "^2.10.0",
     "koa-router": "^12.0.0",
     "open": "^8.4.0",

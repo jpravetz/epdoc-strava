@@ -8,8 +8,9 @@ import { SummarySegment } from './models/summary-segment';
 import { SegmentFile } from './segment-file';
 import { Server } from './server';
 import { StravaActivityOpts, StravaApi, StravaClientConfig, StravaStreamSource } from './strava-api';
-import { StravaCreds } from './strava-creds';
-import { Dict, EpochSeconds } from './util';
+import { StravaConfig } from './strava-config';
+import { StravaCreds, StravaCredsData } from './strava-creds';
+import { Dict, EpochSeconds, FolderPath } from './util';
 
 // let _ = require('underscore');
 // let async = require('async');
@@ -23,17 +24,6 @@ export type SegmentConfig = {
   description: string;
   alias: Dict;
   data: Dict;
-};
-
-export type StravaConfig = {
-  description: string;
-  client: StravaClientConfig;
-  athleteId?: number;
-  // accessToken: string;
-  cachePath?: string;
-  lineStyles?: Record<string, LineStyle>;
-  bikes?: BikeDef[];
-  aliases?: Record<SegmentName, SegmentName>;
 };
 
 export type DateRange = {
@@ -90,8 +80,8 @@ export class Main {
   }
 
   public async init(): Promise<void> {
-    if (this.options.config && this.options.config.client) {
-      this.strava = new StravaApi(this.options.config.client, this.options.credentialsFile);
+    if (this.config && this.config.client) {
+      this.strava = new StravaApi(this.config.client, this.config.credentials);
       return Promise.resolve()
         .then(resp => {
           if (this.options.kml) {

@@ -1,10 +1,10 @@
 {
-  "description": "Strava project config",
-  "client": {
-    "id": 269,
-    "secret": "c198ef5ffe1e9650ca98b4e65c484c73391c450f"
-  },
-  "cachePath": "$HOME$/.strava/cache",
+  "description": "Strava project config. Can be overriden by userSettings",
+  "client": "{HOME}/.strava/client.json",
+  "credentials": "{HOME}/.strava/credentials.json",
+  "userSettings": "{HOME}/.strava/user.settings.json",
+  "segments": "{HOME}/.strava/segments.json",
+  "cachePath": "{HOME}/.strava/cache",
   "lineStyles": {
     "Commute": { "color": "C000A3FF", "width": 4 }
   }

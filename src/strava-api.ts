@@ -1,5 +1,5 @@
 import * as assert from 'assert';
-import { isNumber } from 'epdoc-util';
+import { isNonEmptyString, isNumber, isObject, isPosInteger } from 'epdoc-util';
 import { Activity } from './models/activity';
 import { Athelete } from './models/athlete';
 import { DetailedActivity } from './models/detailed-activity';
@@ -50,6 +50,10 @@ export type StravaClientConfig = {
   secret: StravaSecret;
 };
 
+export function isStravaClientConfig(val:any):val is StravaClientConfig {
+  return ( isObject(val) && isNonEmptyString(val.secret) && isPosInteger(val.id) );
+}
+
 export type StravaApiOpts = StravaClientConfig & {
   token: StravaAccessToken;
 };
@@ -85,14 +89,13 @@ export type StravaActivityOpts = {
 export class StravaApi {
   public id: StravaClientId;
   public secret: StravaSecret;
-  private _credsFile: string;
   private _creds: StravaCreds;
 
-  constructor(clientConfig: StravaClientConfig, credsFile: string) {
+  constructor(clientConfig: StravaClientConfig, creds: StravaCreds) {
     this.id = clientConfig.id || parseInt(process.env.STRAVA_CLIENT_ID, 10);
     this.secret = clientConfig.secret || process.env.STRAVA_CLIENT_SECRET;
     // this.token = opts.token || process.env.STRAVA_ACCESS_TOKEN;
-    this._credsFile = credsFile;
+    this._creds = creds;
   }
 
   public toString() {
@@ -100,7 +103,6 @@ export class StravaApi {
   }
 
   private initCreds(): Promise<void> {
-    this._creds = new StravaCreds(this._credsFile);
     return this._creds.read();
   }
 
@@ -109,7 +111,9 @@ export class StravaApi {
   }
 
   private getAuthorizationUrl(options: AuthorizationUrlOpts = {}): string {
-    assert.ok(this.id, 'A client ID is required.');
+    if( !this.id ) {
+      throw new Error('A client ID is required.');
+    }
 
     const opts = Object.assign(defaultAuthOpts, options);
 

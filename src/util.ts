@@ -1,5 +1,6 @@
-import { pad } from 'epdoc-util';
+import { isInteger, isNonEmptyString, pad } from 'epdoc-util';
 import fs from 'fs';
+import { SegmentConfig } from './main';
 
 export function compare(a: Dict, b: Dict, key: string) {
   if (a[key] < b[key]) {
@@ -11,6 +12,23 @@ export function compare(a: Dict, b: Dict, key: string) {
   return 0;
 }
 
+export type FilePath = string;
+export type FolderPath = string;
+export type FileName = string;
+export type FileExt = string; // includes '.'
+
+export function isFilePath(val: any): val is FilePath {
+  return isNonEmptyString(val);
+}
+
+export function isFolderPath(val: any): val is FolderPath {
+  return isNonEmptyString(val);
+}
+
+export function isFileName(val: any): val is FileName {
+  return isNonEmptyString(val);
+}
+
 export type Dict = Record<string, any>;
 
 export type EpochMilliseconds = number;
@@ -19,6 +37,10 @@ export type Seconds = number;
 export type Metres = number;
 export type Kilometres = number;
 export type IsoDateString = string;
+
+export function isEpochSeconds(val: any): val is EpochSeconds {
+  return isInteger(val) && val >= 0;
+}
 
 export type formatHMSOpts = {
   seconds?: boolean;
@@ -65,7 +87,7 @@ export function readJson(path: string): Promise<any> {
 export function writeJson(path: string, data): Promise<void> {
   return new Promise((resolve, reject) => {
     const buf = new Buffer(JSON.stringify(data, null, '  '));
-    fs.writeFile(path, buf, err => {
+    fs.writeFile(path, buf, (err) => {
       if (err) {
         reject(err);
       } else {
@@ -85,10 +107,10 @@ export function julianDate(d: Date): number {
 
 export function fieldCapitalize(name) {
   return name
-    .replace(/^([a-z])/, function($1) {
+    .replace(/^([a-z])/, function ($1) {
       return $1.toUpperCase();
     })
-    .replace(/(\_[a-z])/g, function($1) {
+    .replace(/(\_[a-z])/g, function ($1) {
       return $1.toUpperCase().replace('_', ' ');
     });
 }

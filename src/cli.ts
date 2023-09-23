@@ -7,6 +7,9 @@ import pkg from '../package.json';
 import projectConfig from './config/project.settings.json';
 import { DateRange, Main, MainOpts, StravaConfig } from './main';
 import { Dict, EpochMilliseconds, readJson } from './util';
+import { deepCopy } from 'epdoc-util';
+import { isStravaClientConfig } from './strava-api';
+import { StravaNodeConfig } from './strava-config';
 
 const dateutil = require('dateutil');
 
@@ -14,38 +17,21 @@ const DAY = 24 * 3600 * 1000;
 
 // let root = Path.resolve(__dirname, '..');
 const home = process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE;
+let config: Dict = deepCopy(projectConfig, { replace: { HOME: home } });
 
 //let Config = require('a5config').init(env, [__dirname + '/../config/project.settings.json'], {excludeGlobals: true});
 //let config = Config.get();
 
 async function run(): Promise<void> {
-  const segmentsFile = path.resolve(home, '.strava', 'segments.json');
-  const credentialsFile = path.resolve(home, '.strava', 'credentials.json');
-  const userSettingsFile = path.resolve(home, '.strava', 'user.settings.json');
-  // if (!fs.existsSync(configFile)) {
-  //   console.log('Error: config file does not exist: %s', configFile);
-  //   process.exit(1);
-  // }
+  // const segmentsFile = path.resolve(home, '.strava', 'segments.json');
+  // const credentialsFile = path.resolve(home, '.strava', 'credentials.json');
+  // const userSettingsFile = path.resolve(home, '.strava', 'user.settings.json');
 
-  let segments: Dict;
-
-  return Promise.resolve()
+  let config = new StravaNodeConfig('./config/project.settings.json');
+  return config
+    .read()
     .then((resp) => {
-      if (fs.existsSync(segmentsFile)) {
-        return readJson(segmentsFile);
-      }
-      return Promise.resolve({});
-    })
-    .then((resp) => {
-      segments = resp;
-      if (fs.existsSync(userSettingsFile)) {
-        return readJson(userSettingsFile);
-      }
-      return Promise.resolve({});
-    })
-    .then((resp) => {
-      const userConfig = resp;
-      const config = Object.assign({}, projectConfig, userConfig);
+      let segments: Dict;
 
       const program: Dict = new Command('strava');
       program
@@ -96,8 +82,8 @@ async function run(): Promise<void> {
         cwd: cmdOpts.cwd,
         config: config,
         refreshStarredSegments: cmdOpts.refresh,
-        segmentsFile: segmentsFile,
-        credentialsFile: credentialsFile,
+        // segmentsFile: segmentsFile,
+        // credentialsFile: credentialsFile,
         athleteId: parseInt(cmdOpts.id, 10) || (config as StravaConfig).athleteId,
         athlete: cmdOpts.athlete,
         selectedBikes: cmdOpts.bikes,
