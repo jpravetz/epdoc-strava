@@ -10,7 +10,7 @@ import { Server } from './server';
 import { StravaActivityOpts, StravaApi, StravaClientConfig, StravaStreamSource } from './strava-api';
 import { StravaConfig } from './strava-config';
 import { StravaCreds, StravaCredsData } from './strava-creds';
-import { Dict, EpochSeconds, FolderPath } from './util';
+import { Dict, EpochSeconds, FolderPath, LogFunction } from './util';
 
 // let _ = require('underscore');
 // let async = require('async');
@@ -55,13 +55,13 @@ export type MainOpts = {
   imperial?: boolean;
   segments?: boolean | string;
   verbose?: number;
+  log?: LogFunction;
 };
 
 export class Main {
   private options: MainOpts;
   private _config: StravaConfig;
   private strava: any;
-  private stravaCreds: StravaCreds;
   private kml: Kml;
   private athlete: Athelete;
   private activities: Activity[];
@@ -73,10 +73,12 @@ export class Main {
   private starredSegments: SegmentData[] = [];
   public segFile: SegmentFile;
   public bikes: Dict = {};
+  private _log: LogFunction;
 
   constructor(options: MainOpts) {
     this.options = options;
     this._config = options.config;
+    this._log = options.log ? options.log : (msg) => {};
   }
 
   public async init(): Promise<void> {
@@ -108,14 +110,14 @@ export class Main {
     return this.init()
       .then(resp => {
         if (!this.strava.creds.areValid()) {
-          console.log('Authorization required. Opening web authorization page');
+          this._log('Authorization required. Opening web authorization page');
           const authServer = new Server(this.strava);
           return authServer.run().then(resp => {
-            console.log('Closing server');
+            this._log('Closing server');
             authServer.close();
           });
         } else {
-          console.log('Authorization not required');
+          this._log('Authorization not required');
         }
       })
       .then(resp => {
@@ -124,7 +126,7 @@ export class Main {
         }
       })
       .then(resp => {
-        this.segFile = new SegmentFile(this.options.segmentsFile, this.strava);
+        this.segFile = new SegmentFile(this.options.segmentsFile, this.strava, { log: this._log });
         return this.segFile.get({ refresh: this.options.refreshStarredSegments });
       })
       .then(resp => {
@@ -145,10 +147,10 @@ export class Main {
         if (this.options.activities || this.options.xml) {
           return this.getActivities().then(resp => {
             this.activities = resp;
-            console.log(`Found ${resp.length} Activities`);
+            this._log(`Found ${resp.length} Activities`);
             if (!this.options.xml) {
               resp.forEach(i => {
-                console.log('  ' + i.toString());
+                this._log('  ' + i.toString());
               });
             }
           });
@@ -199,7 +201,7 @@ export class Main {
   }
 
   public logAthlete() {
-    console.log('Athlete', JSON.stringify(this.athlete, null, '  '));
+    this._log('Athlete ' + JSON.stringify(this.athlete, null, '  '));
   }
 
   public async getActivities(): Promise<Activity[]> {
@@ -261,7 +263,7 @@ export class Main {
    * details to the Activity object.
    */
   public async addActivitiesDetails(): Promise<any> {
-    console.log(`Retrieving activity details for ${this.activities.length} Activities`);
+    this._log(`Retrieving activity details for ${this.activities.length} Activities`);
 
     // Break into chunks to limit to REQ_LIMIT parallel requests.
     const activitiesChunks = [];
@@ -296,7 +298,7 @@ export class Main {
    * Add coordinates for the activity or segment. Limits to REQ_LIMIT parallel requests.
    */
   private addActivitiesCoordinates() {
-    console.log(`Retrieving coordinates for ${this.activities.length} Activities`);
+    this._log(`Retrieving coordinates for ${this.activities.length} Activities`);
 
     // Break into chunks to limit to REQ_LIMIT parallel requests.
     const activitiesChunks = [];
@@ -329,7 +331,7 @@ export class Main {
    * Call only when generating KML file with all segments
    */
   private async addStarredSegmentsCoordinates() {
-    console.log(`Retrieving coordinates for ${this.starredSegments.length} Starred Segments`);
+    this._log(`Retrieving coordinates for ${this.starredSegments.length} Starred Segments`);
 
     return this.starredSegments
       .reduce((promiseChain, item) => {

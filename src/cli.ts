@@ -5,11 +5,10 @@ import fs from 'fs';
 import path from 'path';
 import pkg from '../package.json';
 import projectConfig from './config/project.settings.json';
-import { DateRange, Main, MainOpts, StravaConfig } from './main';
+import { DateRange, Main, MainOpts } from './main';
 import { Dict, EpochMilliseconds, readJson } from './util';
 import { deepCopy } from 'epdoc-util';
-import { isStravaClientConfig } from './strava-api';
-import { StravaNodeConfig } from './strava-config';
+import { StravaConfig } from './strava-config';
 
 const dateutil = require('dateutil');
 
@@ -27,7 +26,7 @@ async function run(): Promise<void> {
   // const credentialsFile = path.resolve(home, '.strava', 'credentials.json');
   // const userSettingsFile = path.resolve(home, '.strava', 'user.settings.json');
 
-  let config = new StravaNodeConfig('./config/project.settings.json');
+  let config = new StravaConfig('./config/project.settings.json');
   return config
     .read()
     .then((resp) => {

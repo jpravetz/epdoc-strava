@@ -46,6 +46,8 @@ export type formatHMSOpts = {
   seconds?: boolean;
 };
 
+export type LogFunction = (msg: string) => void;
+
 export function formatHMS(s: Seconds, options?: formatHMSOpts): string {
   options || (options = {});
   const seconds = s % 60;
