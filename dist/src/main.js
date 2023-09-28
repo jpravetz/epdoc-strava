@@ -28,11 +28,12 @@ class Main {
         this.bikes = {};
         this.options = options;
         this._config = options.config;
+        this._log = options.log ? options.log : (msg) => { };
     }
     init() {
         return __awaiter(this, void 0, void 0, function* () {
-            if (this.options.config && this.options.config.client) {
-                this.strava = new strava_api_1.StravaApi(this.options.config.client, this.options.credentialsFile);
+            if (this.config && this.config.client) {
+                this.strava = new strava_api_1.StravaApi(this.config.client, this.config.credentials);
                 return Promise.resolve()
                     .then(resp => {
                     if (this.options.kml) {
@@ -60,15 +61,15 @@ class Main {
             return this.init()
                 .then(resp => {
                 if (!this.strava.creds.areValid()) {
-                    console.log('Authorization required. Opening web authorization page');
+                    this._log('Authorization required. Opening web authorization page');
                     const authServer = new server_1.Server(this.strava);
                     return authServer.run().then(resp => {
-                        console.log('Closing server');
+                        this._log('Closing server');
                         authServer.close();
                     });
                 }
                 else {
-                    console.log('Authorization not required');
+                    this._log('Authorization not required');
                 }
             })
                 .then(resp => {
@@ -77,7 +78,7 @@ class Main {
                 }
             })
                 .then(resp => {
-                this.segFile = new segment_file_1.SegmentFile(this.options.segmentsFile, this.strava);
+                this.segFile = new segment_file_1.SegmentFile(this.options.segmentsFile, this.strava, { log: this._log });
                 return this.segFile.get({ refresh: this.options.refreshStarredSegments });
             })
                 .then(resp => {
@@ -98,10 +99,10 @@ class Main {
                 if (this.options.activities || this.options.xml) {
                     return this.getActivities().then(resp => {
                         this.activities = resp;
-                        console.log(`Found ${resp.length} Activities`);
+                        this._log(`Found ${resp.length} Activities`);
                         if (!this.options.xml) {
                             resp.forEach(i => {
-                                console.log('  ' + i.toString());
+                                this._log('  ' + i.toString());
                             });
                         }
                     });
@@ -153,7 +154,7 @@ class Main {
         });
     }
     logAthlete() {
-        console.log('Athlete', JSON.stringify(this.athlete, null, '  '));
+        this._log('Athlete ' + JSON.stringify(this.athlete, null, '  '));
     }
     getActivities() {
         return __awaiter(this, void 0, void 0, function* () {
@@ -215,7 +216,7 @@ class Main {
      */
     addActivitiesDetails() {
         return __awaiter(this, void 0, void 0, function* () {
-            console.log(`Retrieving activity details for ${this.activities.length} Activities`);
+            this._log(`Retrieving activity details for ${this.activities.length} Activities`);
             // Break into chunks to limit to REQ_LIMIT parallel requests.
             const activitiesChunks = [];
             for (let idx = 0; idx < this.activities.length; idx += REQ_LIMIT) {
@@ -249,7 +250,7 @@ class Main {
      * Add coordinates for the activity or segment. Limits to REQ_LIMIT parallel requests.
      */
     addActivitiesCoordinates() {
-        console.log(`Retrieving coordinates for ${this.activities.length} Activities`);
+        this._log(`Retrieving coordinates for ${this.activities.length} Activities`);
         // Break into chunks to limit to REQ_LIMIT parallel requests.
         const activitiesChunks = [];
         for (let idx = 0; idx < this.activities.length; idx += REQ_LIMIT) {
@@ -280,7 +281,7 @@ class Main {
      */
     addStarredSegmentsCoordinates() {
         return __awaiter(this, void 0, void 0, function* () {
-            console.log(`Retrieving coordinates for ${this.starredSegments.length} Starred Segments`);
+            this._log(`Retrieving coordinates for ${this.starredSegments.length} Starred Segments`);
             return this.starredSegments
                 .reduce((promiseChain, item) => {
                 return promiseChain.then(() => {

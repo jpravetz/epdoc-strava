@@ -1,3 +1,5 @@
+import { isString } from "epdoc-util";
+
 describe('auth', () => {
   describe('auth', () => {
     const obj = {

@@ -102,11 +102,22 @@ export class StravaApi {
     return '[Strava]';
   }
 
+  /**
+   * Read OAUTH token file and places result in creds. This should be done
+   * before trying to authenticate with Strava.
+   * @returns
+   */
   private initCreds(): Promise<void> {
     return this._creds.read();
   }
 
-  get creds() {
+  /**
+   * The OAUTH tokens that were read by initCreds(). If these creds are valid
+   * (creds.isValid) then authentication is not required.  If these creds are
+   * invalid, the caller will need to create an HTTP server (Server.ts) to use
+   * to retrieve updated tokens.
+   */
+  get creds():StravaCreds {
     return this._creds;
   }
 

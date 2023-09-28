@@ -14,45 +14,29 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const env = process.env['NODE_ENV'] || 'development';
 const commander_1 = require("commander");
-const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const package_json_1 = __importDefault(require("../package.json"));
 const project_settings_json_1 = __importDefault(require("./config/project.settings.json"));
 const main_1 = require("./main");
-const util_1 = require("./util");
+const epdoc_util_1 = require("epdoc-util");
+const strava_config_1 = require("./strava-config");
 const dateutil = require('dateutil');
 const DAY = 24 * 3600 * 1000;
 // let root = Path.resolve(__dirname, '..');
 const home = process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE;
+let config = (0, epdoc_util_1.deepCopy)(project_settings_json_1.default, { replace: { HOME: home } });
 //let Config = require('a5config').init(env, [__dirname + '/../config/project.settings.json'], {excludeGlobals: true});
 //let config = Config.get();
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
-        const segmentsFile = path_1.default.resolve(home, '.strava', 'segments.json');
-        const credentialsFile = path_1.default.resolve(home, '.strava', 'credentials.json');
-        const userSettingsFile = path_1.default.resolve(home, '.strava', 'user.settings.json');
-        // if (!fs.existsSync(configFile)) {
-        //   console.log('Error: config file does not exist: %s', configFile);
-        //   process.exit(1);
-        // }
-        let segments;
-        return Promise.resolve()
+        // const segmentsFile = path.resolve(home, '.strava', 'segments.json');
+        // const credentialsFile = path.resolve(home, '.strava', 'credentials.json');
+        // const userSettingsFile = path.resolve(home, '.strava', 'user.settings.json');
+        let config = new strava_config_1.StravaConfig('./config/project.settings.json');
+        return config
+            .read()
             .then((resp) => {
-            if (fs_1.default.existsSync(segmentsFile)) {
-                return (0, util_1.readJson)(segmentsFile);
-            }
-            return Promise.resolve({});
-        })
-            .then((resp) => {
-            segments = resp;
-            if (fs_1.default.existsSync(userSettingsFile)) {
-                return (0, util_1.readJson)(userSettingsFile);
-            }
-            return Promise.resolve({});
-        })
-            .then((resp) => {
-            const userConfig = resp;
-            const config = Object.assign({}, project_settings_json_1.default, userConfig);
+            let segments;
             const program = new commander_1.Command('strava');
             program
                 .version(package_json_1.default.version)
@@ -80,8 +64,8 @@ function run() {
                 cwd: cmdOpts.cwd,
                 config: config,
                 refreshStarredSegments: cmdOpts.refresh,
-                segmentsFile: segmentsFile,
-                credentialsFile: credentialsFile,
+                // segmentsFile: segmentsFile,
+                // credentialsFile: credentialsFile,
                 athleteId: parseInt(cmdOpts.id, 10) || config.athleteId,
                 athlete: cmdOpts.athlete,
                 selectedBikes: cmdOpts.bikes,

@@ -1,4 +1,11 @@
 export declare function compare(a: Dict, b: Dict, key: string): 0 | 1 | -1;
+export type FilePath = string;
+export type FolderPath = string;
+export type FileName = string;
+export type FileExt = string;
+export declare function isFilePath(val: any): val is FilePath;
+export declare function isFolderPath(val: any): val is FolderPath;
+export declare function isFileName(val: any): val is FileName;
 export type Dict = Record<string, any>;
 export type EpochMilliseconds = number;
 export type EpochSeconds = number;
@@ -6,9 +13,11 @@ export type Seconds = number;
 export type Metres = number;
 export type Kilometres = number;
 export type IsoDateString = string;
+export declare function isEpochSeconds(val: any): val is EpochSeconds;
 export type formatHMSOpts = {
     seconds?: boolean;
 };
+export type LogFunction = (msg: string) => void;
 export declare function formatHMS(s: Seconds, options?: formatHMSOpts): string;
 export declare function formatMS(s: Seconds): string;
 export declare function readJson(path: string): Promise<any>;

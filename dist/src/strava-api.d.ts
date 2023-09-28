@@ -31,6 +31,7 @@ export type StravaClientConfig = {
     id: StravaClientId;
     secret: StravaSecret;
 };
+export declare function isStravaClientConfig(val: any): val is StravaClientConfig;
 export type StravaApiOpts = StravaClientConfig & {
     token: StravaAccessToken;
 };
@@ -55,11 +56,21 @@ export type StravaActivityOpts = {
 export declare class StravaApi {
     id: StravaClientId;
     secret: StravaSecret;
-    private _credsFile;
     private _creds;
-    constructor(clientConfig: StravaClientConfig, credsFile: string);
+    constructor(clientConfig: StravaClientConfig, creds: StravaCreds);
     toString(): string;
+    /**
+     * Read OAUTH token file and places result in creds. This should be done
+     * before trying to authenticate with Strava.
+     * @returns
+     */
     private initCreds;
+    /**
+     * The OAUTH tokens that were read by initCreds(). If these creds are valid
+     * (creds.isValid) then authentication is not required.  If these creds are
+     * invalid, the caller will need to create an HTTP server (Server.ts) to use
+     * to retrieve updated tokens.
+     */
     get creds(): StravaCreds;
     private getAuthorizationUrl;
     private getTokenUrl;

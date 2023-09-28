@@ -32,13 +32,12 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.StravaApi = exports.StravaStreamType = exports.StravaStreamSource = void 0;
+exports.StravaApi = exports.isStravaClientConfig = exports.StravaStreamType = exports.StravaStreamSource = void 0;
 const assert = __importStar(require("assert"));
 const epdoc_util_1 = require("epdoc-util");
 const athlete_1 = require("./models/athlete");
 const detailed_activity_1 = require("./models/detailed-activity");
 const summary_segment_1 = require("./models/summary-segment");
-const strava_creds_1 = require("./strava-creds");
 const request = require("superagent");
 const STRAVA_URL_PREFIX = process.env.STRAVA_URL_PREFIX || 'https://www.strava.com';
 const STRAVA_API_PREFIX = STRAVA_URL_PREFIX + '/api/v3';
@@ -63,6 +62,10 @@ var StravaStreamType;
     StravaStreamType["distance"] = "distance";
     StravaStreamType["altitude"] = "altitude";
 })(StravaStreamType = exports.StravaStreamType || (exports.StravaStreamType = {}));
+function isStravaClientConfig(val) {
+    return ((0, epdoc_util_1.isObject)(val) && (0, epdoc_util_1.isNonEmptyString)(val.secret) && (0, epdoc_util_1.isPosInteger)(val.id));
+}
+exports.isStravaClientConfig = isStravaClientConfig;
 const defaultAuthOpts = {
     scope: 'read_all,activity:read_all,profile:read_all',
     state: '',
@@ -70,24 +73,36 @@ const defaultAuthOpts = {
     redirectUri: 'https://localhost'
 };
 class StravaApi {
-    constructor(clientConfig, credsFile) {
+    constructor(clientConfig, creds) {
         this.id = clientConfig.id || parseInt(process.env.STRAVA_CLIENT_ID, 10);
         this.secret = clientConfig.secret || process.env.STRAVA_CLIENT_SECRET;
         // this.token = opts.token || process.env.STRAVA_ACCESS_TOKEN;
-        this._credsFile = credsFile;
+        this._creds = creds;
     }
     toString() {
         return '[Strava]';
     }
+    /**
+     * Read OAUTH token file and places result in creds. This should be done
+     * before trying to authenticate with Strava.
+     * @returns
+     */
     initCreds() {
-        this._creds = new strava_creds_1.StravaCreds(this._credsFile);
         return this._creds.read();
     }
+    /**
+     * The OAUTH tokens that were read by initCreds(). If these creds are valid
+     * (creds.isValid) then authentication is not required.  If these creds are
+     * invalid, the caller will need to create an HTTP server (Server.ts) to use
+     * to retrieve updated tokens.
+     */
     get creds() {
         return this._creds;
     }
     getAuthorizationUrl(options = {}) {
-        assert.ok(this.id, 'A client ID is required.');
+        if (!this.id) {
+            throw new Error('A client ID is required.');
+        }
         const opts = Object.assign(defaultAuthOpts, options);
         return (`${STRAVA_URL.authorize}?client_id=${this.id}` +
             `&redirect_uri=${encodeURIComponent(opts.redirectUri)}` +

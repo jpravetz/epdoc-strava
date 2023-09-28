@@ -22,6 +22,9 @@ export function isStravaCredsData(val: any): val is StravaCredsData {
   return false;
 }
 
+/**
+ * Strava token file containing OAUTH credentials.
+ */
 const defaultStravaToken: StravaCredsData = {
   token_type: null,
   expires_at: 0,

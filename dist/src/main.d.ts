@@ -1,23 +1,11 @@
-import { BikeDef } from './bikelog';
-import { LineStyle } from './kml';
 import { Activity } from './models/activity';
-import { SegmentName } from './models/segment-base';
 import { SegmentFile } from './segment-file';
-import { StravaClientConfig } from './strava-api';
-import { Dict, EpochSeconds } from './util';
+import { StravaConfig } from './strava-config';
+import { Dict, EpochSeconds, LogFunction } from './util';
 export type SegmentConfig = {
     description: string;
     alias: Dict;
     data: Dict;
-};
-export type StravaConfig = {
-    description: string;
-    client: StravaClientConfig;
-    athleteId?: number;
-    cachePath?: string;
-    lineStyles?: Record<string, LineStyle>;
-    bikes?: BikeDef[];
-    aliases?: Record<SegmentName, SegmentName>;
 };
 export type DateRange = {
     before: EpochSeconds;
@@ -47,12 +35,12 @@ export type MainOpts = {
     imperial?: boolean;
     segments?: boolean | string;
     verbose?: number;
+    log?: LogFunction;
 };
 export declare class Main {
     private options;
     private _config;
     private strava;
-    private stravaCreds;
     private kml;
     private athlete;
     private activities;
@@ -64,6 +52,7 @@ export declare class Main {
     private starredSegments;
     segFile: SegmentFile;
     bikes: Dict;
+    private _log;
     constructor(options: MainOpts);
     init(): Promise<void>;
     get config(): StravaConfig;

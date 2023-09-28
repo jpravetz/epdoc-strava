@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getTemperatureString = exports.getElevationString = exports.getDistanceString = exports.escapeHtml = exports.fieldCapitalize = exports.julianDate = exports.precision = exports.writeJson = exports.readJson = exports.formatMS = exports.formatHMS = exports.compare = void 0;
+exports.getTemperatureString = exports.getElevationString = exports.getDistanceString = exports.escapeHtml = exports.fieldCapitalize = exports.julianDate = exports.precision = exports.writeJson = exports.readJson = exports.formatMS = exports.formatHMS = exports.isEpochSeconds = exports.isFileName = exports.isFolderPath = exports.isFilePath = exports.compare = void 0;
 const epdoc_util_1 = require("epdoc-util");
 const fs_1 = __importDefault(require("fs"));
 function compare(a, b, key) {
@@ -16,6 +16,22 @@ function compare(a, b, key) {
     return 0;
 }
 exports.compare = compare;
+function isFilePath(val) {
+    return (0, epdoc_util_1.isNonEmptyString)(val);
+}
+exports.isFilePath = isFilePath;
+function isFolderPath(val) {
+    return (0, epdoc_util_1.isNonEmptyString)(val);
+}
+exports.isFolderPath = isFolderPath;
+function isFileName(val) {
+    return (0, epdoc_util_1.isNonEmptyString)(val);
+}
+exports.isFileName = isFileName;
+function isEpochSeconds(val) {
+    return (0, epdoc_util_1.isInteger)(val) && val >= 0;
+}
+exports.isEpochSeconds = isEpochSeconds;
 function formatHMS(s, options) {
     options || (options = {});
     const seconds = s % 60;
@@ -59,7 +75,7 @@ exports.readJson = readJson;
 function writeJson(path, data) {
     return new Promise((resolve, reject) => {
         const buf = new Buffer(JSON.stringify(data, null, '  '));
-        fs_1.default.writeFile(path, buf, err => {
+        fs_1.default.writeFile(path, buf, (err) => {
             if (err) {
                 reject(err);
             }
