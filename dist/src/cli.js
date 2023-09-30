@@ -16,14 +16,11 @@ const env = process.env['NODE_ENV'] || 'development';
 const commander_1 = require("commander");
 const path_1 = __importDefault(require("path"));
 const package_json_1 = __importDefault(require("../package.json"));
-const project_settings_json_1 = __importDefault(require("./config/project.settings.json"));
 const main_1 = require("./main");
-const epdoc_util_1 = require("epdoc-util");
 const strava_config_1 = require("./strava-config");
 const DAY = 24 * 3600 * 1000;
 // let root = Path.resolve(__dirname, '..');
 const home = process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE;
-let config = (0, epdoc_util_1.deepCopy)(project_settings_json_1.default, { replace: { HOME: home } });
 //let Config = require('a5config').init(env, [__dirname + '/../config/project.settings.json'], {excludeGlobals: true});
 //let config = Config.get();
 function run() {
@@ -31,9 +28,9 @@ function run() {
         // const segmentsFile = path.resolve(home, '.strava', 'segments.json');
         // const credentialsFile = path.resolve(home, '.strava', 'credentials.json');
         // const userSettingsFile = path.resolve(home, '.strava', 'user.settings.json');
-        let config = new strava_config_1.StravaConfig('./config/project.settings.json', { home: home });
-        return config
-            .read()
+        // const configPath = path.resolve(__dirname, './config/project.settings.json');
+        // let config = new StravaConfig(configPath, { HOME: home });
+        return Promise.resolve()
             .then((resp) => {
             let segments;
             const program = new commander_1.Command('strava');
@@ -61,11 +58,10 @@ function run() {
             const opts = {
                 home: home,
                 cwd: cmdOpts.cwd,
-                config: config,
                 refreshStarredSegments: cmdOpts.refresh,
                 // segmentsFile: segmentsFile,
                 // credentialsFile: credentialsFile,
-                athleteId: parseInt(cmdOpts.id, 10) || config.athleteId,
+                athleteId: parseInt(cmdOpts.id, 10),
                 athlete: cmdOpts.athlete,
                 selectedBikes: cmdOpts.bikes,
                 friends: cmdOpts.friends,
@@ -93,6 +89,8 @@ function run() {
                     // opts.dateRanges.push({ after: tAfter.slice(0, 10), before: tBefore.slice(0, 10) });
                 });
             }
+            const configPath = path_1.default.resolve(cmdOpts.cwd, '../config/project.settings.json');
+            opts.config = new strava_config_1.StravaConfig(configPath, { HOME: home });
             const main = new main_1.Main(opts);
             return main.run();
         })

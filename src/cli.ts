@@ -3,17 +3,15 @@ const env = process.env['NODE_ENV'] || 'development';
 import { Command } from 'commander';
 import path from 'path';
 import pkg from '../package.json';
-import projectConfig from './config/project.settings.json';
 import { DateRange, Main, MainOpts } from './main';
-import {  EpochMilliseconds } from './util';
-import { Dict, deepCopy } from 'epdoc-util';
+import { EpochMilliseconds } from './util';
+import { Dict } from 'epdoc-util';
 import { StravaConfig } from './strava-config';
 
 const DAY = 24 * 3600 * 1000;
 
 // let root = Path.resolve(__dirname, '..');
 const home = process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE;
-let config: Dict = deepCopy(projectConfig, { replace: { HOME: home } });
 
 //let Config = require('a5config').init(env, [__dirname + '/../config/project.settings.json'], {excludeGlobals: true});
 //let config = Config.get();
@@ -23,9 +21,9 @@ async function run(): Promise<void> {
   // const credentialsFile = path.resolve(home, '.strava', 'credentials.json');
   // const userSettingsFile = path.resolve(home, '.strava', 'user.settings.json');
 
-  let config = new StravaConfig('./config/project.settings.json',{home:home});
-  return config
-    .read()
+  // const configPath = path.resolve(__dirname, './config/project.settings.json');
+  // let config = new StravaConfig(configPath, { HOME: home });
+  return Promise.resolve()
     .then((resp) => {
       let segments: Dict;
 
@@ -76,11 +74,10 @@ async function run(): Promise<void> {
       const opts: MainOpts = {
         home: home,
         cwd: cmdOpts.cwd,
-        config: config,
         refreshStarredSegments: cmdOpts.refresh,
         // segmentsFile: segmentsFile,
         // credentialsFile: credentialsFile,
-        athleteId: parseInt(cmdOpts.id, 10) || (config as StravaConfig).athleteId,
+        athleteId: parseInt(cmdOpts.id, 10), //  || (config as StravaConfig).athleteId,
         athlete: cmdOpts.athlete,
         selectedBikes: cmdOpts.bikes,
         friends: cmdOpts.friends,
@@ -109,6 +106,9 @@ async function run(): Promise<void> {
           // opts.dateRanges.push({ after: tAfter.slice(0, 10), before: tBefore.slice(0, 10) });
         });
       }
+
+      const configPath = path.resolve(cmdOpts.cwd, '../config/project.settings.json');
+      opts.config = new StravaConfig(configPath, { HOME: home });
 
       const main = new Main(opts);
       return main.run();

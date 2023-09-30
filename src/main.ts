@@ -7,7 +7,7 @@ import { SegmentData } from './models/segment-data';
 import { SummarySegment } from './models/summary-segment';
 import { SegmentFile } from './segment-file';
 import { Server } from './server';
-import { StravaActivityOpts, StravaApi, StravaStreamSource } from './strava-api';
+import { StravaActivityOpts, StravaApi, StravaStreamSource, isStravaClientSecret } from './strava-api';
 import { StravaConfig } from './strava-config';
 import { EpochSeconds, LogFunction } from './util';
 
@@ -81,24 +81,26 @@ export class Main {
   }
 
   public async init(): Promise<void> {
-    if (this.config && this.config.client) {
-      this.strava = new StravaApi(this.config.client, this.config.credentials);
-      return Promise.resolve()
-        .then((resp) => {
-          if (this.options.kml) {
-            // Run this first to validate line styles before pinging strava APIs
-            this.kml = new Kml({ verbose: this.options.verbose });
-            if (this.options.config.lineStyles) {
-              this.kml.setLineStyles(this.options.config.lineStyles);
+    return this._config.read().then((resp) => {
+      if (isStravaClientSecret(this.config.client)) {
+        this.strava = new StravaApi(this.config.client, this.config.credentials);
+        return Promise.resolve()
+          .then((resp) => {
+            if (this.options.kml) {
+              // Run this first to validate line styles before pinging strava APIs
+              this.kml = new Kml({ verbose: this.options.verbose });
+              if (this.options.config.lineStyles) {
+                this.kml.setLineStyles(this.options.config.lineStyles);
+              }
             }
-          }
-        })
-        .then((resp) => {
-          return this.strava.initCreds();
-        });
-    } else {
-      return Promise.reject(new Error('No config file or config file does not contain client id and secret'));
-    }
+          })
+          .then((resp) => {
+            return this.strava.initCreds();
+          });
+      } else {
+        return Promise.reject(new Error('No config file or config file does not contain client id and secret'));
+      }
+    });
   }
 
   public get config(): StravaConfig {

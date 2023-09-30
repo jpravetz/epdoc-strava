@@ -7,8 +7,6 @@ import { StravaClientSecret } from './strava-api';
 import { StravaCreds } from './strava-creds';
 import { FilePath, FolderPath, readJson } from './util';
 
-const home = process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE;
-
 export class StravaConfig {
   public client: StravaClientSecret;
   public credentials: StravaCreds;

@@ -32,25 +32,27 @@ class Main {
     }
     init() {
         return __awaiter(this, void 0, void 0, function* () {
-            if (this.config && this.config.client) {
-                this.strava = new strava_api_1.StravaApi(this.config.client, this.config.credentials);
-                return Promise.resolve()
-                    .then((resp) => {
-                    if (this.options.kml) {
-                        // Run this first to validate line styles before pinging strava APIs
-                        this.kml = new kml_1.Kml({ verbose: this.options.verbose });
-                        if (this.options.config.lineStyles) {
-                            this.kml.setLineStyles(this.options.config.lineStyles);
+            return this._config.read().then((resp) => {
+                if ((0, strava_api_1.isStravaClientSecret)(this.config.client)) {
+                    this.strava = new strava_api_1.StravaApi(this.config.client, this.config.credentials);
+                    return Promise.resolve()
+                        .then((resp) => {
+                        if (this.options.kml) {
+                            // Run this first to validate line styles before pinging strava APIs
+                            this.kml = new kml_1.Kml({ verbose: this.options.verbose });
+                            if (this.options.config.lineStyles) {
+                                this.kml.setLineStyles(this.options.config.lineStyles);
+                            }
                         }
-                    }
-                })
-                    .then((resp) => {
-                    return this.strava.initCreds();
-                });
-            }
-            else {
-                return Promise.reject(new Error('No config file or config file does not contain client id and secret'));
-            }
+                    })
+                        .then((resp) => {
+                        return this.strava.initCreds();
+                    });
+                }
+                else {
+                    return Promise.reject(new Error('No config file or config file does not contain client id and secret'));
+                }
+            });
         });
     }
     get config() {
