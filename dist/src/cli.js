@@ -20,7 +20,6 @@ const project_settings_json_1 = __importDefault(require("./config/project.settin
 const main_1 = require("./main");
 const epdoc_util_1 = require("epdoc-util");
 const strava_config_1 = require("./strava-config");
-const dateutil = require('dateutil');
 const DAY = 24 * 3600 * 1000;
 // let root = Path.resolve(__dirname, '..');
 const home = process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE;
@@ -32,7 +31,7 @@ function run() {
         // const segmentsFile = path.resolve(home, '.strava', 'segments.json');
         // const credentialsFile = path.resolve(home, '.strava', 'credentials.json');
         // const userSettingsFile = path.resolve(home, '.strava', 'user.settings.json');
-        let config = new strava_config_1.StravaConfig('./config/project.settings.json');
+        let config = new strava_config_1.StravaConfig('./config/project.settings.json', { home: home });
         return config
             .read()
             .then((resp) => {
@@ -87,10 +86,11 @@ function run() {
             if (opts.dates && opts.dates.length) {
                 console.log('Date ranges: ');
                 opts.dates.forEach((range) => {
-                    const tAfter = dateutil.toSortableString(1000 * range.after).replace(/\//g, '-');
-                    const tBefore = dateutil.toSortableString(1000 * range.before).replace(/\//g, '-');
-                    console.log('  From ' + tAfter + ' to ' + tBefore);
-                    opts.dateRanges.push({ after: tAfter.slice(0, 10), before: tBefore.slice(0, 10) });
+                    // XXX what does toSortableString do?
+                    // const tAfter = dateutil.toSortableString(1000 * range.after).replace(/\//g, '-');
+                    // const tBefore = dateutil.toSortableString(1000 * range.before).replace(/\//g, '-');
+                    // console.log('  From ' + tAfter + ' to ' + tBefore);
+                    // opts.dateRanges.push({ after: tAfter.slice(0, 10), before: tBefore.slice(0, 10) });
                 });
             }
             const main = new main_1.Main(opts);

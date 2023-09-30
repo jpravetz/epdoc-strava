@@ -4,8 +4,11 @@ exports.SegmentBase = void 0;
 const segment_data_1 = require("./segment-data");
 class SegmentBase {
     constructor(data) {
-        this.isSegmentBase = true;
+        this._isSegmentBase = true;
         Object.assign(this, data);
+    }
+    get isSegmentBase() {
+        return this._isSegmentBase;
     }
     static isInstance(val) {
         return val && val.isSegmentBase === true;

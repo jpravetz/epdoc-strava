@@ -1,9 +1,9 @@
 {
   "description": "Strava project config. Can be overriden by userSettings",
-  "client": "{HOME}/.strava/client.json",
-  "credentials": "{HOME}/.strava/credentials.json",
-  "userSettings": "{HOME}/.strava/user.settings.json",
-  "segments": "{HOME}/.strava/segments.json",
+  "clientSecretPath": "{HOME}/.strava/client.json",
+  "credentialsPath": "{HOME}/.strava/credentials.json",
+  "userSettingsPath": "{HOME}/.strava/user.settings.json",
+  "segmentsPath": "{HOME}/.strava/segments.json",
   "cachePath": "{HOME}/.strava/cache",
   "lineStyles": {
     "Commute": { "color": "C000A3FF", "width": 4 }

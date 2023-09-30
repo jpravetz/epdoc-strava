@@ -1,3 +1,4 @@
+import { Dict } from 'epdoc-util';
 import { Metres } from './../util';
 export type StravaBike = {
     id?: string;
@@ -9,7 +10,7 @@ export declare class Athelete {
     bikes: StravaBike[];
     id: number;
     username: string;
-    constructor(data: any);
+    constructor(data: Dict);
     static newFromResponseData(data: any): Athelete;
     static isInstance(val: any): val is Athelete;
 }

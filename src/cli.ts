@@ -1,16 +1,13 @@
 const env = process.env['NODE_ENV'] || 'development';
 
 import { Command } from 'commander';
-import fs from 'fs';
 import path from 'path';
 import pkg from '../package.json';
 import projectConfig from './config/project.settings.json';
 import { DateRange, Main, MainOpts } from './main';
-import { Dict, EpochMilliseconds, readJson } from './util';
-import { deepCopy } from 'epdoc-util';
+import {  EpochMilliseconds } from './util';
+import { Dict, deepCopy } from 'epdoc-util';
 import { StravaConfig } from './strava-config';
-
-const dateutil = require('dateutil');
 
 const DAY = 24 * 3600 * 1000;
 
@@ -26,7 +23,7 @@ async function run(): Promise<void> {
   // const credentialsFile = path.resolve(home, '.strava', 'credentials.json');
   // const userSettingsFile = path.resolve(home, '.strava', 'user.settings.json');
 
-  let config = new StravaConfig('./config/project.settings.json');
+  let config = new StravaConfig('./config/project.settings.json',{home:home});
   return config
     .read()
     .then((resp) => {
@@ -105,10 +102,11 @@ async function run(): Promise<void> {
       if (opts.dates && opts.dates.length) {
         console.log('Date ranges: ');
         opts.dates.forEach((range) => {
-          const tAfter = dateutil.toSortableString(1000 * range.after).replace(/\//g, '-');
-          const tBefore = dateutil.toSortableString(1000 * range.before).replace(/\//g, '-');
-          console.log('  From ' + tAfter + ' to ' + tBefore);
-          opts.dateRanges.push({ after: tAfter.slice(0, 10), before: tBefore.slice(0, 10) });
+          // XXX what does toSortableString do?
+          // const tAfter = dateutil.toSortableString(1000 * range.after).replace(/\//g, '-');
+          // const tBefore = dateutil.toSortableString(1000 * range.before).replace(/\//g, '-');
+          // console.log('  From ' + tAfter + ' to ' + tBefore);
+          // opts.dateRanges.push({ after: tAfter.slice(0, 10), before: tBefore.slice(0, 10) });
         });
       }
 

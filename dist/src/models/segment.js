@@ -7,13 +7,16 @@ class Segment extends segment_base_1.SegmentBase {
     // efforts: Dict[];
     constructor(data) {
         super(data);
-        this.klass = 'Segment';
+        this._isSegment = true;
     }
     static newFromResponseData(data) {
         return new Segment(data);
     }
+    get isSegment() {
+        return this._isSegment;
+    }
     static isInstance(val) {
-        return val && val.klass === 'Segment';
+        return val && val.isSegment === true;
     }
 }
 exports.Segment = Segment;

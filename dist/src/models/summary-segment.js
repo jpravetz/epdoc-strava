@@ -5,13 +5,17 @@ const segment_base_1 = require("./segment-base");
 class SummarySegment extends segment_base_1.SegmentBase {
     constructor(data) {
         super(data);
+        this._isSummarySegment = true;
         this.coordinates = [];
     }
     static newFromResponseData(data) {
         return new SummarySegment(data);
     }
+    get isSummarySegment() {
+        return this._isSummarySegment;
+    }
     static isInstance(val) {
-        return val && val.klass === 'SummarySegment';
+        return val && val.isSummarySegment;
     }
     asCacheEntry() {
         return {

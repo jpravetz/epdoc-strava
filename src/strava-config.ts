@@ -1,90 +1,57 @@
-import projectConfig from './config/project.settings.json';
-import { Dict, deepCopy, isDict, isNonEmptyString, isObject, isPosInteger } from 'epdoc-util';
-import { StravaClientConfig, isStravaClientConfig } from './strava-api';
-import { FilePath, FolderPath, isFilePath, readJson } from './util';
-import { LineStyle } from './kml';
-import fs from 'fs';
-import { SegmentName } from './models/segment-base';
-import { StravaCreds, StravaCredsData } from './strava-creds';
+import { Dict } from 'epdoc-util';
 import { BikeDef } from './bikelog';
+import { LineStyle } from './kml';
+import { SegmentName } from './models/segment-base';
+import { Settings } from './settings';
+import { StravaClientSecret } from './strava-api';
+import { StravaCreds } from './strava-creds';
+import { FilePath, FolderPath, readJson } from './util';
 
 const home = process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE;
-let config: Dict = deepCopy(projectConfig, { replace: { HOME: home } });
-
-export type ProjectSettings = {
-  description?: string;
-  client: FilePath;
-  credentials: FilePath;
-  userSettings: FilePath;
-  segments: FilePath;
-  lineStyles: Record<string, LineStyle>;
-};
-
-export function isProjectSettings(val: any): val is ProjectSettings {
-  if (isObject(val) && isFilePath(val.client) && isFilePath(val.credentials)) {
-    return true;
-  }
-  return false;
-}
 
 export class StravaConfig {
-  public description: string;
-  public client: StravaClientConfig;
+  public client: StravaClientSecret;
   public credentials: StravaCreds;
   public segments: Dict;
-  public lineStyles?: Record<string, LineStyle>;
   public athleteId?: number;
   // accessToken: string;
   public cachePath?: FolderPath;
-  public bikes?: BikeDef[];
-  public aliases?: Record<SegmentName, SegmentName>;
-  private _filePath: FilePath;
-  private _projectSettings: ProjectSettings;
+  private _settings: Settings;
 
-  constructor(path: FilePath) {
-    this._filePath = path;
+  constructor(path: FilePath, replacements: Dict) {
+    this._settings = new Settings(path, replacements);
   }
 
   async read(): Promise<void> {
     return Promise.resolve()
       .then((resp) => {
-        if (fs.existsSync(this._filePath)) {
-          return readJson(this._filePath);
-        }
+        return this._settings.read();
       })
       .then((resp) => {
-        if (isProjectSettings(resp)) {
-          this._projectSettings = resp;
-          this.lineStyles = resp.lineStyles;
-          this.credentials = new StravaCreds(resp.credentials);
-          return Promise.resolve()
-            .then((resp) => {
-              if (fs.existsSync(this._projectSettings.userSettings)) {
-                return readJson(this._projectSettings.userSettings);
-              }
-            })
-            .then((resp) => {
-              if (isProjectSettings(resp)) {
-                this._projectSettings = Object.assign({}, this._projectSettings, resp);
-              }
-              if (fs.existsSync(this._projectSettings.client)) {
-                return readJson(this._projectSettings.client);
-              }
-            })
-            .then((resp) => {
-              if (isStravaClientConfig(resp)) {
-                this.client = resp;
-              }
-              if (fs.existsSync(this._projectSettings.segments)) {
-                return readJson(this._projectSettings.segments);
-              }
-            })
-            .then((resp) => {
-              if (isDict(resp)) {
-                this.segments = resp;
-              }
-            });
-        }
+        return this._settings.clientSecret();
+      })
+      .then((resp) => {
+        this.client = resp;
+        return this._settings.credentials();
+      })
+      .then((resp) => {
+        this.credentials = resp;
+        return this._settings.segments();
+      })
+      .then((resp) => {
+        this.segments = resp;
       });
+  }
+
+  get bikes(): BikeDef[] {
+    return this._settings.bikes;
+  }
+
+  get aliases(): Record<SegmentName, SegmentName> {
+    return this._settings.aliases;
+  }
+
+  get lineStyles(): Record<string, LineStyle> {
+    return this._settings.lineStyles;
   }
 }

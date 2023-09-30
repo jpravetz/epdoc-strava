@@ -1,8 +1,5 @@
+import { Dict, isBoolean, isNumber } from 'epdoc-util';
 import { SegmentEffort } from './segment-effort';
-import { isString } from 'epdoc-util';
-import { Dict } from '../util';
-import { isNumber, isBoolean } from 'util';
-import { Segment } from './segment';
 
 /**
  * We fetch DetailedActivity from Strava and pick data from this object and add
@@ -12,7 +9,7 @@ export class DetailedActivity {
   description?: string;
   segment_efforts?: SegmentEffort[];
 
-  constructor(data) {
+  constructor(data: Dict) {
     Object.assign(this, data);
   }
 

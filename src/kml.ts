@@ -1,4 +1,3 @@
-import * as dateutil from 'dateutil';
 import { Dict, isNumber, isString } from 'epdoc-util';
 import * as fs from 'fs';
 import { DateRange, Main } from './main';
@@ -12,6 +11,7 @@ import {
   getElevationString,
   getTemperatureString
 } from './util';
+import { durationUtil } from 'epdoc-timeutil';
 
 export type LineStyle = {
   color: string;
@@ -294,7 +294,7 @@ export class Kml {
           if (field === 'distance') {
             value = getDistanceString(value, this.imperial);
           } else if (field === 'movingTime' || field === 'elapsedTime') {
-            value = dateutil.formatMS(activity[field] * 1000, { ms: false, hours: true });
+            value = durationUtil(activity[field] * 1000).format({ ms: false });
           } else if (field === 'totalElevationGain') {
             key = 'elevation_gain';
             value = getElevationString(value, this.imperial);
@@ -308,7 +308,7 @@ export class Kml {
                 '<li><b>' +
                 segment.name +
                 ':</b> ' +
-                dateutil.formatMS(segment.elapsedTime * 1000, { ms: false, hours: true }) +
+                durationUtil(segment.elapsedTime * 1000).format( { ms: false}) +
                 '</li>';
               segs.push(s);
             });

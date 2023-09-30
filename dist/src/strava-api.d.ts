@@ -1,8 +1,9 @@
+import { Dict } from 'epdoc-util';
 import { Activity } from './models/activity';
 import { DetailedActivity } from './models/detailed-activity';
 import { SummarySegment } from './models/summary-segment';
 import { StravaCreds } from './strava-creds';
-import { Dict, EpochSeconds } from './util';
+import { EpochSeconds } from './util';
 export type StravaCode = string;
 export type StravaSecret = string;
 export type StravaAccessToken = string;
@@ -27,12 +28,12 @@ export type StravaCoordData = {
     type: string;
     data: StravaCoord[];
 };
-export type StravaClientConfig = {
+export type StravaClientSecret = {
     id: StravaClientId;
     secret: StravaSecret;
 };
-export declare function isStravaClientConfig(val: any): val is StravaClientConfig;
-export type StravaApiOpts = StravaClientConfig & {
+export declare function isStravaClientSecret(val: any): val is StravaClientSecret;
+export type StravaApiOpts = StravaClientSecret & {
     token: StravaAccessToken;
 };
 export type AuthorizationUrlOpts = {
@@ -57,7 +58,7 @@ export declare class StravaApi {
     id: StravaClientId;
     secret: StravaSecret;
     private _creds;
-    constructor(clientConfig: StravaClientConfig, creds: StravaCreds);
+    constructor(clientConfig: StravaClientSecret, creds: StravaCreds);
     toString(): string;
     /**
      * Read OAUTH token file and places result in creds. This should be done

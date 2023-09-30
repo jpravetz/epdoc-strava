@@ -1,7 +1,8 @@
+import { Dict } from 'epdoc-util';
 import { Activity } from './models/activity';
 import { SegmentFile } from './segment-file';
 import { StravaConfig } from './strava-config';
-import { Dict, EpochSeconds, LogFunction } from './util';
+import { EpochSeconds, LogFunction } from './util';
 export type SegmentConfig = {
     description: string;
     alias: Dict;
@@ -56,6 +57,7 @@ export declare class Main {
     constructor(options: MainOpts);
     init(): Promise<void>;
     get config(): StravaConfig;
+    auth(): Promise<void>;
     run(): Promise<void>;
     getAthlete(): Promise<void>;
     logAthlete(): void;

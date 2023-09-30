@@ -1,10 +1,10 @@
+import { Dict } from 'epdoc-util';
+import { StravaObjId } from '../strava-api';
 import { SegmentBase } from './segment-base';
 import { SegmentData } from './segment-data';
-import { Dict } from './../util';
-import { StravaObjId } from '../strava-api';
 export type SegmentEffortId = StravaObjId;
 export declare class SegmentEffort extends SegmentBase {
-    klass: string;
+    private _isSegmentEffort;
     country: string;
     state: string;
     coordinates: any;
@@ -13,11 +13,12 @@ export declare class SegmentEffort extends SegmentBase {
     elevation_high: number;
     elevation_low: number;
     average_grade: number;
-    constructor(data: any);
-    static newFromResponseData(data: any): SegmentEffort;
+    constructor(data: Dict);
+    static newFromResponseData(data: Dict): SegmentEffort;
+    get isSegmentEffort(): boolean;
     static isInstance(val: any): val is SegmentEffort;
     toSegmentData(): SegmentData;
     buildKmlDescription(): string;
     static kvString(k: any, v: any): string;
-    static timeString(seconds: any): any;
+    static timeString(seconds: any): string;
 }

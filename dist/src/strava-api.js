@@ -32,7 +32,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.StravaApi = exports.isStravaClientConfig = exports.StravaStreamType = exports.StravaStreamSource = void 0;
+exports.StravaApi = exports.isStravaClientSecret = exports.StravaStreamType = exports.StravaStreamSource = void 0;
 const assert = __importStar(require("assert"));
 const epdoc_util_1 = require("epdoc-util");
 const athlete_1 = require("./models/athlete");
@@ -47,7 +47,7 @@ const STRAVA_URL = {
     athlete: STRAVA_API_PREFIX + '/athlete',
     picture: STRAVA_API_PREFIX + '/athlete/picture',
     activities: STRAVA_API_PREFIX + '/activities',
-    starred: STRAVA_API_PREFIX + '/segments/starred'
+    starred: STRAVA_API_PREFIX + '/segments/starred',
 };
 var StravaStreamSource;
 (function (StravaStreamSource) {
@@ -62,15 +62,15 @@ var StravaStreamType;
     StravaStreamType["distance"] = "distance";
     StravaStreamType["altitude"] = "altitude";
 })(StravaStreamType = exports.StravaStreamType || (exports.StravaStreamType = {}));
-function isStravaClientConfig(val) {
-    return ((0, epdoc_util_1.isObject)(val) && (0, epdoc_util_1.isNonEmptyString)(val.secret) && (0, epdoc_util_1.isPosInteger)(val.id));
+function isStravaClientSecret(val) {
+    return (0, epdoc_util_1.isObject)(val) && (0, epdoc_util_1.isNonEmptyString)(val.secret) && (0, epdoc_util_1.isPosInteger)(val.id);
 }
-exports.isStravaClientConfig = isStravaClientConfig;
+exports.isStravaClientSecret = isStravaClientSecret;
 const defaultAuthOpts = {
     scope: 'read_all,activity:read_all,profile:read_all',
     state: '',
     approvalPrompt: 'auto',
-    redirectUri: 'https://localhost'
+    redirectUri: 'https://localhost',
 };
 class StravaApi {
     constructor(clientConfig, creds) {
@@ -130,18 +130,18 @@ class StravaApi {
                 code: code,
                 client_id: this.id,
                 client_secret: this.secret,
-                grant_type: 'authorization_code'
+                grant_type: 'authorization_code',
             };
             // console.log('getTokens request', payload);
             return request
                 .post(STRAVA_URL.token)
                 .send(payload)
-                .then(resp => {
+                .then((resp) => {
                 // console.log('getTokens response', resp.body);
                 console.log('Authorization obtained.');
                 return this.creds.write(resp.body);
             })
-                .then(resp => {
+                .then((resp) => {
                 console.log('Credentials written to local storage');
             });
         });
@@ -154,15 +154,15 @@ class StravaApi {
                 client_id: this.id,
                 client_secret: this.secret,
                 // tslint:disable-next-line: object-literal-shorthand
-                code: code
+                code: code,
             };
             return request
                 .post(STRAVA_URL.token)
                 .query(query)
-                .then(resp => {
+                .then((resp) => {
                 return Promise.resolve(resp.body.access_token);
             })
-                .catch(err => {
+                .catch((err) => {
                 return Promise.reject(err);
             });
         });
@@ -170,7 +170,7 @@ class StravaApi {
     authHeaders() {
         assert.ok(this.secret, 'An access token is required.');
         return {
-            Authorization: 'access_token ' + this.creds.accessToken
+            Authorization: 'access_token ' + this.creds.accessToken,
         };
     }
     getAthlete(athleteId) {
@@ -182,7 +182,7 @@ class StravaApi {
             return request
                 .get(url)
                 .set('Authorization', 'access_token ' + this.creds.accessToken)
-                .then(resp => {
+                .then((resp) => {
                 if (resp && athlete_1.Athelete.isInstance(resp.body)) {
                     return Promise.resolve(athlete_1.Athelete.newFromResponseData(resp.body));
                 }
@@ -200,13 +200,13 @@ class StravaApi {
                 .get(url)
                 .set('Authorization', 'access_token ' + this.creds.accessToken)
                 .query(options.query)
-                .then(resp => {
+                .then((resp) => {
                 if (!resp || !Array.isArray(resp.body)) {
                     throw new Error(JSON.stringify(resp.body));
                 }
                 return Promise.resolve(resp.body);
             })
-                .catch(err => {
+                .catch((err) => {
                 err.message = 'Activities - ' + err.message;
                 throw err;
             });
@@ -219,10 +219,10 @@ class StravaApi {
                 .get(STRAVA_URL.starred)
                 .query({ per_page: perPage, page: page })
                 .set('Authorization', 'access_token ' + this.creds.accessToken)
-                .then(resp => {
+                .then((resp) => {
                 if (resp && Array.isArray(resp.body)) {
                     console.log(`  Retrieved ${resp.body.length} starred segments for page ${page}`);
-                    resp.body.forEach(item => {
+                    resp.body.forEach((item) => {
                         const result = summary_segment_1.SummarySegment.newFromResponseData(item);
                         accum.push(result);
                     });
@@ -239,10 +239,10 @@ class StravaApi {
         const result = [];
         const query = {
             keys: StravaStreamType.latlng,
-            key_by_type: ''
+            key_by_type: '',
         };
         return this.getStreams(source, objId, query)
-            .then(resp => {
+            .then((resp) => {
             if (Array.isArray(resp.latlng)) {
                 console.log(`  Get ${name} Found ${resp.latlng.length} coordinates`);
                 return Promise.resolve(resp.latlng);
@@ -250,7 +250,7 @@ class StravaApi {
             console.log(`  Get ${name} did not contain any coordinates`);
             return Promise.resolve([]);
         })
-            .catch(err => {
+            .catch((err) => {
             console.log(`  Get ${name} coordinates ${err.message}`);
             return Promise.resolve([]);
         });
@@ -260,13 +260,13 @@ class StravaApi {
             return request
                 .get(STRAVA_URL.activities + '/' + activity.data.id)
                 .set('Authorization', 'access_token ' + this.creds.accessToken)
-                .then(resp => {
+                .then((resp) => {
                 if (resp && detailed_activity_1.DetailedActivity.isInstance(resp.body)) {
                     return Promise.resolve(detailed_activity_1.DetailedActivity.newFromResponseData(resp.body));
                 }
                 throw new Error('Invalid DetailedActivity return value');
             })
-                .catch(err => {
+                .catch((err) => {
                 err.message = `getActivity id='${activity.data.id}' ${err.message} (${activity.toString()})`;
                 throw err;
             });
@@ -285,10 +285,10 @@ class StravaApi {
                 .get(`${STRAVA_API_PREFIX}/${source}/${objId}/streams`)
                 .set('Authorization', 'access_token ' + this.creds.accessToken)
                 .query(options)
-                .then(resp => {
+                .then((resp) => {
                 if (resp && Array.isArray(resp.body)) {
                     const result = {};
-                    resp.body.forEach(item => {
+                    resp.body.forEach((item) => {
                         if (Array.isArray(item.data)) {
                             result[item.type] = item.data;
                         }

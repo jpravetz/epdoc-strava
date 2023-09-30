@@ -1,4 +1,4 @@
-import { isNumber, isString } from 'epdoc-util';
+import { Dict, isNumber, isString } from 'epdoc-util';
 import { Metres } from './../util';
 
 export type StravaBike = {
@@ -13,7 +13,7 @@ export class Athelete {
   id: number;
   username: string;
 
-  constructor(data) {
+  constructor(data:Dict) {
     Object.assign(this, data);
   }
 

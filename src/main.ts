@@ -1,16 +1,15 @@
-import { BikeDef, Bikelog, BikelogOutputOpts } from './bikelog';
-import { Kml, KmlOpts, LineStyle } from './kml';
+import { Dict } from 'epdoc-util';
+import { Bikelog, BikelogOutputOpts } from './bikelog';
+import { Kml, KmlOpts } from './kml';
 import { Activity, ActivityFilter } from './models/activity';
 import { Athelete, StravaBike } from './models/athlete';
-import { SegmentName } from './models/segment-base';
 import { SegmentData } from './models/segment-data';
 import { SummarySegment } from './models/summary-segment';
 import { SegmentFile } from './segment-file';
 import { Server } from './server';
-import { StravaActivityOpts, StravaApi, StravaClientConfig, StravaStreamSource } from './strava-api';
+import { StravaActivityOpts, StravaApi, StravaStreamSource } from './strava-api';
 import { StravaConfig } from './strava-config';
-import { StravaCreds, StravaCredsData } from './strava-creds';
-import { Dict, EpochSeconds, FolderPath, LogFunction } from './util';
+import { EpochSeconds, LogFunction } from './util';
 
 // let _ = require('underscore');
 // let async = require('async');
@@ -85,7 +84,7 @@ export class Main {
     if (this.config && this.config.client) {
       this.strava = new StravaApi(this.config.client, this.config.credentials);
       return Promise.resolve()
-        .then(resp => {
+        .then((resp) => {
           if (this.options.kml) {
             // Run this first to validate line styles before pinging strava APIs
             this.kml = new Kml({ verbose: this.options.verbose });
@@ -94,7 +93,7 @@ export class Main {
             }
           }
         })
-        .then(resp => {
+        .then((resp) => {
           return this.strava.initCreds();
         });
     } else {
@@ -106,13 +105,13 @@ export class Main {
     return this._config;
   }
 
-  public async run(): Promise<void> {
+  public async auth(): Promise<void> {
     return this.init()
-      .then(resp => {
+      .then((resp) => {
         if (!this.strava.creds.areValid()) {
           this._log('Authorization required. Opening web authorization page');
           const authServer = new Server(this.strava);
-          return authServer.run().then(resp => {
+          return authServer.run().then((resp) => {
             this._log('Closing server');
             authServer.close();
           });
@@ -120,67 +119,71 @@ export class Main {
           this._log('Authorization not required');
         }
       })
-      .then(resp => {
+      .then((resp) => {
         if (!this.strava.creds.areValid()) {
           throw new Error('Invalid credentials');
         }
-      })
-      .then(resp => {
+      });
+  }
+
+  public async run(): Promise<void> {
+    return this.auth()
+      .then((resp) => {
         this.segFile = new SegmentFile(this.options.segmentsFile, this.strava, { log: this._log });
         return this.segFile.get({ refresh: this.options.refreshStarredSegments });
       })
-      .then(resp => {
+      .then((resp) => {
         if (this.options.kml && !this.options.activities && !this.options.segments) {
           throw new Error('When writing kml select either segments, activities or both');
         }
       })
-      .then(resp => {
+      .then((resp) => {
         if (this.options.athlete || this.options.xml || this.options.kml) {
-          return this.getAthlete().then(resp => {
+          return this.getAthlete().then((resp) => {
             if (!this.options.xml) {
               this.logAthlete();
             }
           });
         }
       })
-      .then(resp => {
+      .then((resp) => {
         if (this.options.activities || this.options.xml) {
-          return this.getActivities().then(resp => {
+          return this.getActivities().then((resp) => {
             this.activities = resp;
             this._log(`Found ${resp.length} Activities`);
             if (!this.options.xml) {
-              resp.forEach(i => {
+              resp.forEach((i) => {
                 this._log('  ' + i.toString());
               });
             }
           });
         }
       })
-      .then(resp => {
+      .then((resp) => {
         if (this.options.xml) {
           return this.addActivitiesDetails();
         }
       })
-      .then(resp => {
+      .then((resp) => {
         if (this.options.xml) {
           return this.saveXml();
         }
       })
-      .then(resp => {
+      .then((resp) => {
         if (this.options.kml && this.options.activities) {
           return this.addActivitiesCoordinates();
         }
       })
-      .then(resp => {
+      .then((resp) => {
         if (this.options.kml && this.options.segments) {
           return this.addStarredSegmentsCoordinates();
         }
       })
-      .then(resp => {
+      .then((resp) => {
         if (this.options.kml) {
           let opts = {
             activities: true,
-            segments: this.options.segments ? true : false
+            segments: this.options.segments ? true : false,
           };
           return this.saveKml(opts);
         }
@@ -190,11 +193,11 @@ export class Main {
   public async getAthlete(): Promise<void> {
     return this.strava
       .getAthlete(this.options.athleteId)
-      .then(resp => {
+      .then((resp) => {
         this.athlete = resp;
         this.registerBikes(this.athlete.bikes);
       })
-      .catch(err => {
+      .catch((err) => {
         err.message = 'Athlete ' + err.message;
         throw err;
       });
@@ -211,13 +214,13 @@ export class Main {
     return dateRanges
       .reduce((promiseChain, dateRange) => {
         return promiseChain.then(() => {
-          let job = this.getActivitiesForDateRange(dateRange).then(resp => {
+          let job = this.getActivitiesForDateRange(dateRange).then((resp) => {
             results = results.concat(resp);
           });
           return job;
         });
       }, Promise.resolve())
-      .then(resp => {
+      .then((resp) => {
         results = this.filterActivities(results);
         results = results.sort(Activity.compareStartDate);
         return Promise.resolve(results);
@@ -230,13 +233,13 @@ export class Main {
       query: {
         per_page: 200,
         after: dateRange.after,
-        before: dateRange.before
-      }
+        before: dateRange.before,
+      },
     };
-    return this.strava.getActivities(params).then(resp => {
+    return this.strava.getActivities(params).then((resp) => {
       const activities = resp as Dict[];
       const results: Activity[] = [];
-      resp.forEach(data => {
+      resp.forEach((data) => {
         const activity = Activity.newFromResponseData(data, this);
         if (activity) {
           results.push(activity);
@@ -250,9 +253,9 @@ export class Main {
     const filter: ActivityFilter = {
       commuteOnly: this.options.commuteOnly,
       nonCommuteOnly: this.options.nonCommuteOnly,
-      include: this.options.activityFilter
+      include: this.options.activityFilter,
     };
-    const results: Activity[] = activities.filter(activity => {
+    const results: Activity[] = activities.filter((activity) => {
       return activity.include(filter);
     });
     return results;
@@ -276,20 +279,20 @@ export class Main {
       .reduce((promiseChain, activities) => {
         return promiseChain.then(() => {
           const jobs = [];
-          activities.forEach(activity => {
+          activities.forEach((activity) => {
             const job = this.addActivityDetail(activity);
             jobs.push(job);
           });
           return Promise.all(jobs);
         });
       }, Promise.resolve())
-      .then(resp => {
+      .then((resp) => {
         return Promise.resolve();
       });
   }
 
   public async addActivityDetail(activity: Activity): Promise<void> {
-    return this.strava.getDetailedActivity(activity).then(data => {
+    return this.strava.getDetailedActivity(activity).then((data) => {
       activity.addFromDetailedActivity(data);
     });
   }
@@ -311,10 +314,10 @@ export class Main {
       .reduce((promiseChain, items) => {
         return promiseChain.then(() => {
           const jobs = [];
-          items.forEach(item => {
+          items.forEach((item) => {
             const activity: Activity = item as Activity;
             const name = activity.startDateLocal;
-            const job = this.strava.getStreamCoords(StravaStreamSource.activities, activity.id, name).then(resp => {
+            const job = this.strava.getStreamCoords(StravaStreamSource.activities, activity.id, name).then((resp) => {
               activity.coordinates = resp;
             });
             jobs.push(job);
@@ -322,7 +325,7 @@ export class Main {
           return Promise.all(jobs);
         });
       }, Promise.resolve())
-      .then(resp => {
+      .then((resp) => {
         return Promise.resolve();
       });
   }
@@ -336,19 +339,19 @@ export class Main {
     return this.starredSegments
       .reduce((promiseChain, item) => {
         return promiseChain.then(() => {
-          return this.strava.getStreamCoords(StravaStreamSource.segments, item.id, item.name).then(resp => {
+          return this.strava.getStreamCoords(StravaStreamSource.segments, item.id, item.name).then((resp) => {
             item.coordinates = resp;
           });
         });
       }, Promise.resolve())
-      .then(resp => {
+      .then((resp) => {
         return Promise.resolve();
       });
   }
 
   private registerBikes(bikes: StravaBike[]) {
     if (bikes && bikes.length) {
-      bikes.forEach(bike => {
+      bikes.forEach((bike) => {
         this.bikes[bike.id] = bike;
       });
     }
@@ -360,7 +363,7 @@ export class Main {
       dates: this.options.dateRanges,
       imperial: this.options.imperial,
       selectedBikes: this.options.config.bikes,
-      bikes: this.bikes
+      bikes: this.bikes,
     };
     if (this.options.segments === 'flat') {
       opts.segmentsFlatFolder = true;
@@ -376,7 +379,7 @@ export class Main {
       imperial: this.options.imperial,
       activities: options.activities,
       segments: options.segments,
-      bikes: this.bikes
+      bikes: this.bikes,
     };
     if (this.options.segments === 'flat') {
       opts.segmentsFlatFolder = true;

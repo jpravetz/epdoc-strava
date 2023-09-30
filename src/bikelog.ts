@@ -1,10 +1,10 @@
-import * as dateutil from 'dateutil';
-import { isNumber } from 'epdoc-util';
+import { DateUtil, durationUtil } from 'epdoc-timeutil';
+import { Dict, isNumber } from 'epdoc-util';
 import fs from 'fs';
 import * as builder from 'xmlbuilder';
 import { DateRange } from './main';
 import { Activity } from './models/activity';
-import { Dict, formatHMS, formatMS, julianDate, Seconds } from './util';
+import { Seconds } from './util';
 
 export type BikeDef = {
   name: string;
@@ -22,7 +22,7 @@ export type BikelogOutputOpts = {
 };
 
 const REGEX = {
-  moto: /^moto$/i
+  moto: /^moto$/i,
 };
 
 /**
@@ -49,9 +49,9 @@ export class Bikelog {
    */
   private combineActivities(activities: Activity[]) {
     const result: Dict = {};
-    activities.forEach(activity => {
+    activities.forEach((activity) => {
       const d: Date = new Date(activity.startDateLocal);
-      const jd = julianDate(d);
+      const jd = new DateUtil(d).julianDate();
       const entry = result[jd] || { jd: jd, date: new Date(activity.startDateLocal), events: [] };
       if (activity.data.wt) {
         entry.wt = activity.data.wt;
@@ -95,8 +95,8 @@ export class Bikelog {
         if (Array.isArray(activity.segments)) {
           const segs = [];
           let up = 'Up ';
-          activity.segments.forEach(segment => {
-            segs.push(up + segment.name + ' [' + formatMS(segment.movingTime) + ']');
+          activity.segments.forEach((segment) => {
+            segs.push(up + segment.name + ' [' + durationUtil(segment.movingTime).format() + ']');
             up = 'up ';
           });
           note += '\n' + segs.join(', ') + '\n';
@@ -114,7 +114,7 @@ export class Bikelog {
             bike: this.bikeMap(bike.name),
             el: Math.round(activity.totalElevationGain),
             t: Math.round(activity.movingTime / 36) / 100,
-            wh: Math.round(activity.data.kilojoules / 3.6)
+            wh: Math.round(activity.data.kilojoules / 3.6),
           };
         }
         if (entry.events.length < 2) {
@@ -131,7 +131,11 @@ export class Bikelog {
       } else {
         const distance = Math.round(activity.distance / 10) / 100;
         let note = activity.type + ': ' + activity.name + '\n';
-        note += 'Distance: ' + distance + ' km; Duration: ' + formatHMS(activity.movingTime, { seconds: false });
+        note +=
+          'Distance: ' +
+          distance +
+          ' km; Duration: ' +
+          durationUtil(activity.movingTime).format({ s: false, ms: false });
         if (activity.description) {
           note += '\n' + activity.description;
         }
@@ -147,7 +151,7 @@ export class Bikelog {
   }
 
   public static secondsToString(seconds: Seconds) {
-    return dateutil.formatMS(seconds * 1000, { seconds: false, ms: false, hours: true });
+    return durationUtil(seconds * 1000).format({ s: false, ms: false });
   }
 
   public outputData(filepath: string, stravaActivities: Activity[]): Promise<void> {
@@ -156,7 +160,7 @@ export class Bikelog {
     let dateString: string;
     if (Array.isArray(this.opts.dates)) {
       const ad: string[] = [];
-      this.opts.dates.forEach(range => {
+      this.opts.dates.forEach((range) => {
         ad.push(range.after + ' to ' + range.before);
       });
       dateString = ad.join(', ');
@@ -170,13 +174,13 @@ export class Bikelog {
       // @ts-ignore
       self.stream = fs.createWriteStream(filepath);
       // self.stream = fs.createWriteStream('xxx.xml');
-      self.stream.once('open', fd => {
+      self.stream.once('open', (fd) => {
         console.log('Open ' + filepath);
         const doc = builder
           .create('fields', { version: '1.0', encoding: 'UTF-8' })
           .att('xmlns:xfdf', 'http://ns.adobe.com/xfdf-transition/')
           .ele('day');
-        Object.keys(activities).forEach(key => {
+        Object.keys(activities).forEach((key) => {
           const activity = activities[key];
           const item = doc.ele('group').att('xfdf:original', activity.jd);
           for (let idx = 0; idx < Math.min(activity.events.length, 2); ++idx) {
@@ -206,7 +210,7 @@ export class Bikelog {
         console.log(`Wrote ${s.length} bytes to ${filepath}`);
       });
 
-      self.stream.once('error', err => {
+      self.stream.once('error', (err) => {
         self.stream.end();
         err.message = 'Stream error ' + err.message;
         reject(err);

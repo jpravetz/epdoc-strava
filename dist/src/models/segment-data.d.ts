@@ -1,9 +1,9 @@
-import { SegmentName } from './segment-base';
 import { StravaCoord } from './../strava-api';
-import { Seconds, Metres } from './../util';
+import { Metres, Seconds } from './../util';
 import { SegmentId } from './segment';
+import { SegmentName } from './segment-base';
 export declare class SegmentData {
-    klass: string;
+    private _isSegmentData;
     id: SegmentId;
     name: SegmentName;
     elapsedTime: Seconds;
@@ -13,5 +13,6 @@ export declare class SegmentData {
     country: string;
     state: string;
     constructor(data: any);
+    get isSegmentData(): boolean;
     static isInstance(val: any): val is SegmentData;
 }

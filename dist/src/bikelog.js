@@ -27,13 +27,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Bikelog = void 0;
-const dateutil = __importStar(require("dateutil"));
+const epdoc_timeutil_1 = require("epdoc-timeutil");
 const epdoc_util_1 = require("epdoc-util");
 const fs_1 = __importDefault(require("fs"));
 const builder = __importStar(require("xmlbuilder"));
-const util_1 = require("./util");
 const REGEX = {
-    moto: /^moto$/i
+    moto: /^moto$/i,
 };
 /**
  * Interface to bikelog XML data that can be read/written from PDF files using
@@ -56,9 +55,9 @@ class Bikelog {
      */
     combineActivities(activities) {
         const result = {};
-        activities.forEach(activity => {
+        activities.forEach((activity) => {
             const d = new Date(activity.startDateLocal);
-            const jd = (0, util_1.julianDate)(d);
+            const jd = new epdoc_timeutil_1.DateUtil(d).julianDate();
             const entry = result[jd] || { jd: jd, date: new Date(activity.startDateLocal), events: [] };
             if (activity.data.wt) {
                 entry.wt = activity.data.wt;
@@ -105,8 +104,8 @@ class Bikelog {
                 if (Array.isArray(activity.segments)) {
                     const segs = [];
                     let up = 'Up ';
-                    activity.segments.forEach(segment => {
-                        segs.push(up + segment.name + ' [' + (0, util_1.formatMS)(segment.movingTime) + ']');
+                    activity.segments.forEach((segment) => {
+                        segs.push(up + segment.name + ' [' + (0, epdoc_timeutil_1.durationUtil)(segment.movingTime).format() + ']');
                         up = 'up ';
                     });
                     note += '\n' + segs.join(', ') + '\n';
@@ -124,7 +123,7 @@ class Bikelog {
                         bike: this.bikeMap(bike.name),
                         el: Math.round(activity.totalElevationGain),
                         t: Math.round(activity.movingTime / 36) / 100,
-                        wh: Math.round(activity.data.kilojoules / 3.6)
+                        wh: Math.round(activity.data.kilojoules / 3.6),
                     };
                 }
                 if (entry.events.length < 2) {
@@ -143,7 +142,11 @@ class Bikelog {
             else {
                 const distance = Math.round(activity.distance / 10) / 100;
                 let note = activity.type + ': ' + activity.name + '\n';
-                note += 'Distance: ' + distance + ' km; Duration: ' + (0, util_1.formatHMS)(activity.movingTime, { seconds: false });
+                note +=
+                    'Distance: ' +
+                        distance +
+                        ' km; Duration: ' +
+                        (0, epdoc_timeutil_1.durationUtil)(activity.movingTime).format({ s: false, ms: false });
                 if (activity.description) {
                     note += '\n' + activity.description;
                 }
@@ -159,7 +162,7 @@ class Bikelog {
         return result;
     }
     static secondsToString(seconds) {
-        return dateutil.formatMS(seconds * 1000, { seconds: false, ms: false, hours: true });
+        return (0, epdoc_timeutil_1.durationUtil)(seconds * 1000).format({ s: false, ms: false });
     }
     outputData(filepath, stravaActivities) {
         const self = this;
@@ -167,7 +170,7 @@ class Bikelog {
         let dateString;
         if (Array.isArray(this.opts.dates)) {
             const ad = [];
-            this.opts.dates.forEach(range => {
+            this.opts.dates.forEach((range) => {
                 ad.push(range.after + ' to ' + range.before);
             });
             dateString = ad.join(', ');
@@ -178,13 +181,13 @@ class Bikelog {
             // @ts-ignore
             self.stream = fs_1.default.createWriteStream(filepath);
             // self.stream = fs.createWriteStream('xxx.xml');
-            self.stream.once('open', fd => {
+            self.stream.once('open', (fd) => {
                 console.log('Open ' + filepath);
                 const doc = builder
                     .create('fields', { version: '1.0', encoding: 'UTF-8' })
                     .att('xmlns:xfdf', 'http://ns.adobe.com/xfdf-transition/')
                     .ele('day');
-                Object.keys(activities).forEach(key => {
+                Object.keys(activities).forEach((key) => {
                     const activity = activities[key];
                     const item = doc.ele('group').att('xfdf:original', activity.jd);
                     for (let idx = 0; idx < Math.min(activity.events.length, 2); ++idx) {
@@ -213,7 +216,7 @@ class Bikelog {
                 self.stream.end();
                 console.log(`Wrote ${s.length} bytes to ${filepath}`);
             });
-            self.stream.once('error', err => {
+            self.stream.once('error', (err) => {
                 self.stream.end();
                 err.message = 'Stream error ' + err.message;
                 reject(err);

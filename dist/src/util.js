@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getTemperatureString = exports.getElevationString = exports.getDistanceString = exports.escapeHtml = exports.fieldCapitalize = exports.julianDate = exports.precision = exports.writeJson = exports.readJson = exports.formatMS = exports.formatHMS = exports.isEpochSeconds = exports.isFileName = exports.isFolderPath = exports.isFilePath = exports.compare = void 0;
+exports.getTemperatureString = exports.getElevationString = exports.getDistanceString = exports.escapeHtml = exports.fieldCapitalize = exports.precision = exports.writeJson = exports.readJson = exports.isEpochSeconds = exports.isFileName = exports.isFolderPath = exports.isFilePath = exports.compare = void 0;
 const epdoc_util_1 = require("epdoc-util");
 const fs_1 = __importDefault(require("fs"));
 function compare(a, b, key) {
@@ -32,27 +32,25 @@ function isEpochSeconds(val) {
     return (0, epdoc_util_1.isInteger)(val) && val >= 0;
 }
 exports.isEpochSeconds = isEpochSeconds;
-function formatHMS(s, options) {
-    options || (options = {});
-    const seconds = s % 60;
-    const minutes = Math.floor(s / 60) % 60;
-    const hours = Math.floor(s / (60 * 60));
-    let result = (0, epdoc_util_1.pad)(hours, 2) + ':';
-    result += (0, epdoc_util_1.pad)(minutes, 2);
-    if (options.seconds !== false) {
-        result += ':' + (0, epdoc_util_1.pad)(seconds, 2);
-    }
-    return result;
-}
-exports.formatHMS = formatHMS;
-function formatMS(s) {
-    const seconds = s % 60;
-    const minutes = Math.floor(s / 60);
-    let result = minutes + ':';
-    result += (0, epdoc_util_1.pad)(seconds, 2);
-    return result;
-}
-exports.formatMS = formatMS;
+// export function formatHMS(s: Seconds, options?: formatHMSOpts): string {
+//   options || (options = {});
+//   const seconds = s % 60;
+//   const minutes = Math.floor(s / 60) % 60;
+//   const hours = Math.floor(s / (60 * 60));
+//   let result = pad(hours, 2) + ':';
+//   result += pad(minutes, 2);
+//   if (options.seconds !== false) {
+//     result += ':' + pad(seconds, 2);
+//   }
+//   return result;
+// }
+// export function formatMS(s: Seconds): string {
+//   const seconds = s % 60;
+//   const minutes = Math.floor(s / 60);
+//   let result = minutes + ':';
+//   result += pad(seconds, 2);
+//   return result;
+// }
 function readJson(path) {
     return new Promise((resolve, reject) => {
         fs_1.default.readFile(path, 'utf8', (err, data) => {
@@ -90,10 +88,6 @@ function precision(num, r, unit) {
     return String(Math.round(num * r) / r) + unit;
 }
 exports.precision = precision;
-function julianDate(d) {
-    return Math.floor(d.getTime() / 86400000 - d.getTimezoneOffset() / 1440 + 2440587.5) + 1;
-}
-exports.julianDate = julianDate;
 function fieldCapitalize(name) {
     return name
         .replace(/^([a-z])/, function ($1) {

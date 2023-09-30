@@ -1,10 +1,11 @@
+import { Dict } from 'epdoc-util';
 import { StravaCoord, StravaObjId } from './../strava-api';
 import { SegmentBase } from './segment-base';
 
 export type SegmentId = StravaObjId;
 
 export class Segment extends SegmentBase {
-  klass: string = 'Segment';
+  private _isSegment = true;
   elevation_high: number;
   elevation_low: number;
   average_grade: number;
@@ -14,15 +15,19 @@ export class Segment extends SegmentBase {
   // more: boolean;
   // efforts: Dict[];
 
-  constructor(data) {
+  constructor(data:Dict) {
     super(data);
   }
 
-  static newFromResponseData(data): Segment {
+  static newFromResponseData(data:Dict): Segment {
     return new Segment(data);
   }
 
+  get isSegment(): boolean {
+    return this._isSegment;
+  }
+
   static isInstance(val: any): val is Segment {
-    return val && val.klass === 'Segment';
+    return val && val.isSegment === true;
   }
 }

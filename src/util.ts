@@ -1,4 +1,4 @@
-import { isInteger, isNonEmptyString, pad } from 'epdoc-util';
+import { Dict, isInteger, isNonEmptyString, pad } from 'epdoc-util';
 import fs from 'fs';
 import { SegmentConfig } from './main';
 
@@ -29,7 +29,7 @@ export function isFileName(val: any): val is FileName {
   return isNonEmptyString(val);
 }
 
-export type Dict = Record<string, any>;
+// export type Dict = Record<string, any>;
 
 export type EpochMilliseconds = number;
 export type EpochSeconds = number;
@@ -42,32 +42,32 @@ export function isEpochSeconds(val: any): val is EpochSeconds {
   return isInteger(val) && val >= 0;
 }
 
-export type formatHMSOpts = {
-  seconds?: boolean;
-};
+// export type formatHMSOpts = {
+//   seconds?: boolean;
+// };
 
 export type LogFunction = (msg: string) => void;
 
-export function formatHMS(s: Seconds, options?: formatHMSOpts): string {
-  options || (options = {});
-  const seconds = s % 60;
-  const minutes = Math.floor(s / 60) % 60;
-  const hours = Math.floor(s / (60 * 60));
-  let result = pad(hours, 2) + ':';
-  result += pad(minutes, 2);
-  if (options.seconds !== false) {
-    result += ':' + pad(seconds, 2);
-  }
-  return result;
-}
+// export function formatHMS(s: Seconds, options?: formatHMSOpts): string {
+//   options || (options = {});
+//   const seconds = s % 60;
+//   const minutes = Math.floor(s / 60) % 60;
+//   const hours = Math.floor(s / (60 * 60));
+//   let result = pad(hours, 2) + ':';
+//   result += pad(minutes, 2);
+//   if (options.seconds !== false) {
+//     result += ':' + pad(seconds, 2);
+//   }
+//   return result;
+// }
 
-export function formatMS(s: Seconds): string {
-  const seconds = s % 60;
-  const minutes = Math.floor(s / 60);
-  let result = minutes + ':';
-  result += pad(seconds, 2);
-  return result;
-}
+// export function formatMS(s: Seconds): string {
+//   const seconds = s % 60;
+//   const minutes = Math.floor(s / 60);
+//   let result = minutes + ':';
+//   result += pad(seconds, 2);
+//   return result;
+// }
 
 export function readJson(path: string): Promise<any> {
   return new Promise((resolve, reject) => {
@@ -101,10 +101,6 @@ export function writeJson(path: string, data): Promise<void> {
 
 export function precision(num, r, unit) {
   return String(Math.round(num * r) / r) + unit;
-}
-
-export function julianDate(d: Date): number {
-  return Math.floor(d.getTime() / 86400000 - d.getTimezoneOffset() / 1440 + 2440587.5) + 1;
 }
 
 export function fieldCapitalize(name) {

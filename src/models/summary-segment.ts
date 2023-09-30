@@ -2,9 +2,10 @@ import { SegmentCacheEntry } from './../segment-file';
 import { SegmentBase } from './segment-base';
 import { StravaCoord } from './../strava-api';
 import { Metres } from '../util';
+import { Dict } from 'epdoc-util';
 
 export class SummarySegment extends SegmentBase {
-  klass: 'SummarySegment';
+  private _isSummarySegment = true;
   coordinates: StravaCoord[] = [];
   average_grade: number;
   elevation_high: Metres;
@@ -12,16 +13,21 @@ export class SummarySegment extends SegmentBase {
   country: string;
   state: string;
 
-  constructor(data) {
+  constructor(data:Dict) {
     super(data);
   }
 
-  static newFromResponseData(data): SummarySegment {
+  static newFromResponseData(data:Dict): SummarySegment {
     return new SummarySegment(data);
   }
 
+  get isSummarySegment(): boolean {
+    return this._isSummarySegment;
+  }
+
+
   static isInstance(val: any): val is SummarySegment {
-    return val && val.klass === 'SummarySegment';
+    return val && val.isSummarySegment;
   }
 
   asCacheEntry(): SegmentCacheEntry {

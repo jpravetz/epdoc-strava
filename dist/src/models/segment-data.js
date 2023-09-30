@@ -4,7 +4,7 @@ exports.SegmentData = void 0;
 const segment_base_1 = require("./segment-base");
 class SegmentData {
     constructor(data) {
-        this.klass = 'SegmentData';
+        this._isSegmentData = true;
         this.coordinates = [];
         if (segment_base_1.SegmentBase.isInstance(data)) {
             return data.toSegmentData();
@@ -20,8 +20,11 @@ class SegmentData {
     // static newFromResponseData(data): Segment {
     //   return new Segment(data);
     // }
+    get isSegmentData() {
+        return this._isSegmentData;
+    }
     static isInstance(val) {
-        return val && val.klass === 'SegmentData';
+        return val && val.isSegmentData;
     }
 }
 exports.SegmentData = SegmentData;

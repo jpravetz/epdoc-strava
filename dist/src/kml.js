@@ -33,10 +33,10 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Kml = void 0;
-const dateutil = __importStar(require("dateutil"));
 const epdoc_util_1 = require("epdoc-util");
 const fs = __importStar(require("fs"));
 const util_1 = require("./util");
+const epdoc_timeutil_1 = require("epdoc-timeutil");
 const REGEX = {
     color: /^[a-zA-Z0-9]{8}$/,
     moto: /^moto$/i
@@ -275,7 +275,7 @@ class Kml {
                         value = (0, util_1.getDistanceString)(value, this.imperial);
                     }
                     else if (field === 'movingTime' || field === 'elapsedTime') {
-                        value = dateutil.formatMS(activity[field] * 1000, { ms: false, hours: true });
+                        value = (0, epdoc_timeutil_1.durationUtil)(activity[field] * 1000).format({ ms: false });
                     }
                     else if (field === 'totalElevationGain') {
                         key = 'elevation_gain';
@@ -291,7 +291,7 @@ class Kml {
                             const s = '<li><b>' +
                                 segment.name +
                                 ':</b> ' +
-                                dateutil.formatMS(segment.elapsedTime * 1000, { ms: false, hours: true }) +
+                                (0, epdoc_timeutil_1.durationUtil)(segment.elapsedTime * 1000).format({ ms: false }) +
                                 '</li>';
                             segs.push(s);
                         });

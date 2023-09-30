@@ -1,19 +1,24 @@
 import { SegmentData } from './segment-data';
 import { Seconds, Metres } from './../util';
 import { SegmentId } from './segment';
+import { Dict } from 'epdoc-util';
 
 export type SegmentName = string;
 
 export class SegmentBase {
-  isSegmentBase = true;
+  private _isSegmentBase = true;
   id: SegmentId;
   name: SegmentName;
   elapsed_time: Seconds;
   moving_time: Seconds;
   distance: Metres;
 
-  constructor(data) {
+  constructor(data:Dict) {
     Object.assign(this, data);
+  }
+
+  get isSegmentBase() : boolean {
+    return this._isSegmentBase;
   }
 
   static isInstance(val: any): val is SegmentBase {

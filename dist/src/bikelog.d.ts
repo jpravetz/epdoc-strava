@@ -1,6 +1,7 @@
+import { Dict } from 'epdoc-util';
 import { DateRange } from './main';
 import { Activity } from './models/activity';
-import { Dict, Seconds } from './util';
+import { Seconds } from './util';
 export type BikeDef = {
     name: string;
     pattern: string;
@@ -30,7 +31,7 @@ export declare class Bikelog {
      * @returns {{}} Dictionary of bikelog data, with keys set to julian day.
      */
     private combineActivities;
-    static secondsToString(seconds: Seconds): any;
+    static secondsToString(seconds: Seconds): string;
     outputData(filepath: string, stravaActivities: Activity[]): Promise<void>;
     write(indent: any, s: any): void;
     writeln(indent: any, s: any): void;

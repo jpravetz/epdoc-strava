@@ -9,3 +9,5 @@ x-*
 *.pdf
 tmp.*
 dist/
+Activities.xml
+Activities.kml

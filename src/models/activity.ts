@@ -1,4 +1,3 @@
-import * as dateutil from 'dateutil';
 import { Dict, isBoolean, isNumber, isString } from 'epdoc-util';
 import { Main } from '../main';
 import { StravaCoord } from './../strava-api';
@@ -6,6 +5,7 @@ import { IsoDateString, Kilometres, Metres, Seconds } from './../util';
 import { DetailedActivity } from './detailed-activity';
 import { SegmentData } from './segment-data';
 import { SegmentEffort } from './segment-effort';
+import {  durationUtil } from 'epdoc-timeutil';
 
 export type ActivityFilter = {
   commuteOnly?: boolean;
@@ -202,10 +202,7 @@ export class Activity {
       name = aliases[name];
       segEffort.name = name;
     }
-    const sd: string = dateutil.formatMS(segEffort.elapsed_time * 1000, {
-      ms: false,
-      hours: true
-    });
+    const sd:string = durationUtil(segEffort.elapsed_time * 1000,':').format({ms:false});
     console.log(`  Adding segment '${name}, elapsed time ${sd}`);
     // Add segment to this activity
     this._segments.push(new SegmentData(segEffort));
