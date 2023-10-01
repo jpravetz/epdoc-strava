@@ -15,6 +15,18 @@ export type Kilometres = number;
 export type IsoDateString = string;
 export declare function isEpochSeconds(val: any): val is EpochSeconds;
 export type LogFunction = (msg: string) => void;
+export declare function isLogFunction(val: any): val is LogFunction;
+export type LogFunctions = {
+    info: LogFunction;
+    warn: LogFunction;
+    debug: LogFunction;
+    error: LogFunction;
+    verbose: LogFunction;
+};
+export declare function isLogFunctions(val: any): val is LogFunction;
+export type LogOpts = {
+    log: LogFunctions;
+};
 export declare function readJson(path: string): Promise<any>;
 export declare function writeJson(path: string, data: any): Promise<void>;
 export declare function precision(num: any, r: any, unit: any): string;

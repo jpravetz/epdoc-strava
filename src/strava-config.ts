@@ -1,11 +1,9 @@
 import { Dict } from 'epdoc-util';
 import { BikeDef } from './bikelog';
-import { LineStyle } from './kml';
-import { SegmentName } from './models/segment-base';
-import { Settings } from './settings';
-import { StravaClientSecret } from './strava-api';
+import { AliasesDict, Settings, LineStylesDict } from './settings';
+import { StravaClientSecret, isStravaClientSecret } from './strava-api';
 import { StravaCreds } from './strava-creds';
-import { FilePath, FolderPath, readJson } from './util';
+import { FilePath, FolderPath, readJson, LogOpts } from './util';
 
 export class StravaConfig {
   public client: StravaClientSecret;
@@ -16,11 +14,11 @@ export class StravaConfig {
   public cachePath?: FolderPath;
   private _settings: Settings;
 
-  constructor(path: FilePath, replacements: Dict) {
-    this._settings = new Settings(path, replacements);
+  constructor(path: FilePath, replacements: Dict, opts: LogOpts) {
+    this._settings = new Settings(path, replacements, opts);
   }
 
-  async read(): Promise<void> {
+  async read(): Promise<StravaConfig> {
     return Promise.resolve()
       .then((resp) => {
         return this._settings.read();
@@ -30,6 +28,9 @@ export class StravaConfig {
       })
       .then((resp) => {
         this.client = resp;
+        if (!isStravaClientSecret(this.client)) {
+          return Promise.reject(new Error('Config did not load client id and secret'));
+        }
         return this._settings.credentials();
       })
       .then((resp) => {
@@ -38,6 +39,7 @@ export class StravaConfig {
       })
       .then((resp) => {
         this.segments = resp;
+        return Promise.resolve(this);
       });
   }
 
@@ -45,11 +47,11 @@ export class StravaConfig {
     return this._settings.bikes;
   }
 
-  get aliases(): Record<SegmentName, SegmentName> {
+  get aliases(): AliasesDict {
     return this._settings.aliases;
   }
 
-  get lineStyles(): Record<string, LineStyle> {
+  get lineStyles(): LineStylesDict {
     return this._settings.lineStyles;
   }
 }

@@ -13,11 +13,11 @@ export class SegmentBase {
   moving_time: Seconds;
   distance: Metres;
 
-  constructor(data:Dict) {
+  constructor(data: Dict) {
     Object.assign(this, data);
   }
 
-  get isSegmentBase() : boolean {
+  get isSegmentBase(): boolean {
     return this._isSegmentBase;
   }
 
@@ -31,7 +31,7 @@ export class SegmentBase {
       name: this.name,
       elapsedTime: this.elapsed_time,
       movingTime: this.moving_time,
-      distance: this.distance
+      distance: this.distance,
     });
   }
 }

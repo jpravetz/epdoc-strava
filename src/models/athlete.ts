@@ -13,7 +13,7 @@ export class Athelete {
   id: number;
   username: string;
 
-  constructor(data:Dict) {
+  constructor(data: Dict) {
     Object.assign(this, data);
   }
 

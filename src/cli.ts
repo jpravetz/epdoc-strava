@@ -1,30 +1,40 @@
 const env = process.env['NODE_ENV'] || 'development';
 
 import { Command } from 'commander';
+import { Dict } from 'epdoc-util';
+import os from 'os';
 import path from 'path';
 import pkg from '../package.json';
 import { DateRange, Main, MainOpts } from './main';
-import { EpochMilliseconds } from './util';
-import { Dict } from 'epdoc-util';
 import { StravaConfig } from './strava-config';
+import { EpochMilliseconds, LogFunctions } from './util';
 
 const DAY = 24 * 3600 * 1000;
 
-// let root = Path.resolve(__dirname, '..');
-const home = process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE;
+const log: LogFunctions = {
+  info: (msg) => console.log('INFO: ' + msg),
+  debug: (msg) => console.log('DEBUG: ' + msg),
+  verbose: (msg) => {
+    return;
+  },
+  error: (msg) => console.log('ERROR: ' + msg),
+  warn: (msg) => console.log('WARN: ' + msg),
+};
 
 //let Config = require('a5config').init(env, [__dirname + '/../config/project.settings.json'], {excludeGlobals: true});
 //let config = Config.get();
 
 async function run(): Promise<void> {
-  // const segmentsFile = path.resolve(home, '.strava', 'segments.json');
-  // const credentialsFile = path.resolve(home, '.strava', 'credentials.json');
-  // const userSettingsFile = path.resolve(home, '.strava', 'user.settings.json');
+  let config: StravaConfig;
 
-  // const configPath = path.resolve(__dirname, './config/project.settings.json');
   // let config = new StravaConfig(configPath, { HOME: home });
   return Promise.resolve()
     .then((resp) => {
+      const configPath = path.resolve(__dirname, '../config/project.settings.json');
+      let config = new StravaConfig(configPath, { HOME: os.homedir() }, { log: log });
+      return config.read();
+    })
+    .then((configResponse) => {
       let segments: Dict;
 
       const program: Dict = new Command('strava');
@@ -72,8 +82,9 @@ async function run(): Promise<void> {
       const cmdOpts: Dict = program.opts();
 
       const opts: MainOpts = {
-        home: home,
+        home: os.homedir(),
         cwd: cmdOpts.cwd,
+        config: configResponse,
         refreshStarredSegments: cmdOpts.refresh,
         // segmentsFile: segmentsFile,
         // credentialsFile: credentialsFile,
@@ -93,32 +104,30 @@ async function run(): Promise<void> {
         auth: cmdOpts.auth,
         segments: cmdOpts.segments, // Will be true or 'flat'
         verbose: cmdOpts.verbose || 9,
+        log: log,
       };
 
       opts.dateRanges = []; // used for kml file
       if (opts.dates && opts.dates.length) {
-        console.log('Date ranges: ');
+        opts.log.info('Date ranges: ');
         opts.dates.forEach((range) => {
           // XXX what does toSortableString do?
           // const tAfter = dateutil.toSortableString(1000 * range.after).replace(/\//g, '-');
           // const tBefore = dateutil.toSortableString(1000 * range.before).replace(/\//g, '-');
-          // console.log('  From ' + tAfter + ' to ' + tBefore);
+          // opts.log.info('  From ' + tAfter + ' to ' + tBefore);
           // opts.dateRanges.push({ after: tAfter.slice(0, 10), before: tBefore.slice(0, 10) });
         });
       }
-
-      const configPath = path.resolve(cmdOpts.cwd, '../config/project.settings.json');
-      opts.config = new StravaConfig(configPath, { HOME: home });
 
       const main = new Main(opts);
       return main.run();
     })
     .then((resp) => {
-      console.log('done');
+      log.info('done');
       // process.exit(0);     // don't do this else files will not be saved
     })
     .catch((err) => {
-      console.log('Error: ' + err.message);
+      log.error(err.message);
     });
 }
 
@@ -146,7 +155,7 @@ function dateList(val: string): DateRange[] {
         t1 = t0 + DAY;
       }
     } catch (e) {
-      console.log(e.toString());
+      log.error(e.toString());
       process.exit(1);
     }
     result.push({ after: t0 / 1000, before: t1 / 1000 });

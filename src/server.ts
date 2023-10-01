@@ -2,6 +2,7 @@ import Koa from 'koa';
 import Router from 'koa-router';
 import open from 'open';
 import { StravaApi, StravaCode } from './strava-api';
+import { LogFunctions } from './util';
 
 export class Server {
   strava: any;
@@ -10,9 +11,11 @@ export class Server {
     resolve?: string;
     reject?: string;
   } = {};
+  private _log: LogFunctions;
 
-  constructor(strava: StravaApi) {
+  constructor(strava: StravaApi, options: { log: LogFunctions }) {
     this.strava = strava;
+    this._log = options.log;
   }
 
   public async run() {
@@ -67,24 +70,24 @@ export class Server {
 
       let server = app.listen(3000);
 
-      console.log('Server running on port 3000');
+      this._log.info('Server running on port 3000');
 
       open(authUrl, { wait: true }).then((resp) => {
-        console.log('browser is open');
+        this._log.info('browser is open');
       });
 
       let timer = setInterval(() => {
-        console.log('Waiting ...');
+        this._log.info('Waiting ...');
         if (this.result.resolve) {
           clearInterval(timer);
           timer = undefined;
-          console.log('Closing server', this.result.resolve);
+          this._log.info('Closing server ' + this.result.resolve);
           this.close();
           resolve(this.result.resolve);
         } else if (this.result.reject) {
           clearInterval(timer);
           timer = undefined;
-          console.log('Closing server', this.result.reject);
+          this._log.info('Closing server ' + this.result.reject);
           this.close();
           reject(new Error(this.result.reject));
         }

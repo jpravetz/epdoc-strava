@@ -1,4 +1,5 @@
 import { StravaApi } from './strava-api';
+import { LogFunctions } from './util';
 export declare class Server {
     strava: any;
     server: any;
@@ -6,7 +7,10 @@ export declare class Server {
         resolve?: string;
         reject?: string;
     };
-    constructor(strava: StravaApi);
+    private _log;
+    constructor(strava: StravaApi, options: {
+        log: LogFunctions;
+    });
     run(): Promise<unknown>;
     close(): void;
 }

@@ -1,4 +1,4 @@
-import { EpochSeconds, FilePath, Seconds } from './util';
+import { EpochSeconds, FilePath, Seconds, LogOpts } from './util';
 export type StravaCredsData = {
     token_type: string;
     expires_at: EpochSeconds;
@@ -15,7 +15,8 @@ export declare function isStravaCredsData(val: any): val is StravaCredsData;
 export declare class StravaCreds {
     private _data;
     private _path;
-    constructor(tokenFile: FilePath);
+    private _log;
+    constructor(tokenFile: FilePath, opts: LogOpts);
     get expiresAt(): EpochSeconds;
     get refreshToken(): string;
     get accessToken(): string;

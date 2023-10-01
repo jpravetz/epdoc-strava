@@ -13,18 +13,17 @@ export class SummarySegment extends SegmentBase {
   country: string;
   state: string;
 
-  constructor(data:Dict) {
+  constructor(data: Dict) {
     super(data);
   }
 
-  static newFromResponseData(data:Dict): SummarySegment {
+  static newFromResponseData(data: Dict): SummarySegment {
     return new SummarySegment(data);
   }
 
   get isSummarySegment(): boolean {
     return this._isSummarySegment;
   }
-
 
   static isInstance(val: any): val is SummarySegment {
     return val && val.isSummarySegment;
@@ -35,7 +34,7 @@ export class SummarySegment extends SegmentBase {
       name: this.name ? this.name.trim() : '',
       distance: this.distance,
       gradient: this.average_grade,
-      elevation: this.elevation_high - this.elevation_low
+      elevation: this.elevation_high - this.elevation_low,
     };
   }
 }

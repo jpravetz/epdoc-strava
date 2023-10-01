@@ -18,11 +18,11 @@ export class SegmentEffort extends SegmentBase {
   elevation_low: number;
   average_grade: number;
 
-  constructor(data:Dict) {
+  constructor(data: Dict) {
     super(data);
   }
 
-  static newFromResponseData(data:Dict): SegmentEffort {
+  static newFromResponseData(data: Dict): SegmentEffort {
     return new SegmentEffort(data);
   }
 

@@ -14,24 +14,34 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const env = process.env['NODE_ENV'] || 'development';
 const commander_1 = require("commander");
+const os_1 = __importDefault(require("os"));
 const path_1 = __importDefault(require("path"));
 const package_json_1 = __importDefault(require("../package.json"));
 const main_1 = require("./main");
 const strava_config_1 = require("./strava-config");
 const DAY = 24 * 3600 * 1000;
-// let root = Path.resolve(__dirname, '..');
-const home = process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE;
+const log = {
+    info: (msg) => console.log('INFO: ' + msg),
+    debug: (msg) => console.log('DEBUG: ' + msg),
+    verbose: (msg) => {
+        return;
+    },
+    error: (msg) => console.log('ERROR: ' + msg),
+    warn: (msg) => console.log('WARN: ' + msg),
+};
 //let Config = require('a5config').init(env, [__dirname + '/../config/project.settings.json'], {excludeGlobals: true});
 //let config = Config.get();
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
-        // const segmentsFile = path.resolve(home, '.strava', 'segments.json');
-        // const credentialsFile = path.resolve(home, '.strava', 'credentials.json');
-        // const userSettingsFile = path.resolve(home, '.strava', 'user.settings.json');
-        // const configPath = path.resolve(__dirname, './config/project.settings.json');
+        let config;
         // let config = new StravaConfig(configPath, { HOME: home });
         return Promise.resolve()
             .then((resp) => {
+            const configPath = path_1.default.resolve(__dirname, '../config/project.settings.json');
+            let config = new strava_config_1.StravaConfig(configPath, { HOME: os_1.default.homedir() }, { log: log });
+            return config.read();
+        })
+            .then((configResponse) => {
             let segments;
             const program = new commander_1.Command('strava');
             program
@@ -56,8 +66,9 @@ function run() {
                 .parse(process.argv);
             const cmdOpts = program.opts();
             const opts = {
-                home: home,
+                home: os_1.default.homedir(),
                 cwd: cmdOpts.cwd,
+                config: configResponse,
                 refreshStarredSegments: cmdOpts.refresh,
                 // segmentsFile: segmentsFile,
                 // credentialsFile: credentialsFile,
@@ -77,29 +88,28 @@ function run() {
                 auth: cmdOpts.auth,
                 segments: cmdOpts.segments,
                 verbose: cmdOpts.verbose || 9,
+                log: log,
             };
             opts.dateRanges = []; // used for kml file
             if (opts.dates && opts.dates.length) {
-                console.log('Date ranges: ');
+                opts.log.info('Date ranges: ');
                 opts.dates.forEach((range) => {
                     // XXX what does toSortableString do?
                     // const tAfter = dateutil.toSortableString(1000 * range.after).replace(/\//g, '-');
                     // const tBefore = dateutil.toSortableString(1000 * range.before).replace(/\//g, '-');
-                    // console.log('  From ' + tAfter + ' to ' + tBefore);
+                    // opts.log.info('  From ' + tAfter + ' to ' + tBefore);
                     // opts.dateRanges.push({ after: tAfter.slice(0, 10), before: tBefore.slice(0, 10) });
                 });
             }
-            const configPath = path_1.default.resolve(cmdOpts.cwd, '../config/project.settings.json');
-            opts.config = new strava_config_1.StravaConfig(configPath, { HOME: home });
             const main = new main_1.Main(opts);
             return main.run();
         })
             .then((resp) => {
-            console.log('done');
+            log.info('done');
             // process.exit(0);     // don't do this else files will not be saved
         })
             .catch((err) => {
-            console.log('Error: ' + err.message);
+            log.error(err.message);
         });
     });
 }
@@ -129,7 +139,7 @@ function dateList(val) {
             }
         }
         catch (e) {
-            console.log(e.toString());
+            log.error(e.toString());
             process.exit(1);
         }
         result.push({ after: t0 / 1000, before: t1 / 1000 });

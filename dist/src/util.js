@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getTemperatureString = exports.getElevationString = exports.getDistanceString = exports.escapeHtml = exports.fieldCapitalize = exports.precision = exports.writeJson = exports.readJson = exports.isEpochSeconds = exports.isFileName = exports.isFolderPath = exports.isFilePath = exports.compare = void 0;
+exports.getTemperatureString = exports.getElevationString = exports.getDistanceString = exports.escapeHtml = exports.fieldCapitalize = exports.precision = exports.writeJson = exports.readJson = exports.isLogFunctions = exports.isLogFunction = exports.isEpochSeconds = exports.isFileName = exports.isFolderPath = exports.isFilePath = exports.compare = void 0;
 const epdoc_util_1 = require("epdoc-util");
 const fs_1 = __importDefault(require("fs"));
 function compare(a, b, key) {
@@ -32,6 +32,19 @@ function isEpochSeconds(val) {
     return (0, epdoc_util_1.isInteger)(val) && val >= 0;
 }
 exports.isEpochSeconds = isEpochSeconds;
+function isLogFunction(val) {
+    return (0, epdoc_util_1.isFunction)(val);
+}
+exports.isLogFunction = isLogFunction;
+function isLogFunctions(val) {
+    return ((0, epdoc_util_1.isDict)(val) &&
+        isLogFunction(val.info) &&
+        isLogFunction(val.warn) &&
+        isLogFunction(val.error) &&
+        isLogFunction(val.debug) &&
+        isLogFunction(val.verbose));
+}
+exports.isLogFunctions = isLogFunctions;
 // export function formatHMS(s: Seconds, options?: formatHMSOpts): string {
 //   options || (options = {});
 //   const seconds = s % 60;
@@ -72,7 +85,7 @@ function readJson(path) {
 exports.readJson = readJson;
 function writeJson(path, data) {
     return new Promise((resolve, reject) => {
-        const buf = new Buffer(JSON.stringify(data, null, '  '));
+        const buf = Buffer.from(JSON.stringify(data, null, '  '));
         fs_1.default.writeFile(path, buf, (err) => {
             if (err) {
                 reject(err);

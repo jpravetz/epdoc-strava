@@ -22,7 +22,7 @@ class SummarySegment extends segment_base_1.SegmentBase {
             name: this.name ? this.name.trim() : '',
             distance: this.distance,
             gradient: this.average_grade,
-            elevation: this.elevation_high - this.elevation_low
+            elevation: this.elevation_high - this.elevation_low,
         };
     }
 }

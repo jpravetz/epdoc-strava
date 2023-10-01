@@ -40,13 +40,10 @@ const REGEX = {
  */
 class Bikelog {
     constructor(options) {
-        this.opts = {};
         this.buffer = '';
         this.verbose = 9;
         this.opts = options;
-        if ((0, epdoc_util_1.isNumber)(options.verbose)) {
-            this.verbose = options.verbose;
-        }
+        this._log = options.log;
     }
     /**
      * Combine strava activities into per-day information that is suitable for Acroform bikelog.
@@ -182,7 +179,7 @@ class Bikelog {
             self.stream = fs_1.default.createWriteStream(filepath);
             // self.stream = fs.createWriteStream('xxx.xml');
             self.stream.once('open', (fd) => {
-                console.log('Open ' + filepath);
+                this._log.info('Open ' + filepath);
                 const doc = builder
                     .create('fields', { version: '1.0', encoding: 'UTF-8' })
                     .att('xmlns:xfdf', 'http://ns.adobe.com/xfdf-transition/')
@@ -214,7 +211,7 @@ class Bikelog {
                 const s = doc.doc().end({ pretty: true });
                 self.stream.write(s);
                 self.stream.end();
-                console.log(`Wrote ${s.length} bytes to ${filepath}`);
+                this._log.info(`Wrote ${s.length} bytes to ${filepath}`);
             });
             self.stream.once('error', (err) => {
                 self.stream.end();
@@ -222,11 +219,11 @@ class Bikelog {
                 reject(err);
             });
             self.stream.once('close', () => {
-                console.log('Close ' + filepath);
+                this._log.info('Close ' + filepath);
                 resolve();
             });
             self.stream.on('finish', () => {
-                console.log('Finish ' + filepath);
+                this._log.info('Finish ' + filepath);
             });
         });
     }
@@ -251,9 +248,7 @@ class Bikelog {
         // this.buffer.write( indent + s + "\n", 'utf8' );
     }
     flush() {
-        if (this.verbose) {
-            console.log('  Flushing %d bytes', this.buffer.length);
-        }
+        this._log.verbose(`  Flushing ${this.buffer.length} bytes`);
         return this._flush();
     }
     _flush() {
@@ -264,9 +259,7 @@ class Bikelog {
                 resolve();
             }
             else {
-                if (this.verbose) {
-                    console.log('  Waiting on drain event');
-                }
+                this._log.verbose('  Waiting on drain event');
                 this.stream.once('drain', () => {
                     return this.flush();
                 });
@@ -274,7 +267,7 @@ class Bikelog {
         });
     }
     bikeMap(stravaBikeName) {
-        if (Array.isArray(this.opts.selectedBikes)) {
+        if ((0, epdoc_util_1.isArray)(this.opts.selectedBikes)) {
             for (let idx = 0; idx < this.opts.selectedBikes.length; ++idx) {
                 const item = this.opts.selectedBikes[idx];
                 if (item.pattern.toLowerCase() === stravaBikeName.toLowerCase()) {

@@ -38,6 +38,7 @@ const epdoc_util_1 = require("epdoc-util");
 const athlete_1 = require("./models/athlete");
 const detailed_activity_1 = require("./models/detailed-activity");
 const summary_segment_1 = require("./models/summary-segment");
+const util_1 = require("./util");
 const request = require("superagent");
 const STRAVA_URL_PREFIX = process.env.STRAVA_URL_PREFIX || 'https://www.strava.com';
 const STRAVA_API_PREFIX = STRAVA_URL_PREFIX + '/api/v3';
@@ -73,11 +74,17 @@ const defaultAuthOpts = {
     redirectUri: 'https://localhost',
 };
 class StravaApi {
-    constructor(clientConfig, creds) {
+    constructor(clientConfig, creds, opts) {
+        this._log = (msg) => {
+            this._log(msg);
+        };
         this.id = clientConfig.id || parseInt(process.env.STRAVA_CLIENT_ID, 10);
         this.secret = clientConfig.secret || process.env.STRAVA_CLIENT_SECRET;
         // this.token = opts.token || process.env.STRAVA_ACCESS_TOKEN;
         this._creds = creds;
+        if (opts && (0, util_1.isLogFunction)(opts.log)) {
+            this._log = opts.log;
+        }
     }
     toString() {
         return '[Strava]';
@@ -132,17 +139,17 @@ class StravaApi {
                 client_secret: this.secret,
                 grant_type: 'authorization_code',
             };
-            // console.log('getTokens request', payload);
+            // this._log('getTokens request', payload);
             return request
                 .post(STRAVA_URL.token)
                 .send(payload)
                 .then((resp) => {
-                // console.log('getTokens response', resp.body);
-                console.log('Authorization obtained.');
+                // this._log('getTokens response', resp.body);
+                this._log('Authorization obtained.');
                 return this.creds.write(resp.body);
             })
                 .then((resp) => {
-                console.log('Credentials written to local storage');
+                this._log('Credentials written to local storage');
             });
         });
     }
@@ -221,7 +228,7 @@ class StravaApi {
                 .set('Authorization', 'access_token ' + this.creds.accessToken)
                 .then((resp) => {
                 if (resp && Array.isArray(resp.body)) {
-                    console.log(`  Retrieved ${resp.body.length} starred segments for page ${page}`);
+                    this._log(`  Retrieved ${resp.body.length} starred segments for page ${page}`);
                     resp.body.forEach((item) => {
                         const result = summary_segment_1.SummarySegment.newFromResponseData(item);
                         accum.push(result);
@@ -244,14 +251,14 @@ class StravaApi {
         return this.getStreams(source, objId, query)
             .then((resp) => {
             if (Array.isArray(resp.latlng)) {
-                console.log(`  Get ${name} Found ${resp.latlng.length} coordinates`);
+                this._log(`  Get ${name} Found ${resp.latlng.length} coordinates`);
                 return Promise.resolve(resp.latlng);
             }
-            console.log(`  Get ${name} did not contain any coordinates`);
+            this._log(`  Get ${name} did not contain any coordinates`);
             return Promise.resolve([]);
         })
             .catch((err) => {
-            console.log(`  Get ${name} coordinates ${err.message}`);
+            this._log(`  Get ${name} coordinates ${err.message}`);
             return Promise.resolve([]);
         });
     }

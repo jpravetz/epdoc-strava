@@ -35,9 +35,10 @@ const defaultStravaToken = {
     athlete: {},
 };
 class StravaCreds {
-    constructor(tokenFile) {
+    constructor(tokenFile, opts) {
         this._data = defaultStravaToken;
         this._path = tokenFile;
+        this._log = opts.log;
     }
     get expiresAt() {
         return this._data.expires_at;
@@ -64,11 +65,11 @@ class StravaCreds {
                         this._data = resp;
                     }
                     else {
-                        console.log('Invalid token auth response');
+                        this._log.error('Invalid token auth response');
                     }
                 }
                 catch (err) {
-                    console.log('No local credentials cached');
+                    this._log.error('No local credentials cached');
                     return yield Promise.resolve();
                 }
             }

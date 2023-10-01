@@ -1,5 +1,5 @@
 import { isDict, isNonEmptyArray, isNonEmptyString, isNumber } from 'epdoc-util';
-import { EpochSeconds, FilePath, isEpochSeconds, readJson, Seconds, writeJson } from './util';
+import { EpochSeconds, FilePath, isEpochSeconds, LogFunctions, readJson, Seconds, writeJson, LogOpts } from './util';
 import fs from 'fs';
 
 export type StravaCredsData = {
@@ -37,9 +37,11 @@ const defaultStravaToken: StravaCredsData = {
 export class StravaCreds {
   private _data: StravaCredsData = defaultStravaToken;
   private _path: FilePath;
+  private _log: LogFunctions;
 
-  constructor(tokenFile: FilePath) {
+  constructor(tokenFile: FilePath, opts: LogOpts) {
     this._path = tokenFile;
+    this._log = opts.log;
   }
 
   get expiresAt(): EpochSeconds {
@@ -70,10 +72,10 @@ export class StravaCreds {
         if (StravaCreds.validCredData(resp)) {
           this._data = resp;
         } else {
-          console.log('Invalid token auth response');
+          this._log.error('Invalid token auth response');
         }
       } catch (err) {
-        console.log('No local credentials cached');
+        this._log.error('No local credentials cached');
         return await Promise.resolve();
       }
     }

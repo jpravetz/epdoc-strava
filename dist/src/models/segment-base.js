@@ -19,7 +19,7 @@ class SegmentBase {
             name: this.name,
             elapsedTime: this.elapsed_time,
             movingTime: this.moving_time,
-            distance: this.distance
+            distance: this.distance,
         });
     }
 }

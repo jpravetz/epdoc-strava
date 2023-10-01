@@ -1,25 +1,43 @@
-import { Dict, deepCopy, isDict } from 'epdoc-util';
+import { Dict, deepCopy, isArray, isDict } from 'epdoc-util';
 import fs from 'fs';
+import { BikeDef } from './bikelog';
 import { LineStyle } from './kml';
 import { SegmentName } from './models/segment-base';
 import { StravaClientSecret, isStravaClientSecret } from './strava-api';
 import { StravaCreds } from './strava-creds';
-import { FilePath, isFilePath, readJson } from './util';
-import { BikeDef } from './bikelog';
+import { FilePath, LogFunctions, LogOpts, isFilePath, readJson } from './util';
 
 export type ProjectSettings = {
   description?: string;
-  clientSecretPath: FilePath;
-  credentialsPath: FilePath;
-  userSettingsPath: FilePath;
-  segmentsPath: FilePath;
-  lineStyles: Record<string, LineStyle>;
-  aliases: Record<SegmentName, SegmentName>;
-  bikes: BikeDef[];
+  clientSecretPath?: FilePath;
+  credentialsPath?: FilePath;
+  userSettingsPath?: FilePath;
+  segmentsPath?: FilePath;
+  lineStyles?: LineStylesDict;
+  aliases?: AliasesDict;
+  bikes?: BikeDef[];
 };
 
+export type LineStylesDict = Record<string, LineStyle>;
+export type AliasesDict = Record<SegmentName, SegmentName>;
+
+export function isLineStylesDict(val: any): val is LineStylesDict {
+  return isDict(val);
+}
+
+export function isAliasesDict(val: any): val is AliasesDict {
+  return isDict(val);
+}
+
 export function isProjectSettings(val: any): val is ProjectSettings {
-  if (isDict(val) && isFilePath(val.clientSecretPath) && isFilePath(val.credentialsPath)) {
+  if (
+    isDict(val) &&
+    (isFilePath(val.clientSecretPath) ||
+      isFilePath(val.credentialsPath) ||
+      isLineStylesDict(val.lineStyles) ||
+      isAliasesDict(val.aliases) ||
+      isArray(val.bikes))
+  ) {
     return true;
   }
   return false;
@@ -33,17 +51,19 @@ export class Settings {
   private _filePath: FilePath;
   private _replacements: Dict;
   private _settings: ProjectSettings;
+  private _log: LogFunctions;
 
-  constructor(filePath: FilePath, replacements: Dict) {
+  constructor(filePath: FilePath, replacements: Dict, opts: LogOpts) {
     this._filePath = filePath;
     this._replacements = replacements || {};
+    this._log = opts.log;
   }
 
-  get lineStyles(): Record<string, LineStyle> {
+  get lineStyles(): LineStylesDict {
     return this._settings.lineStyles;
   }
 
-  get aliases(): Record<SegmentName, SegmentName> {
+  get aliases(): AliasesDict {
     return this._settings.aliases;
   }
 
@@ -52,7 +72,7 @@ export class Settings {
   }
 
   credentials(): Promise<StravaCreds> {
-    let creds = new StravaCreds(this._settings.credentialsPath);
+    let creds = new StravaCreds(this._settings.credentialsPath, { log: this._log });
     return creds.read().then((resp) => {
       return creds;
     });
@@ -61,8 +81,8 @@ export class Settings {
   clientSecret(): Promise<StravaClientSecret> {
     if (fs.existsSync(this._settings.clientSecretPath)) {
       return readJson(this._settings.clientSecretPath).then((resp) => {
-        if (isStravaClientSecret(resp)) {
-          return resp;
+        if (isDict(resp) && isStravaClientSecret(resp.client)) {
+          return resp.client;
         }
       });
     }

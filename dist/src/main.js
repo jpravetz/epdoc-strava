@@ -28,50 +28,53 @@ class Main {
         this.bikes = {};
         this.options = options;
         this._config = options.config;
-        this._log = options.log ? options.log : (msg) => { };
+        this._log = options.log
+            ? options.log
+            : { info: (msg) => { }, debug: (msg) => { }, error: (msg) => { }, warn: (msg) => { }, verbose: (msg) => { } };
     }
     init() {
         return __awaiter(this, void 0, void 0, function* () {
-            return this._config.read().then((resp) => {
-                if ((0, strava_api_1.isStravaClientSecret)(this.config.client)) {
-                    this.strava = new strava_api_1.StravaApi(this.config.client, this.config.credentials);
-                    return Promise.resolve()
-                        .then((resp) => {
-                        if (this.options.kml) {
-                            // Run this first to validate line styles before pinging strava APIs
-                            this.kml = new kml_1.Kml({ verbose: this.options.verbose });
-                            if (this.options.config.lineStyles) {
-                                this.kml.setLineStyles(this.options.config.lineStyles);
-                            }
+            if ((0, strava_api_1.isStravaClientSecret)(this.config.client)) {
+                this.strava = new strava_api_1.StravaApi(this.config.client, this.config.credentials, this.options);
+                return Promise.resolve()
+                    .then((resp) => {
+                    if (this.options.kml) {
+                        // Run this first to validate line styles before pinging strava APIs
+                        this.kml = new kml_1.Kml({ log: this.log });
+                        if (this.options.config.lineStyles) {
+                            this.kml.setLineStyles(this.options.config.lineStyles);
                         }
-                    })
-                        .then((resp) => {
-                        return this.strava.initCreds();
-                    });
-                }
-                else {
-                    return Promise.reject(new Error('No config file or config file does not contain client id and secret'));
-                }
-            });
+                    }
+                })
+                    .then((resp) => {
+                    return this.strava.initCreds();
+                });
+            }
+            else {
+                return Promise.reject(new Error('Config does not contain client id and secret'));
+            }
         });
     }
     get config() {
         return this._config;
+    }
+    get log() {
+        return this._log;
     }
     auth() {
         return __awaiter(this, void 0, void 0, function* () {
             return this.init()
                 .then((resp) => {
                 if (!this.strava.creds.areValid()) {
-                    this._log('Authorization required. Opening web authorization page');
-                    const authServer = new server_1.Server(this.strava);
+                    this._log.info('Authorization required. Opening web authorization page');
+                    const authServer = new server_1.Server(this.strava, { log: this.options.log });
                     return authServer.run().then((resp) => {
-                        this._log('Closing server');
+                        this._log.info('Closing server');
                         authServer.close();
                     });
                 }
                 else {
-                    this._log('Authorization not required');
+                    this._log.info('Authorization not required');
                 }
             })
                 .then((resp) => {
@@ -106,10 +109,10 @@ class Main {
                 if (this.options.activities || this.options.xml) {
                     return this.getActivities().then((resp) => {
                         this.activities = resp;
-                        this._log(`Found ${resp.length} Activities`);
+                        this._log.info(`Found ${resp.length} Activities`);
                         if (!this.options.xml) {
                             resp.forEach((i) => {
-                                this._log('  ' + i.toString());
+                                this._log.info('  ' + i.toString());
                             });
                         }
                     });
@@ -161,7 +164,7 @@ class Main {
         });
     }
     logAthlete() {
-        this._log('Athlete ' + JSON.stringify(this.athlete, null, '  '));
+        this._log.info('Athlete ' + JSON.stringify(this.athlete, null, '  '));
     }
     getActivities() {
         return __awaiter(this, void 0, void 0, function* () {
@@ -223,7 +226,7 @@ class Main {
      */
     addActivitiesDetails() {
         return __awaiter(this, void 0, void 0, function* () {
-            this._log(`Retrieving activity details for ${this.activities.length} Activities`);
+            this._log.info(`Retrieving activity details for ${this.activities.length} Activities`);
             // Break into chunks to limit to REQ_LIMIT parallel requests.
             const activitiesChunks = [];
             for (let idx = 0; idx < this.activities.length; idx += REQ_LIMIT) {
@@ -257,7 +260,7 @@ class Main {
      * Add coordinates for the activity or segment. Limits to REQ_LIMIT parallel requests.
      */
     addActivitiesCoordinates() {
-        this._log(`Retrieving coordinates for ${this.activities.length} Activities`);
+        this._log.info(`Retrieving coordinates for ${this.activities.length} Activities`);
         // Break into chunks to limit to REQ_LIMIT parallel requests.
         const activitiesChunks = [];
         for (let idx = 0; idx < this.activities.length; idx += REQ_LIMIT) {
@@ -288,7 +291,7 @@ class Main {
      */
     addStarredSegmentsCoordinates() {
         return __awaiter(this, void 0, void 0, function* () {
-            this._log(`Retrieving coordinates for ${this.starredSegments.length} Starred Segments`);
+            this._log.info(`Retrieving coordinates for ${this.starredSegments.length} Starred Segments`);
             return this.starredSegments
                 .reduce((promiseChain, item) => {
                 return promiseChain.then(() => {
@@ -316,6 +319,7 @@ class Main {
             imperial: this.options.imperial,
             selectedBikes: this.options.config.bikes,
             bikes: this.bikes,
+            log: this.log,
         };
         if (this.options.segments === 'flat') {
             opts.segmentsFlatFolder = true;
@@ -331,6 +335,7 @@ class Main {
             activities: options.activities,
             segments: options.segments,
             bikes: this.bikes,
+            log: this.log,
         };
         if (this.options.segments === 'flat') {
             opts.segmentsFlatFolder = true;

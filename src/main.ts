@@ -9,7 +9,7 @@ import { SegmentFile } from './segment-file';
 import { Server } from './server';
 import { StravaActivityOpts, StravaApi, StravaStreamSource, isStravaClientSecret } from './strava-api';
 import { StravaConfig } from './strava-config';
-import { EpochSeconds, LogFunction } from './util';
+import { EpochSeconds, LogFunction, LogFunctions } from './util';
 
 // let _ = require('underscore');
 // let async = require('async');
@@ -54,7 +54,7 @@ export type MainOpts = {
   imperial?: boolean;
   segments?: boolean | string;
   verbose?: number;
-  log?: LogFunction;
+  log?: LogFunctions;
 };
 
 export class Main {
@@ -72,53 +72,57 @@ export class Main {
   private starredSegments: SegmentData[] = [];
   public segFile: SegmentFile;
   public bikes: Dict = {};
-  private _log: LogFunction;
+  private _log: LogFunctions;
 
   constructor(options: MainOpts) {
     this.options = options;
     this._config = options.config;
-    this._log = options.log ? options.log : (msg) => {};
+    this._log = options.log
+      ? options.log
+      : { info: (msg) => {}, debug: (msg) => {}, error: (msg) => {}, warn: (msg) => {}, verbose: (msg) => {} };
   }
 
   public async init(): Promise<void> {
-    return this._config.read().then((resp) => {
-      if (isStravaClientSecret(this.config.client)) {
-        this.strava = new StravaApi(this.config.client, this.config.credentials);
-        return Promise.resolve()
-          .then((resp) => {
-            if (this.options.kml) {
-              // Run this first to validate line styles before pinging strava APIs
-              this.kml = new Kml({ verbose: this.options.verbose });
-              if (this.options.config.lineStyles) {
-                this.kml.setLineStyles(this.options.config.lineStyles);
-              }
+    if (isStravaClientSecret(this.config.client)) {
+      this.strava = new StravaApi(this.config.client, this.config.credentials, this.options);
+      return Promise.resolve()
+        .then((resp) => {
+          if (this.options.kml) {
+            // Run this first to validate line styles before pinging strava APIs
+            this.kml = new Kml({ log: this.log });
+            if (this.options.config.lineStyles) {
+              this.kml.setLineStyles(this.options.config.lineStyles);
             }
-          })
-          .then((resp) => {
-            return this.strava.initCreds();
-          });
-      } else {
-        return Promise.reject(new Error('No config file or config file does not contain client id and secret'));
-      }
-    });
+          }
+        })
+        .then((resp) => {
+          return this.strava.initCreds();
+        });
+    } else {
+      return Promise.reject(new Error('Config does not contain client id and secret'));
+    }
   }
 
   public get config(): StravaConfig {
     return this._config;
   }
 
+  public get log(): LogFunctions {
+    return this._log;
+  }
+
   public async auth(): Promise<void> {
     return this.init()
       .then((resp) => {
         if (!this.strava.creds.areValid()) {
-          this._log('Authorization required. Opening web authorization page');
-          const authServer = new Server(this.strava);
+          this._log.info('Authorization required. Opening web authorization page');
+          const authServer = new Server(this.strava, { log: this.options.log });
           return authServer.run().then((resp) => {
-            this._log('Closing server');
+            this._log.info('Closing server');
             authServer.close();
           });
         } else {
-          this._log('Authorization not required');
+          this._log.info('Authorization not required');
         }
       })
       .then((resp) => {
@@ -152,10 +156,10 @@ export class Main {
         if (this.options.activities || this.options.xml) {
           return this.getActivities().then((resp) => {
             this.activities = resp;
-            this._log(`Found ${resp.length} Activities`);
+            this._log.info(`Found ${resp.length} Activities`);
             if (!this.options.xml) {
               resp.forEach((i) => {
-                this._log('  ' + i.toString());
+                this._log.info('  ' + i.toString());
               });
             }
           });
@@ -206,7 +210,7 @@ export class Main {
   }
 
   public logAthlete() {
-    this._log('Athlete ' + JSON.stringify(this.athlete, null, '  '));
+    this._log.info('Athlete ' + JSON.stringify(this.athlete, null, '  '));
   }
 
   public async getActivities(): Promise<Activity[]> {
@@ -268,7 +272,7 @@ export class Main {
    * details to the Activity object.
    */
   public async addActivitiesDetails(): Promise<any> {
-    this._log(`Retrieving activity details for ${this.activities.length} Activities`);
+    this._log.info(`Retrieving activity details for ${this.activities.length} Activities`);
 
     // Break into chunks to limit to REQ_LIMIT parallel requests.
     const activitiesChunks = [];
@@ -303,7 +307,7 @@ export class Main {
    * Add coordinates for the activity or segment. Limits to REQ_LIMIT parallel requests.
    */
   private addActivitiesCoordinates() {
-    this._log(`Retrieving coordinates for ${this.activities.length} Activities`);
+    this._log.info(`Retrieving coordinates for ${this.activities.length} Activities`);
 
     // Break into chunks to limit to REQ_LIMIT parallel requests.
     const activitiesChunks = [];
@@ -336,7 +340,7 @@ export class Main {
    * Call only when generating KML file with all segments
    */
   private async addStarredSegmentsCoordinates() {
-    this._log(`Retrieving coordinates for ${this.starredSegments.length} Starred Segments`);
+    this._log.info(`Retrieving coordinates for ${this.starredSegments.length} Starred Segments`);
 
     return this.starredSegments
       .reduce((promiseChain, item) => {
@@ -366,6 +370,7 @@ export class Main {
       imperial: this.options.imperial,
       selectedBikes: this.options.config.bikes,
       bikes: this.bikes,
+      log: this.log,
     };
     if (this.options.segments === 'flat') {
       opts.segmentsFlatFolder = true;
@@ -382,6 +387,7 @@ export class Main {
       activities: options.activities,
       segments: options.segments,
       bikes: this.bikes,
+      log: this.log,
     };
     if (this.options.segments === 'flat') {
       opts.segmentsFlatFolder = true;

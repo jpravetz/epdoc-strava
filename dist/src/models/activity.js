@@ -6,17 +6,17 @@ const detailed_activity_1 = require("./detailed-activity");
 const segment_data_1 = require("./segment-data");
 const epdoc_timeutil_1 = require("epdoc-timeutil");
 const REGEX = {
-    noKmlData: /^(Workout|Yoga|Weight Training)$/i
+    noKmlData: /^(Workout|Yoga|Weight Training)$/i,
 };
 class Activity {
-    constructor(data) {
+    constructor(data, options) {
         this.keys = [
             'distance',
             'total_elevation_gain',
             'moving_time',
             'elapsed_time',
             'average_temp',
-            'device_name'
+            'device_name',
         ];
         this.keyDict = {
             distance: 'distance',
@@ -24,7 +24,7 @@ class Activity {
             movingTime: 'moving_time',
             elapsedTime: 'elapsed_time',
             averageTemp: 'average_temp',
-            deviceName: 'device_name'
+            deviceName: 'device_name',
         };
         this.data = {};
         this._coordinates = []; // will contain the latlng coordinates for the activity
@@ -34,7 +34,7 @@ class Activity {
         this._asString = `${this.data.start_date_local.slice(0, 10)}, ${this.type} ${d} km, ${this.name}`;
     }
     static newFromResponseData(data, main) {
-        const result = new Activity(data);
+        const result = new Activity(data, { log: main.log });
         result.main = main;
         return result;
     }
@@ -104,7 +104,7 @@ class Activity {
      * @param data
      */
     addFromDetailedActivity(data) {
-        console.log('  Adding activity details for ' + this.toString());
+        this._log.info('  Adding activity details for ' + this.toString());
         if (detailed_activity_1.DetailedActivity.isInstance(data)) {
             if ((0, epdoc_util_1.isString)(data.description)) {
                 this._addDescriptionFromDetailedActivity(data);
@@ -117,10 +117,10 @@ class Activity {
     _addDescriptionFromDetailedActivity(data) {
         if ((0, epdoc_util_1.isString)(data.description)) {
             const p = data.description.split(/\r\n/);
-            // console.log(p)
+            // this._log.info(p)
             if (p && p.length) {
                 const a = [];
-                p.forEach(line => {
+                p.forEach((line) => {
                     const kv = line.match(/^([^\s\=]+)\s*=\s*(.*)+$/);
                     if (kv) {
                         this.keys.push(kv[1]);
@@ -142,12 +142,12 @@ class Activity {
     }
     _addDetailSegmentsFromDetailedActivity(data) {
         this._segments = [];
-        data.segment_efforts.forEach(effort => {
+        data.segment_efforts.forEach((effort) => {
             // @ts-ignore
             if (this.main.segFile) {
                 const seg = this.main.segFile.getSegment(effort.name);
                 if (seg) {
-                    console.log('  Found starred segment', effort.name);
+                    this._log.info('  Found starred segment ' + effort.name);
                     this._addDetailSegment(effort);
                 }
             }
@@ -161,7 +161,7 @@ class Activity {
             segEffort.name = name;
         }
         const sd = (0, epdoc_timeutil_1.durationUtil)(segEffort.elapsed_time * 1000, ':').format({ ms: false });
-        console.log(`  Adding segment '${name}, elapsed time ${sd}`);
+        this._log.info(`  Adding segment '${name}, elapsed time ${sd}`);
         // Add segment to this activity
         this._segments.push(new segment_data_1.SegmentData(segEffort));
     }

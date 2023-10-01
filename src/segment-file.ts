@@ -2,7 +2,7 @@ import fs from 'fs';
 import { SegmentName } from './models/segment-base';
 import { SummarySegment } from './models/summary-segment';
 import { StravaApi } from './strava-api';
-import { FilePath, LogFunction, Metres, readJson, writeJson } from './util';
+import { FilePath, LogFunctions, LogOpts, Metres, readJson, writeJson } from './util';
 
 export type GpsDegrees = number;
 
@@ -18,22 +18,22 @@ export class SegmentFile {
   private _api: StravaApi;
   private _lastModified: Date;
   private _segments: Record<string, SegmentCacheEntry> = {};
-  private _log: LogFunction;
+  private _log: LogFunctions;
 
-  constructor(filepath: FilePath, stravaApi: StravaApi, opts?: { log?: LogFunction }) {
+  constructor(filepath: FilePath, stravaApi: StravaApi, opts: LogOpts) {
     this._filepath = filepath;
     this._api = stravaApi;
-    this._log = opts.log ? opts.log : (msg) => {};
+    this._log = opts.log;
   }
 
   public async get(opts: { refresh?: boolean }): Promise<void> {
-    this._log('Retrieving list of starred segments');
+    this._log.info('Retrieving list of starred segments');
     if (opts.refresh) {
       return this.refresh();
     } else {
       return this.read().catch((err) => {
-        this._log(`  Error reading starred segments from ${this._filepath}`);
-        this._log('    ' + err.message);
+        this._log.error(`  Error reading starred segments from ${this._filepath}`);
+        this._log.error('    ' + err.message);
         return this.getFromServer().then(() => {
           return this.write();
         });
@@ -63,7 +63,7 @@ export class SegmentFile {
                 if (resp.segments) {
                   this._segments = resp.segments;
                 }
-                this._log(`Read ${Object.keys(this._segments).length} starred segments from ${this._filepath}`);
+                this._log.info(`Read ${Object.keys(this._segments).length} starred segments from ${this._filepath}`);
                 resolve();
               })
               .catch((err) => {
@@ -80,17 +80,17 @@ export class SegmentFile {
   private async getFromServer(): Promise<void> {
     // this.starredSegments = [];
     const summarySegments: SummarySegment[] = [];
-    this._log('  Retrieving starred segments from Strava ...');
+    this._log.info('  Retrieving starred segments from Strava ...');
     return this._api
       .getStarredSegments(summarySegments)
       .then(() => {
         // this._segments = resp;
-        this._log(`  Found ${summarySegments.length} starred segments`);
+        this._log.info(`  Found ${summarySegments.length} starred segments`);
         this._segments = {};
         summarySegments.forEach((seg) => {
           const newEntry = seg.asCacheEntry();
           if (this._segments[seg.name]) {
-            this._log(
+            this._log.info(
               `Segment ${seg.name} (${this._segments[seg.name].distance},${
                 this._segments[seg.name].elevation
               }) already exists. Overwriting with (${newEntry.distance},${newEntry.elevation}).`
@@ -111,7 +111,7 @@ export class SegmentFile {
       segments: this._segments,
     };
     return writeJson(this._filepath, json).then((resp) => {
-      this._log(`Wrote ${Object.keys(this._segments).length} starred segments to ${this._filepath}`);
+      this._log.info(`Wrote ${Object.keys(this._segments).length} starred segments to ${this._filepath}`);
     });
   }
 

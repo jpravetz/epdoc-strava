@@ -1,11 +1,11 @@
 import { Dict, isBoolean, isNumber, isString } from 'epdoc-util';
 import { Main } from '../main';
 import { StravaCoord } from './../strava-api';
-import { IsoDateString, Kilometres, Metres, Seconds } from './../util';
+import { IsoDateString, Kilometres, LogFunctions, Metres, Seconds } from './../util';
 import { DetailedActivity } from './detailed-activity';
 import { SegmentData } from './segment-data';
 import { SegmentEffort } from './segment-effort';
-import {  durationUtil } from 'epdoc-timeutil';
+import { durationUtil } from 'epdoc-timeutil';
 
 export type ActivityFilter = {
   commuteOnly?: boolean;
@@ -15,7 +15,7 @@ export type ActivityFilter = {
 };
 
 const REGEX = {
-  noKmlData: /^(Workout|Yoga|Weight Training)$/i
+  noKmlData: /^(Workout|Yoga|Weight Training)$/i,
 };
 
 export class Activity {
@@ -25,7 +25,7 @@ export class Activity {
     'moving_time',
     'elapsed_time',
     'average_temp',
-    'device_name'
+    'device_name',
   ];
   public keyDict: Dict = {
     distance: 'distance',
@@ -33,7 +33,7 @@ export class Activity {
     movingTime: 'moving_time',
     elapsedTime: 'elapsed_time',
     averageTemp: 'average_temp',
-    deviceName: 'device_name'
+    deviceName: 'device_name',
   };
   public data: Dict = {};
 
@@ -42,12 +42,13 @@ export class Activity {
   public commute: boolean;
   // public type: string;
   public startDate: Date;
+  private _log: LogFunctions;
 
   private _asString: string;
   private _segments: SegmentData[]; // list of starred segments for this Activity
   private _coordinates: StravaCoord[] = []; // will contain the latlng coordinates for the activity
 
-  constructor(data: Dict) {
+  constructor(data: Dict, options: { log: LogFunctions }) {
     Object.assign(this.data, data);
     this.startDate = new Date(this.data.start_date);
     const d = Math.round(this.data.distance / 100) / 10;
@@ -55,7 +56,7 @@ export class Activity {
   }
 
   public static newFromResponseData(data: Dict, main: Main): Activity {
-    const result = new Activity(data);
+    const result = new Activity(data, { log: main.log });
     result.main = main;
     return result;
   }
@@ -145,7 +146,7 @@ export class Activity {
    * @param data
    */
   public addFromDetailedActivity(data: DetailedActivity) {
-    console.log('  Adding activity details for ' + this.toString());
+    this._log.info('  Adding activity details for ' + this.toString());
     if (DetailedActivity.isInstance(data)) {
       if (isString(data.description)) {
         this._addDescriptionFromDetailedActivity(data);
@@ -159,10 +160,10 @@ export class Activity {
   private _addDescriptionFromDetailedActivity(data: DetailedActivity): void {
     if (isString(data.description)) {
       const p: string[] = data.description.split(/\r\n/);
-      // console.log(p)
+      // this._log.info(p)
       if (p && p.length) {
         const a = [];
-        p.forEach(line => {
+        p.forEach((line) => {
           const kv = line.match(/^([^\s\=]+)\s*=\s*(.*)+$/);
           if (kv) {
             this.keys.push(kv[1]);
@@ -183,12 +184,12 @@ export class Activity {
 
   private _addDetailSegmentsFromDetailedActivity(data: DetailedActivity) {
     this._segments = [];
-    data.segment_efforts.forEach(effort => {
+    data.segment_efforts.forEach((effort) => {
       // @ts-ignore
       if (this.main.segFile) {
         const seg = this.main.segFile.getSegment(effort.name);
         if (seg) {
-          console.log('  Found starred segment', effort.name);
+          this._log.info('  Found starred segment ' + effort.name);
           this._addDetailSegment(effort);
         }
       }
@@ -202,8 +203,8 @@ export class Activity {
       name = aliases[name];
       segEffort.name = name;
     }
-    const sd:string = durationUtil(segEffort.elapsed_time * 1000,':').format({ms:false});
-    console.log(`  Adding segment '${name}, elapsed time ${sd}`);
+    const sd: string = durationUtil(segEffort.elapsed_time * 1000, ':').format({ ms: false });
+    this._log.info(`  Adding segment '${name}, elapsed time ${sd}`);
     // Add segment to this activity
     this._segments.push(new SegmentData(segEffort));
   }

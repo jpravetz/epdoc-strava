@@ -1,11 +1,12 @@
 import * as assert from 'assert';
 import { Dict, isNonEmptyString, isNumber, isObject, isPosInteger } from 'epdoc-util';
+import { MainOpts } from './main';
 import { Activity } from './models/activity';
 import { Athelete } from './models/athlete';
 import { DetailedActivity } from './models/detailed-activity';
 import { SummarySegment } from './models/summary-segment';
 import { StravaCreds } from './strava-creds';
-import { EpochSeconds } from './util';
+import { EpochSeconds, LogFunction, isLogFunction } from './util';
 import request = require('superagent');
 
 const STRAVA_URL_PREFIX = process.env.STRAVA_URL_PREFIX || 'https://www.strava.com';
@@ -90,12 +91,18 @@ export class StravaApi {
   public id: StravaClientId;
   public secret: StravaSecret;
   private _creds: StravaCreds;
+  private _log: LogFunction = (msg) => {
+    this._log(msg);
+  };
 
-  constructor(clientConfig: StravaClientSecret, creds: StravaCreds) {
+  constructor(clientConfig: StravaClientSecret, creds: StravaCreds, opts: MainOpts) {
     this.id = clientConfig.id || parseInt(process.env.STRAVA_CLIENT_ID, 10);
     this.secret = clientConfig.secret || process.env.STRAVA_CLIENT_SECRET;
     // this.token = opts.token || process.env.STRAVA_ACCESS_TOKEN;
     this._creds = creds;
+    if (opts && isLogFunction(opts.log)) {
+      this._log = opts.log;
+    }
   }
 
   public toString() {
@@ -162,17 +169,17 @@ export class StravaApi {
       client_secret: this.secret,
       grant_type: 'authorization_code',
     };
-    // console.log('getTokens request', payload);
+    // this._log('getTokens request', payload);
     return request
       .post(STRAVA_URL.token)
       .send(payload)
       .then((resp) => {
-        // console.log('getTokens response', resp.body);
-        console.log('Authorization obtained.');
+        // this._log('getTokens response', resp.body);
+        this._log('Authorization obtained.');
         return this.creds.write(resp.body);
       })
       .then((resp) => {
-        console.log('Credentials written to local storage');
+        this._log('Credentials written to local storage');
       });
   }
 
@@ -251,7 +258,7 @@ export class StravaApi {
       .set('Authorization', 'access_token ' + this.creds.accessToken)
       .then((resp) => {
         if (resp && Array.isArray(resp.body)) {
-          console.log(`  Retrieved ${resp.body.length} starred segments for page ${page}`);
+          this._log(`  Retrieved ${resp.body.length} starred segments for page ${page}`);
           resp.body.forEach((item) => {
             const result = SummarySegment.newFromResponseData(item);
             accum.push(result);
@@ -274,14 +281,14 @@ export class StravaApi {
     return this.getStreams(source, objId, query)
       .then((resp) => {
         if (Array.isArray(resp.latlng)) {
-          console.log(`  Get ${name} Found ${resp.latlng.length} coordinates`);
+          this._log(`  Get ${name} Found ${resp.latlng.length} coordinates`);
           return Promise.resolve(resp.latlng);
         }
-        console.log(`  Get ${name} did not contain any coordinates`);
+        this._log(`  Get ${name} did not contain any coordinates`);
         return Promise.resolve([]);
       })
       .catch((err) => {
-        console.log(`  Get ${name} coordinates ${err.message}`);
+        this._log(`  Get ${name} coordinates ${err.message}`);
         return Promise.resolve([]);
       });
   }

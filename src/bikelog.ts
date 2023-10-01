@@ -1,23 +1,22 @@
 import { DateUtil, durationUtil } from 'epdoc-timeutil';
-import { Dict, isNumber } from 'epdoc-util';
+import { Dict, isArray } from 'epdoc-util';
 import fs from 'fs';
 import * as builder from 'xmlbuilder';
 import { DateRange } from './main';
 import { Activity } from './models/activity';
-import { Seconds } from './util';
+import { LogFunctions, LogOpts, Seconds } from './util';
 
 export type BikeDef = {
   name: string;
   pattern: string;
 };
 
-export type BikelogOutputOpts = {
+export type BikelogOutputOpts = LogOpts & {
   more?: boolean;
   dates?: DateRange[];
   imperial?: boolean;
   segmentsFlatFolder?: boolean;
   selectedBikes?: BikeDef[];
-  verbose?: number;
   bikes?: Dict;
 };
 
@@ -30,16 +29,15 @@ const REGEX = {
  * Acrobat.
  */
 export class Bikelog {
-  private opts: BikelogOutputOpts = {};
+  private opts: BikelogOutputOpts;
   private stream: fs.WriteStream;
   private buffer: string = '';
   private verbose: number = 9;
+  private _log: LogFunctions;
 
   constructor(options: BikelogOutputOpts) {
     this.opts = options;
-    if (isNumber(options.verbose)) {
-      this.verbose = options.verbose;
-    }
+    this._log = options.log;
   }
 
   /**
@@ -175,7 +173,7 @@ export class Bikelog {
       self.stream = fs.createWriteStream(filepath);
       // self.stream = fs.createWriteStream('xxx.xml');
       self.stream.once('open', (fd) => {
-        console.log('Open ' + filepath);
+        this._log.info('Open ' + filepath);
         const doc = builder
           .create('fields', { version: '1.0', encoding: 'UTF-8' })
           .att('xmlns:xfdf', 'http://ns.adobe.com/xfdf-transition/')
@@ -207,7 +205,7 @@ export class Bikelog {
         const s = doc.doc().end({ pretty: true });
         self.stream.write(s);
         self.stream.end();
-        console.log(`Wrote ${s.length} bytes to ${filepath}`);
+        this._log.info(`Wrote ${s.length} bytes to ${filepath}`);
       });
 
       self.stream.once('error', (err) => {
@@ -216,11 +214,11 @@ export class Bikelog {
         reject(err);
       });
       self.stream.once('close', () => {
-        console.log('Close ' + filepath);
+        this._log.info('Close ' + filepath);
         resolve();
       });
       self.stream.on('finish', () => {
-        console.log('Finish ' + filepath);
+        this._log.info('Finish ' + filepath);
       });
     });
   }
@@ -246,9 +244,7 @@ export class Bikelog {
   }
 
   public flush(): Promise<void> {
-    if (this.verbose) {
-      console.log('  Flushing %d bytes', this.buffer.length);
-    }
+    this._log.verbose(`  Flushing ${this.buffer.length} bytes`);
     return this._flush();
   }
 
@@ -259,9 +255,7 @@ export class Bikelog {
       if (bOk) {
         resolve();
       } else {
-        if (this.verbose) {
-          console.log('  Waiting on drain event');
-        }
+        this._log.verbose('  Waiting on drain event');
         this.stream.once('drain', () => {
           return this.flush();
         });
@@ -270,7 +264,7 @@ export class Bikelog {
   }
 
   public bikeMap(stravaBikeName: string): string {
-    if (Array.isArray(this.opts.selectedBikes)) {
+    if (isArray(this.opts.selectedBikes)) {
       for (let idx = 0; idx < this.opts.selectedBikes.length; ++idx) {
         const item = this.opts.selectedBikes[idx];
         if (item.pattern.toLowerCase() === stravaBikeName.toLowerCase()) {

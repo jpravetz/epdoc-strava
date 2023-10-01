@@ -39,59 +39,58 @@ const util_1 = require("./util");
 const epdoc_timeutil_1 = require("epdoc-timeutil");
 const REGEX = {
     color: /^[a-zA-Z0-9]{8}$/,
-    moto: /^moto$/i
+    moto: /^moto$/i,
 };
 // Colors are aabbggrr
 const defaultLineStyles = {
     Default: {
         color: 'C00000FF',
-        width: 4
+        width: 4,
     },
     Ride: {
         color: 'C00000A0',
-        width: 4
+        width: 4,
     },
     EBikeRide: {
         color: '7FFF00FF',
-        width: 4
+        width: 4,
     },
     Moto: {
         color: '6414F03C',
-        width: 4
+        width: 4,
     },
     Segment: {
         color: 'C0FFFFFF',
-        width: 6
+        width: 6,
     },
     Commute: {
         color: 'C085037D',
-        width: 4
+        width: 4,
     },
     Hike: {
         color: 'F0FF0000',
-        width: 4
+        width: 4,
     },
     Walk: {
         color: 'F0f08000',
-        width: 4
+        width: 4,
     },
     'Stand Up Paddling': {
         color: 'F0f08000',
-        width: 4
+        width: 4,
     },
     'Nordic Ski': {
         color: 'F0f08000',
-        width: 4
-    }
+        width: 4,
+    },
 };
 class Kml {
-    constructor(opts = {}) {
+    constructor(opts) {
         this.lineStyles = defaultLineStyles;
-        this.verbose = 9;
         this.buffer = '';
         this.trackIndex = 0;
         this.opts = opts;
-        this.verbose = opts.verbose;
+        this._log = opts.log;
     }
     get imperial() {
         return this.opts && this.opts.imperial === true;
@@ -100,13 +99,13 @@ class Kml {
         return this.opts && this.opts.more === true;
     }
     setLineStyles(styles) {
-        Object.keys(styles).forEach(name => {
+        Object.keys(styles).forEach((name) => {
             const style = styles[name];
             if (style && (0, epdoc_util_1.isString)(style.color) && (0, epdoc_util_1.isNumber)(style.width) && REGEX.color.test(style.color)) {
                 this.lineStyles[name] = style;
             }
             else {
-                console.log('Warning: ignoring line style error for %s. Style must be in form \'{ "color": "C03030C0", "width": 2 }\'', name);
+                this._log.warn(`Ignoring line style error for %s. Style must be in form '{ "color": "C03030C0", "width": 2 }' ${name}`);
             }
         });
     }
@@ -114,37 +113,37 @@ class Kml {
         const file = filepath || 'Activities.kml';
         return new Promise((resolve, reject) => {
             this.stream = fs.createWriteStream(file);
-            this.stream.once('open', fd => {
+            this.stream.once('open', (fd) => {
                 this.header()
-                    .then(resp => {
+                    .then((resp) => {
                     if (this.opts.activities) {
                         return this.addActivities(activities);
                     }
                 })
-                    .then(resp => {
+                    .then((resp) => {
                     if (this.opts.segments) {
                         return this.addSegments(segments);
                     }
                 })
-                    .then(resp => {
+                    .then((resp) => {
                     return this.footer();
                 })
-                    .then(resp => {
+                    .then((resp) => {
                     this.stream.end();
-                    console.log('Wrote ' + file);
+                    this._log.info('Wrote ' + file);
                 });
             });
-            this.stream.once('error', err => {
+            this.stream.once('error', (err) => {
                 this.stream.end();
                 err.message = 'Stream error ' + err.message;
                 reject(err);
             });
             this.stream.once('close', () => {
-                console.log('Close ' + file);
+                this._log.info('Close ' + file);
                 resolve();
             });
             this.stream.on('finish', () => {
-                console.log('Finish ' + file);
+                this._log.info('Finish ' + file);
             });
             this.stream.on('drain', () => {
                 this._flush();
@@ -169,7 +168,7 @@ class Kml {
                         return job;
                     });
                 }, Promise.resolve())
-                    .then(resp => {
+                    .then((resp) => {
                     this.writeln(indent, '</Folder>');
                     return this.flush();
                 });
@@ -180,7 +179,7 @@ class Kml {
     _dateString() {
         if (Array.isArray(this.opts.dates)) {
             const ad = [];
-            this.opts.dates.forEach(range => {
+            this.opts.dates.forEach((range) => {
                 ad.push(range.after + ' to ' + range.before);
             });
             return ad.join(', ');
@@ -198,8 +197,8 @@ class Kml {
             }
             else {
                 const regions = this.getSegmentRegionList(segments);
-                Object.keys(regions).forEach(country => {
-                    Object.keys(regions[country]).forEach(state => {
+                Object.keys(regions).forEach((country) => {
+                    Object.keys(regions[country]).forEach((state) => {
                         this.outputSegments(indent, sortedSegments, country, state);
                     });
                 });
@@ -219,7 +218,7 @@ class Kml {
         }
         this.writeln(indent, '<Folder><name>' + title + '</name><open>1</open>');
         this.writeln(indent + 1, '<description>Efforts for ' + (dateString ? ' ' + dateString : '') + '</description>');
-        segments.forEach(segment => {
+        segments.forEach((segment) => {
             if (!country || (country === segment.country && state == segment.state)) {
                 this.outputSegment(indent + 2, segment);
             }
@@ -228,13 +227,13 @@ class Kml {
     }
     getSegmentRegionList(segments) {
         const regions = {};
-        segments.forEach(segment => {
+        segments.forEach((segment) => {
             regions[segment.country] = regions[segment.country] || {};
             if (segment.state) {
                 regions[segment.country][segment.state] = true;
             }
         });
-        console.log('Segments found in the following regions:\n  ' + JSON.stringify(regions));
+        this._log.info('Segments found in the following regions:\n  ' + JSON.stringify(regions));
         return regions;
     }
     outputActivity(indent, activity) {
@@ -257,7 +256,7 @@ class Kml {
             name: t0 + ' - ' + (0, util_1.escapeHtml)(activity.name),
             description: this._buildActivityDescription(activity),
             styleName: styleName,
-            coordinates: activity.coordinates
+            coordinates: activity.coordinates,
         };
         this.placemark(indent, params);
     }
@@ -266,7 +265,7 @@ class Kml {
         // console.log(activity.keys)
         if (this.more) {
             const arr = [];
-            Object.keys(activity.keyDict).forEach(field => {
+            Object.keys(activity.keyDict).forEach((field) => {
                 // console.log(field + ' = ' + activity[field]);
                 if (activity[field]) {
                     let key = field;
@@ -287,7 +286,7 @@ class Kml {
                     else if (field === '_segments' && activity[field].length) {
                         const segs = [];
                         segs.push('<b>Segments:</b><br><ul>');
-                        activity[field].forEach(segment => {
+                        activity[field].forEach((segment) => {
                             const s = '<li><b>' +
                                 segment.name +
                                 ':</b> ' +
@@ -322,7 +321,7 @@ class Kml {
             name: (0, util_1.escapeHtml)(segment.name),
             description: this.buildSegmentDescription(segment),
             styleName: 'Segment',
-            coordinates: segment.coordinates
+            coordinates: segment.coordinates,
         };
         this.placemark(indent, params);
     }
@@ -347,7 +346,7 @@ class Kml {
         this.writeln(indent + 2, '<tessellate>1</tessellate>');
         if (params.coordinates && params.coordinates.length) {
             this.writeln(indent + 2, '<coordinates>');
-            params.coordinates.forEach(coord => {
+            params.coordinates.forEach((coord) => {
                 this.write(0, '' + [coord[1], coord[0], 0].join(',') + ' ');
             });
             this.writeln(indent + 2, '</coordinates>');
@@ -361,7 +360,7 @@ class Kml {
         this.write(1, '<Document>\n');
         this.write(2, '<name>Strava Activities</name>\n');
         this.write(2, '<open>1</open>\n');
-        Object.keys(this.lineStyles).forEach(name => {
+        Object.keys(this.lineStyles).forEach((name) => {
             this._addLineStyle(name, this.lineStyles[name]);
         });
         return this.flush();
@@ -390,9 +389,7 @@ class Kml {
         // this.buffer.write( indent + s + "\n", 'utf8' );
     }
     flush() {
-        if (this.verbose) {
-            console.log('  Flushing %d bytes', this.buffer.length);
-        }
+        this._log.verbose(`  Flushing ${this.buffer.length} bytes`);
         return this._flush();
     }
     _flush() {

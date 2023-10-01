@@ -15,11 +15,11 @@ export class Segment extends SegmentBase {
   // more: boolean;
   // efforts: Dict[];
 
-  constructor(data:Dict) {
+  constructor(data: Dict) {
     super(data);
   }
 
-  static newFromResponseData(data:Dict): Segment {
+  static newFromResponseData(data: Dict): Segment {
     return new Segment(data);
   }
 

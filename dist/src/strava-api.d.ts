@@ -1,4 +1,5 @@
 import { Dict } from 'epdoc-util';
+import { MainOpts } from './main';
 import { Activity } from './models/activity';
 import { DetailedActivity } from './models/detailed-activity';
 import { SummarySegment } from './models/summary-segment';
@@ -58,7 +59,8 @@ export declare class StravaApi {
     id: StravaClientId;
     secret: StravaSecret;
     private _creds;
-    constructor(clientConfig: StravaClientSecret, creds: StravaCreds);
+    private _log;
+    constructor(clientConfig: StravaClientSecret, creds: StravaCreds, opts: MainOpts);
     toString(): string;
     /**
      * Read OAUTH token file and places result in creds. This should be done

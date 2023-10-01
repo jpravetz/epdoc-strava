@@ -1,18 +1,17 @@
 import { Dict } from 'epdoc-util';
 import { DateRange } from './main';
 import { Activity } from './models/activity';
-import { Seconds } from './util';
+import { LogOpts, Seconds } from './util';
 export type BikeDef = {
     name: string;
     pattern: string;
 };
-export type BikelogOutputOpts = {
+export type BikelogOutputOpts = LogOpts & {
     more?: boolean;
     dates?: DateRange[];
     imperial?: boolean;
     segmentsFlatFolder?: boolean;
     selectedBikes?: BikeDef[];
-    verbose?: number;
     bikes?: Dict;
 };
 /**
@@ -24,6 +23,7 @@ export declare class Bikelog {
     private stream;
     private buffer;
     private verbose;
+    private _log;
     constructor(options: BikelogOutputOpts);
     /**
      * Combine strava activities into per-day information that is suitable for Acroform bikelog.

@@ -1,7 +1,7 @@
 import { Dict } from 'epdoc-util';
 import { Main } from '../main';
 import { StravaCoord } from './../strava-api';
-import { IsoDateString, Kilometres, Metres, Seconds } from './../util';
+import { IsoDateString, Kilometres, LogFunctions, Metres, Seconds } from './../util';
 import { DetailedActivity } from './detailed-activity';
 import { SegmentData } from './segment-data';
 export type ActivityFilter = {
@@ -18,10 +18,13 @@ export declare class Activity {
     main: Main;
     commute: boolean;
     startDate: Date;
+    private _log;
     private _asString;
     private _segments;
     private _coordinates;
-    constructor(data: Dict);
+    constructor(data: Dict, options: {
+        log: LogFunctions;
+    });
     static newFromResponseData(data: Dict, main: Main): Activity;
     static isInstance(val: any): val is Activity;
     toString(): string;

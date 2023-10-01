@@ -1,6 +1,5 @@
-import { Dict, isInteger, isNonEmptyString, pad } from 'epdoc-util';
+import { Dict, isDict, isFunction, isInteger, isNonEmptyString } from 'epdoc-util';
 import fs from 'fs';
-import { SegmentConfig } from './main';
 
 export function compare(a: Dict, b: Dict, key: string) {
   if (a[key] < b[key]) {
@@ -47,6 +46,29 @@ export function isEpochSeconds(val: any): val is EpochSeconds {
 // };
 
 export type LogFunction = (msg: string) => void;
+export function isLogFunction(val: any): val is LogFunction {
+  return isFunction(val);
+}
+export type LogFunctions = {
+  info: LogFunction;
+  warn: LogFunction;
+  debug: LogFunction;
+  error: LogFunction;
+  verbose: LogFunction;
+};
+export function isLogFunctions(val: any): val is LogFunction {
+  return (
+    isDict(val) &&
+    isLogFunction(val.info) &&
+    isLogFunction(val.warn) &&
+    isLogFunction(val.error) &&
+    isLogFunction(val.debug) &&
+    isLogFunction(val.verbose)
+  );
+}
+export type LogOpts = {
+  log: LogFunctions;
+};
 
 // export function formatHMS(s: Seconds, options?: formatHMSOpts): string {
 //   options || (options = {});
@@ -88,7 +110,7 @@ export function readJson(path: string): Promise<any> {
 
 export function writeJson(path: string, data): Promise<void> {
   return new Promise((resolve, reject) => {
-    const buf = new Buffer(JSON.stringify(data, null, '  '));
+    const buf = Buffer.from(JSON.stringify(data, null, '  '));
     fs.writeFile(path, buf, (err) => {
       if (err) {
         reject(err);
