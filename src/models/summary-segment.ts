@@ -1,8 +1,8 @@
-import { SegmentCacheEntry } from './../segment-file';
-import { SegmentBase } from './segment-base';
-import { StravaCoord } from './../strava-api';
-import { Metres } from '../util';
 import { Dict } from 'epdoc-util';
+import { SegmentCacheEntry } from '../segment-cache-file';
+import { Metres } from '../util';
+import { StravaCoord } from './../strava-api';
+import { SegmentBase } from './segment-base';
 
 export class SummarySegment extends SegmentBase {
   private _isSummarySegment = true;

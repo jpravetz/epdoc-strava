@@ -3,7 +3,7 @@ import fs from 'fs';
 import { BikeDef } from './bikelog';
 import { LineStyle } from './kml';
 import { SegmentName } from './models/segment-base';
-import { isSegementCacheDict } from './segment-file';
+import { isSegementCacheDict } from './segment-cache-file';
 import { StravaClientSecret, isStravaClientSecret } from './strava-api';
 import { StravaCreds } from './strava-creds';
 import { FilePath, LogFunctions, LogOpts, isFilePath, readJson } from './util';

@@ -1,10 +1,10 @@
+import { dateUtil } from 'epdoc-timeutil';
+import { isArray, isDict } from 'epdoc-util';
 import fs from 'fs';
 import { SegmentName } from './models/segment-base';
 import { SummarySegment } from './models/summary-segment';
 import { StravaApi } from './strava-api';
 import { FilePath, IsoDateString, LogFunctions, LogOpts, Metres, readJson, writeJson } from './util';
-import { isArray, isDict } from 'epdoc-util';
-import { dateUtil } from 'epdoc-timeutil';
 
 export type GpsDegrees = number;
 
@@ -34,7 +34,7 @@ export function isSegementCacheFileData(val: any): val is SegmentCacheFileData {
 /**
  * Object representing a Segment Cache file.
  */
-export class SegmentFile {
+export class SegmentCacheFile {
   private _filepath: FilePath;
   private _api: StravaApi;
   private _lastModified: Date;
@@ -158,6 +158,18 @@ export class SegmentFile {
     });
   }
 
+  /**
+   * Retrieve all segments
+   * @param name
+   * @returns
+   */
+  // public getSegments(): SegmentCacheEntry {
+  //   return this._segments;
+  // }
+  public numSegments(): number {
+    return Object.keys(this._segments).length;
+  }
+  
   /**
    * Retrieve a segment
    * @param name

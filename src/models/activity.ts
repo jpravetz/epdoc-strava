@@ -1,17 +1,23 @@
+import { durationUtil } from 'epdoc-timeutil';
 import { Dict, isBoolean, isNumber, isString } from 'epdoc-util';
-import { Main } from '../main';
 import { StravaCoord } from './../strava-api';
-import { IsoDateString, Kilometres, LogFunctions, Metres, Seconds } from './../util';
+import { IsoDateString, Kilometres, LogFunctions, LogOpts, Metres, Seconds } from './../util';
 import { DetailedActivity } from './detailed-activity';
 import { SegmentData } from './segment-data';
 import { SegmentEffort } from './segment-effort';
-import { durationUtil } from 'epdoc-timeutil';
+import { SegmentCacheFile } from '../segment-cache-file';
+import { AliasesDict } from '../settings';
 
 export type ActivityFilter = {
   commuteOnly?: boolean;
   nonCommuteOnly?: boolean;
   include?: string[];
   exclude?: string[];
+};
+
+export type ActivityOpts = LogOpts & {
+  segCacheFile?: SegmentCacheFile;
+  aliases?: AliasesDict;
 };
 
 const REGEX = {
@@ -38,26 +44,29 @@ export class Activity {
   public data: Dict = {};
 
   public description: string;
-  public main: Main;
   public commute: boolean;
   // public type: string;
   public startDate: Date;
   private _log: LogFunctions;
+  private _segCacheFile: SegmentCacheFile;
+  private _aliases: AliasesDict;
 
   private _asString: string;
   private _segments: SegmentData[]; // list of starred segments for this Activity
   private _coordinates: StravaCoord[] = []; // will contain the latlng coordinates for the activity
 
-  constructor(data: Dict, options: { log: LogFunctions }) {
+  constructor(data: Dict, opts: ActivityOpts) {
     Object.assign(this.data, data);
+    this._log = opts.log;
+    this._segCacheFile = opts.segCacheFile;
+    this._aliases = opts.aliases;
     this.startDate = new Date(this.data.start_date);
     const d = Math.round(this.data.distance / 100) / 10;
     this._asString = `${this.data.start_date_local.slice(0, 10)}, ${this.type} ${d} km, ${this.name}`;
   }
 
-  public static newFromResponseData(data: Dict, main: Main): Activity {
-    const result = new Activity(data, { log: main.log });
-    result.main = main;
+  public static newFromResponseData(data: Dict, opts: ActivityOpts): Activity {
+    const result = new Activity(data, opts);
     return result;
   }
 
@@ -186,8 +195,8 @@ export class Activity {
     this._segments = [];
     data.segment_efforts.forEach((effort) => {
       // @ts-ignore
-      if (this.main.segFile) {
-        const seg = this.main.segFile.getSegment(effort.name);
+      if (this._segCacheFile) {
+        const seg = this._segCacheFile.getSegment(effort.name);
         if (seg) {
           this._log.info('  Found starred segment ' + effort.name);
           this._addDetailSegment(effort);
@@ -198,9 +207,8 @@ export class Activity {
 
   private _addDetailSegment(segEffort: SegmentEffort) {
     let name = String(segEffort.name).trim();
-    const aliases = this.main.config.aliases;
-    if (aliases && aliases[name]) {
-      name = aliases[name];
+    if (this._aliases && this._aliases[name]) {
+      name = this._aliases[name];
       segEffort.name = name;
     }
     const sd: string = durationUtil(segEffort.elapsed_time * 1000, ':').format({ ms: false });

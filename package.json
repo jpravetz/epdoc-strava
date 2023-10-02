@@ -23,7 +23,6 @@
   "author": "Jim Pravetz",
   "license": "BSD",
   "dependencies": {
-    "assert": "~2.0.0",
     "async": "^3.2.4",
     "commander": "^9.4.1",
     "epdoc-timeutil": "^2.1.6",

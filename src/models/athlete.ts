@@ -8,7 +8,7 @@ export type StravaBike = {
   distance?: Metres;
 };
 
-export class Athelete {
+export class Athlete {
   bikes: StravaBike[];
   id: number;
   username: string;
@@ -17,11 +17,11 @@ export class Athelete {
     Object.assign(this, data);
   }
 
-  static newFromResponseData(data): Athelete {
-    return new Athelete(data);
+  static newFromResponseData(data): Athlete {
+    return new Athlete(data);
   }
 
-  static isInstance(val: any): val is Athelete {
+  static isInstance(val: any): val is Athlete {
     return val && isNumber(val.id) && isString(val.username);
   }
 }

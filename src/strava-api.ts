@@ -1,7 +1,6 @@
-import * as assert from 'assert';
 import { Dict, isNonEmptyString, isNumber, isObject, isPosInteger } from 'epdoc-util';
 import { Activity } from './models/activity';
-import { Athelete } from './models/athlete';
+import { Athlete } from './models/athlete';
 import { DetailedActivity } from './models/detailed-activity';
 import { SummarySegment } from './models/summary-segment';
 import { StravaCreds } from './strava-creds';
@@ -109,7 +108,7 @@ export class StravaApi {
    * before trying to authenticate with Strava.
    * @returns
    */
-  private initCreds(): Promise<void> {
+  public async initCreds(): Promise<void> {
     return this._creds.read();
   }
 
@@ -178,9 +177,10 @@ export class StravaApi {
       });
   }
 
-  private async acquireToken(code: string): Promise<string> {
-    assert.ok(this.id, 'A client ID is required.');
-    assert.ok(this.secret, 'A client secret is required.');
+  private async acquireToken(code: string): Promise<string | Error> {
+    if (!this.id || !this.secret) {
+      return Promise.resolve(new Error('A client ID and secret is required'));
+    }
 
     const query = {
       client_id: this.id,
@@ -201,14 +201,16 @@ export class StravaApi {
   }
 
   private authHeaders(): Dict {
-    assert.ok(this.secret, 'An access token is required.');
+    if (this.secret) {
+      throw new Error('An access token is required');
+    }
 
     return {
       Authorization: 'access_token ' + this.creds.accessToken,
     };
   }
 
-  private async getAthlete(athleteId?: number): Promise<Athelete> {
+  public async getAthlete(athleteId?: number): Promise<Athlete> {
     let url = STRAVA_URL.athlete;
     if (isNumber(athleteId)) {
       url = url + '/' + athleteId;
@@ -217,8 +219,8 @@ export class StravaApi {
       .get(url)
       .set('Authorization', 'access_token ' + this.creds.accessToken)
       .then((resp) => {
-        if (resp && Athelete.isInstance(resp.body)) {
-          return Promise.resolve(Athelete.newFromResponseData(resp.body));
+        if (resp && Athlete.isInstance(resp.body)) {
+          return Promise.resolve(Athlete.newFromResponseData(resp.body));
         }
         throw new Error('Invalid Athelete return value');
       });

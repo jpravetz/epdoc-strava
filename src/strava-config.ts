@@ -1,6 +1,6 @@
 import { Dict } from 'epdoc-util';
 import { BikeDef } from './bikelog';
-import { SegmentCacheDict } from './segment-file';
+import { SegmentCacheDict } from './segment-cache-file';
 import { AliasesDict, LineStylesDict, Settings } from './settings';
 import { StravaClientSecret, isStravaClientSecret } from './strava-api';
 import { StravaCreds } from './strava-creds';
