@@ -88,7 +88,7 @@ class Main {
         return __awaiter(this, void 0, void 0, function* () {
             return this.auth()
                 .then((resp) => {
-                this.segFile = new segment_file_1.SegmentFile(this.options.segmentsFile, this.strava, { log: this._log });
+                this.segFile = new segment_file_1.SegmentFile(this._config.segmentsCachePath, this.strava, { log: this._log });
                 return this.segFile.get({ refresh: this.options.refreshStarredSegments });
             })
                 .then((resp) => {

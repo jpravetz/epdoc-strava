@@ -87,6 +87,13 @@ export declare class StravaApi {
     private authHeaders;
     private getAthlete;
     getActivities(options: StravaActivityOpts): Promise<Dict[]>;
+    /**
+     * Retrieve starred segments. We only download starred segments, otherwise
+     * there is too much data.
+     * @param accum
+     * @param page
+     * @returns
+     */
     getStarredSegments(accum: SummarySegment[], page?: number): Promise<void>;
     getStreamCoords(source: StravaStreamSource, objId: StravaObjId, name: string): Promise<any[]>;
     getDetailedActivity(activity: Activity): Promise<DetailedActivity>;

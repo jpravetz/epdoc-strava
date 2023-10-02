@@ -86,7 +86,7 @@ async function run(): Promise<void> {
         cwd: cmdOpts.cwd,
         config: configResponse,
         refreshStarredSegments: cmdOpts.refresh,
-        // segmentsFile: segmentsFile,
+        segmentsCachePath: config.segmentsCachePath,
         // credentialsFile: credentialsFile,
         athleteId: parseInt(cmdOpts.id, 10), //  || (config as StravaConfig).athleteId,
         athlete: cmdOpts.athlete,

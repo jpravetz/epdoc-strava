@@ -9,7 +9,7 @@ import { SegmentFile } from './segment-file';
 import { Server } from './server';
 import { StravaActivityOpts, StravaApi, StravaStreamSource, isStravaClientSecret } from './strava-api';
 import { StravaConfig } from './strava-config';
-import { EpochSeconds, LogFunction, LogFunctions } from './util';
+import { EpochSeconds, FilePath, LogFunction, LogFunctions } from './util';
 
 // let _ = require('underscore');
 // let async = require('async');
@@ -35,9 +35,9 @@ export type MainOpts = {
   cwd: string;
   config?: StravaConfig;
   auth?: boolean;
-  segmentsFile?: string;
   refreshStarredSegments?: boolean;
-  credentialsFile?: string;
+  segmentsCachePath: FilePath;
+  credentialsFile?: FilePath;
   athlete?: string;
   athleteId?: number;
   selectedBikes?: string[];
@@ -135,7 +135,7 @@ export class Main {
   public async run(): Promise<void> {
     return this.auth()
       .then((resp) => {
-        this.segFile = new SegmentFile(this.options.segmentsFile, this.strava, { log: this._log });
+        this.segFile = new SegmentFile(this._config.segmentsCachePath, this.strava, { log: this._log });
         return this.segFile.get({ refresh: this.options.refreshStarredSegments });
       })
       .then((resp) => {

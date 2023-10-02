@@ -70,7 +70,7 @@ function run() {
                 cwd: cmdOpts.cwd,
                 config: configResponse,
                 refreshStarredSegments: cmdOpts.refresh,
-                // segmentsFile: segmentsFile,
+                segmentsCachePath: config.segmentsCachePath,
                 // credentialsFile: credentialsFile,
                 athleteId: parseInt(cmdOpts.id, 10),
                 athlete: cmdOpts.athlete,

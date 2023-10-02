@@ -3,6 +3,7 @@ import fs from 'fs';
 import { BikeDef } from './bikelog';
 import { LineStyle } from './kml';
 import { SegmentName } from './models/segment-base';
+import { isSegementCacheDict } from './segment-file';
 import { StravaClientSecret, isStravaClientSecret } from './strava-api';
 import { StravaCreds } from './strava-creds';
 import { FilePath, LogFunctions, LogOpts, isFilePath, readJson } from './util';
@@ -12,7 +13,7 @@ export type ProjectSettings = {
   clientSecretPath?: FilePath;
   credentialsPath?: FilePath;
   userSettingsPath?: FilePath;
-  segmentsPath?: FilePath;
+  segmentsCachePath?: FilePath;
   lineStyles?: LineStylesDict;
   aliases?: AliasesDict;
   bikes?: BikeDef[];
@@ -71,14 +72,14 @@ export class Settings {
     return this._settings.bikes;
   }
 
-  credentials(): Promise<StravaCreds> {
+  async credentials(): Promise<StravaCreds> {
     let creds = new StravaCreds(this._settings.credentialsPath, { log: this._log });
     return creds.read().then((resp) => {
       return creds;
     });
   }
 
-  clientSecret(): Promise<StravaClientSecret> {
+  async clientSecret(): Promise<StravaClientSecret> {
     if (fs.existsSync(this._settings.clientSecretPath)) {
       return readJson(this._settings.clientSecretPath).then((resp) => {
         if (isDict(resp) && isStravaClientSecret(resp.client)) {
@@ -89,18 +90,27 @@ export class Settings {
     return Promise.resolve(null);
   }
 
-  segments(): Promise<Dict> {
-    if (fs.existsSync(this._settings.segmentsPath)) {
-      return readJson(this._settings.segmentsPath).then((resp) => {
-        if (isDict(resp)) {
+  /**
+   * Reads the segments cache file, if there is one.
+   * @returns
+   */
+  async segments_deprecated(): Promise<Dict> {
+    if (fs.existsSync(this._settings.segmentsCachePath)) {
+      return readJson(this._settings.segmentsCachePath).then((resp) => {
+        if (isSegementCacheDict(resp)) {
           return resp;
         }
       });
     }
-    return Promise.resolve(null);
+    // Empty SegmentCacheDict
+    return Promise.resolve({});
   }
 
-  read(): Promise<void> {
+  get segmentsCachePath() : FilePath {
+    return this._settings.segmentsCachePath;
+  }
+
+  async read(): Promise<void> {
     return Promise.resolve()
       .then((resp) => {
         if (fs.existsSync(this._filePath)) {

@@ -219,6 +219,13 @@ class StravaApi {
             });
         });
     }
+    /**
+     * Retrieve starred segments. We only download starred segments, otherwise
+     * there is too much data.
+     * @param accum
+     * @param page
+     * @returns
+     */
     getStarredSegments(accum, page = 1) {
         return __awaiter(this, void 0, void 0, function* () {
             const perPage = 200;

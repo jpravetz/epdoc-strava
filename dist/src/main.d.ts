@@ -2,7 +2,7 @@ import { Dict } from 'epdoc-util';
 import { Activity } from './models/activity';
 import { SegmentFile } from './segment-file';
 import { StravaConfig } from './strava-config';
-import { EpochSeconds, LogFunctions } from './util';
+import { EpochSeconds, FilePath, LogFunctions } from './util';
 export type SegmentConfig = {
     description: string;
     alias: Dict;
@@ -17,9 +17,9 @@ export type MainOpts = {
     cwd: string;
     config?: StravaConfig;
     auth?: boolean;
-    segmentsFile?: string;
     refreshStarredSegments?: boolean;
-    credentialsFile?: string;
+    segmentsCachePath: FilePath;
+    credentialsFile?: FilePath;
     athlete?: string;
     athleteId?: number;
     selectedBikes?: string[];

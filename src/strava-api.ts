@@ -250,6 +250,13 @@ export class StravaApi {
       });
   }
 
+  /**
+   * Retrieve starred segments. We only download starred segments, otherwise
+   * there is too much data.
+   * @param accum
+   * @param page 
+   * @returns 
+   */
   public async getStarredSegments(accum: SummarySegment[], page: number = 1): Promise<void> {
     const perPage = 200;
     return request

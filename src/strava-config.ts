@@ -1,14 +1,15 @@
 import { Dict } from 'epdoc-util';
 import { BikeDef } from './bikelog';
-import { AliasesDict, Settings, LineStylesDict } from './settings';
+import { SegmentCacheDict } from './segment-file';
+import { AliasesDict, LineStylesDict, Settings } from './settings';
 import { StravaClientSecret, isStravaClientSecret } from './strava-api';
 import { StravaCreds } from './strava-creds';
-import { FilePath, FolderPath, readJson, LogOpts } from './util';
+import { FilePath, FolderPath, LogOpts } from './util';
 
 export class StravaConfig {
   public client: StravaClientSecret;
   public credentials: StravaCreds;
-  public segments: Dict;
+  public segments: SegmentCacheDict;
   public athleteId?: number;
   // accessToken: string;
   public cachePath?: FolderPath;
@@ -35,7 +36,7 @@ export class StravaConfig {
       })
       .then((resp) => {
         this.credentials = resp;
-        return this._settings.segments();
+        return this._settings.segments_deprecated();
       })
       .then((resp) => {
         this.segments = resp;
@@ -49,6 +50,10 @@ export class StravaConfig {
 
   get aliases(): AliasesDict {
     return this._settings.aliases;
+  }
+
+  get segmentsCachePath() : FilePath {
+    return this._settings.segmentsCachePath;
   }
 
   get lineStyles(): LineStylesDict {
