@@ -70,27 +70,6 @@ export type LogOpts = {
   log: LogFunctions;
 };
 
-// export function formatHMS(s: Seconds, options?: formatHMSOpts): string {
-//   options || (options = {});
-//   const seconds = s % 60;
-//   const minutes = Math.floor(s / 60) % 60;
-//   const hours = Math.floor(s / (60 * 60));
-//   let result = pad(hours, 2) + ':';
-//   result += pad(minutes, 2);
-//   if (options.seconds !== false) {
-//     result += ':' + pad(seconds, 2);
-//   }
-//   return result;
-// }
-
-// export function formatMS(s: Seconds): string {
-//   const seconds = s % 60;
-//   const minutes = Math.floor(s / 60);
-//   let result = minutes + ':';
-//   result += pad(seconds, 2);
-//   return result;
-// }
-
 export function readJson(path: string): Promise<any> {
   return new Promise((resolve, reject) => {
     fs.readFile(path, 'utf8', (err, data) => {
@@ -123,16 +102,6 @@ export function writeJson(path: string, data): Promise<void> {
 
 export function precision(num, r, unit) {
   return String(Math.round(num * r) / r) + unit;
-}
-
-export function fieldCapitalize(name) {
-  return name
-    .replace(/^([a-z])/, function ($1) {
-      return $1.toUpperCase();
-    })
-    .replace(/(\_[a-z])/g, function ($1) {
-      return $1.toUpperCase().replace('_', ' ');
-    });
 }
 
 export function escapeHtml(unsafe) {

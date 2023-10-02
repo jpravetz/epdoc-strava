@@ -1,12 +1,11 @@
 import * as assert from 'assert';
 import { Dict, isNonEmptyString, isNumber, isObject, isPosInteger } from 'epdoc-util';
-import { MainOpts } from './main';
 import { Activity } from './models/activity';
 import { Athelete } from './models/athlete';
 import { DetailedActivity } from './models/detailed-activity';
 import { SummarySegment } from './models/summary-segment';
 import { StravaCreds } from './strava-creds';
-import { EpochSeconds, LogFunction, LogFunctions, LogOpts, isLogFunction } from './util';
+import { EpochSeconds, LogFunctions, LogOpts } from './util';
 import request = require('superagent');
 
 const STRAVA_URL_PREFIX = process.env.STRAVA_URL_PREFIX || 'https://www.strava.com';
@@ -247,11 +246,10 @@ export class StravaApi {
   }
 
   /**
-   * Retrieve starred segments. We only support download of starred segments,
-   * otherwise there is too much data.
+   * Retrieve a list of SummarySegment data for starred segments for the logged-i nuser.
    * @param accum
    * @param page
-   * @returns
+   * @returns A list of SummarySegment data, which is condensed data from getStarredSegments()
    */
   public async getStarredSegmentSummaries(): Promise<SummarySegment[]> {
     let rawResult = [];
@@ -266,10 +264,11 @@ export class StravaApi {
   }
 
   /**
-   * Retrieve the
-   * @param accum
-   * @param page
-   * @returns
+   * Retrieve all starred segments for the logged-in user.
+   * @see {@link https://developers.strava.com/docs/reference/#api-Segments-getLoggedInAthleteStarredSegments} for further info
+   * @param accum An empty array
+   * @param page Set to 1 for first call, recurses for subsequent pages.
+   * @returns Raw JSON from Strava
    */
   public async getStarredSegments(accum: any[], page: number = 1): Promise<void> {
     const perPage = 200;

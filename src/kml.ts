@@ -1,4 +1,4 @@
-import { Dict, isNumber, isString } from 'epdoc-util';
+import { Dict, isNumber, isString, underscoreCapitalize } from 'epdoc-util';
 import * as fs from 'fs';
 import { DateRange, Main } from './main';
 import { Activity } from './models/activity';
@@ -8,7 +8,6 @@ import {
   LogOpts,
   compare,
   escapeHtml,
-  fieldCapitalize,
   getDistanceString,
   getElevationString,
   getTemperatureString,
@@ -320,7 +319,7 @@ export class Kml {
             value = value.replace('\n', '<br>');
           }
           if (value) {
-            arr.push('<b>' + fieldCapitalize(key) + ':</b> ' + value);
+            arr.push('<b>' + underscoreCapitalize(key) + ':</b> ' + value);
           }
         }
       });

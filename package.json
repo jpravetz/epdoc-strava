@@ -27,7 +27,7 @@
     "async": "^3.2.4",
     "commander": "^9.4.1",
     "epdoc-timeutil": "^2.1.6",
-    "epdoc-util": "^0.1.17",
+    "epdoc-util": "^0.2.0",
     "koa": "^2.10.0",
     "koa-router": "^12.0.0",
     "open": "^8.4.0",
