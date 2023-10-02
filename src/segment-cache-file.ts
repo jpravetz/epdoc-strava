@@ -21,6 +21,9 @@ export type SegmentCacheFileData = {
   lastModified?: IsoDateString;
   segments: SegmentCacheDict;
 };
+export type RefreshOpts = {
+  refresh?: boolean;
+}
 export function isSegementCacheEntry(val: any): val is SegmentCacheEntry {
   return isDict(val);
 }
@@ -67,7 +70,7 @@ export class SegmentCacheFile {
    * local list does not yet exist.
    * @returns
    */
-  public async get(opts: { refresh?: boolean }): Promise<void> {
+  public async get(opts: RefreshOpts): Promise<void> {
     this._log.info('Retrieving list of starred segments');
     if (opts.refresh) {
       return this.refresh();
@@ -163,13 +166,14 @@ export class SegmentCacheFile {
    * @param name
    * @returns
    */
-  // public getSegments(): SegmentCacheEntry {
-  //   return this._segments;
-  // }
+  get segments(): SegmentCacheDict {
+    return this._segments;
+  }
+  
   public numSegments(): number {
     return Object.keys(this._segments).length;
   }
-  
+
   /**
    * Retrieve a segment
    * @param name

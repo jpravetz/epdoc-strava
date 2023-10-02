@@ -8,7 +8,7 @@ import { SummarySegment } from './models/summary-segment';
 import { SegmentCacheFile } from './segment-cache-file';
 import { StravaStreamSource, isStravaClientSecret } from './strava-api';
 import { StravaConfig } from './strava-config';
-import { DateRange, StravaContext } from './strava-context';
+import { DateRange, GetSegmentsOpts, StravaContext } from './strava-context';
 import { FilePath, LogFunctions } from './util';
 
 // let _ = require('underscore');
@@ -109,7 +109,12 @@ export class Main {
   public async run(): Promise<void> {
     return this.auth()
       .then((resp) => {
-        return this.strava.getSegments(this._config.segmentsCachePath,{ refresh: this.options.refreshStarredSegments });
+        const segOpts: GetSegmentsOpts = {
+          cacheFilePath:this._config.segmentsCachePath,
+          refresh: this.options.refreshStarredSegments
+        }
+        return this.strava.getStarredSegments(segOpts);
+        // return this.strava.getSegments(this._config.segmentsCachePath,{ refresh: this.options.refreshStarredSegments });
       })
       .then((resp) => {
         if (this.options.kml && !this.options.activities && !this.options.segments) {

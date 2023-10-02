@@ -255,7 +255,7 @@ export class StravaApi {
    */
   public async getStarredSegmentSummaries(): Promise<SummarySegment[]> {
     let rawResult = [];
-    return this.getStarredSegments(rawResult, 1).then((resp) => {
+    return this.getStarredSegmentsPage(rawResult, 1).then((resp) => {
       let result = [];
       rawResult.forEach((item) => {
         const seg = SummarySegment.newFromResponseData(item);
@@ -268,11 +268,22 @@ export class StravaApi {
   /**
    * Retrieve all starred segments for the logged-in user.
    * @see {@link https://developers.strava.com/docs/reference/#api-Segments-getLoggedInAthleteStarredSegments} for further info
+   * @returns Raw JSON from Strava as Array
+   */
+  public async getStarredSegments() {
+    let rawResult = [];
+    return this.getStarredSegmentsPage(rawResult, 1).then((resp) => {
+      return Promise.resolve(rawResult);
+    })
+  }
+
+  /**
+   * Retrieve all starred segments for the logged-in user.
    * @param accum An empty array
    * @param page Set to 1 for first call, recurses for subsequent pages.
    * @returns Raw JSON from Strava
    */
-  public async getStarredSegments(accum: any[], page: number = 1): Promise<void> {
+  private async getStarredSegmentsPage(accum: any[], page: number = 1): Promise<void> {
     const perPage = 200;
     return request
       .get(STRAVA_URL.starred)
@@ -285,7 +296,7 @@ export class StravaApi {
             accum.push(item);
           });
           if (resp.body.length >= perPage) {
-            return this.getStarredSegments(accum, page + 1);
+            return this.getStarredSegmentsPage(accum, page + 1);
           }
           return Promise.resolve();
         }
