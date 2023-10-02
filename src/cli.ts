@@ -31,12 +31,10 @@ async function run(): Promise<void> {
   return Promise.resolve()
     .then((resp) => {
       const configPath = path.resolve(__dirname, '../config/project.settings.json');
-      let config = new StravaConfig(configPath, { HOME: os.homedir() }, { log: log });
+      config = new StravaConfig(configPath, { HOME: os.homedir() }, { log: log });
       return config.read();
     })
     .then((configResponse) => {
-      let segments: Dict;
-
       const program: Dict = new Command('strava');
       program
         .version(pkg.version)
@@ -70,7 +68,7 @@ async function run(): Promise<void> {
         // .option('-p, --prompt', "With --show, when adding segments, prompt user whether to include or exclude a segment.")
         .option(
           '-s, --segments [opts]',
-          "Output starred segments to KML, adding efforts within date range to description if --more. Segments are grouped into folders by location unless opts is set to 'flat'."
+          "Retrieve starred segments. If not generating a KML file, segments are output to STDOUT. If generatin KML, will add efforts within date range to description if --more. Segments in KML are grouped into folders by location unless opts is set to 'flat'."
         )
         .option('-m, --more', 'When generating KML file, include additional detail info in KML description field')
         // .option('--auth', 'Authenticate to Strava API (this is run automatically when required)')

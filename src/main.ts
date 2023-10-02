@@ -9,7 +9,7 @@ import { SegmentFile } from './segment-file';
 import { Server } from './server';
 import { StravaActivityOpts, StravaApi, StravaStreamSource, isStravaClientSecret } from './strava-api';
 import { StravaConfig } from './strava-config';
-import { EpochSeconds, FilePath, LogFunction, LogFunctions } from './util';
+import { EpochSeconds, FilePath, LogFunctions } from './util';
 
 // let _ = require('underscore');
 // let async = require('async');
@@ -84,7 +84,7 @@ export class Main {
 
   public async init(): Promise<void> {
     if (isStravaClientSecret(this.config.client)) {
-      this.strava = new StravaApi(this.config.client, this.config.credentials, this.options);
+      this.strava = new StravaApi(this.config.client, this.config.credentials, { log: this._log });
       return Promise.resolve()
         .then((resp) => {
           if (this.options.kml) {
@@ -132,11 +132,15 @@ export class Main {
       });
   }
 
+  public async getSegments(): Promise<void> {
+    this.segFile = new SegmentFile(this._config.segmentsCachePath, this.strava, { log: this._log });
+    return this.segFile.get({ refresh: this.options.refreshStarredSegments });
+  }
+
   public async run(): Promise<void> {
     return this.auth()
       .then((resp) => {
-        this.segFile = new SegmentFile(this._config.segmentsCachePath, this.strava, { log: this._log });
-        return this.segFile.get({ refresh: this.options.refreshStarredSegments });
+        return this.getSegments();
       })
       .then((resp) => {
         if (this.options.kml && !this.options.activities && !this.options.segments) {

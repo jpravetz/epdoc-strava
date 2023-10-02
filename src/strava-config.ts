@@ -32,16 +32,17 @@ export class StravaConfig {
         if (!isStravaClientSecret(this.client)) {
           return Promise.reject(new Error('Config did not load client id and secret'));
         }
-        return this._settings.credentials();
+        return this.readCredentials();
       })
       .then((resp) => {
-        this.credentials = resp;
-        return this._settings.segments_deprecated();
-      })
-      .then((resp) => {
-        this.segments = resp;
         return Promise.resolve(this);
       });
+  }
+
+  readCredentials(): Promise<void> {
+    return this._settings.credentials().then((resp) => {
+      this.credentials = resp;
+    });
   }
 
   get bikes(): BikeDef[] {
@@ -52,7 +53,7 @@ export class StravaConfig {
     return this._settings.aliases;
   }
 
-  get segmentsCachePath() : FilePath {
+  get segmentsCachePath(): FilePath {
     return this._settings.segmentsCachePath;
   }
 

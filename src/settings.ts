@@ -106,7 +106,7 @@ export class Settings {
     return Promise.resolve({});
   }
 
-  get segmentsCachePath() : FilePath {
+  get segmentsCachePath(): FilePath {
     return this._settings.segmentsCachePath;
   }
 

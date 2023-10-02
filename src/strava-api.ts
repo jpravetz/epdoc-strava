@@ -6,7 +6,7 @@ import { Athelete } from './models/athlete';
 import { DetailedActivity } from './models/detailed-activity';
 import { SummarySegment } from './models/summary-segment';
 import { StravaCreds } from './strava-creds';
-import { EpochSeconds, LogFunction, isLogFunction } from './util';
+import { EpochSeconds, LogFunction, LogFunctions, LogOpts, isLogFunction } from './util';
 import request = require('superagent');
 
 const STRAVA_URL_PREFIX = process.env.STRAVA_URL_PREFIX || 'https://www.strava.com';
@@ -91,18 +91,14 @@ export class StravaApi {
   public id: StravaClientId;
   public secret: StravaSecret;
   private _creds: StravaCreds;
-  private _log: LogFunction = (msg) => {
-    this._log(msg);
-  };
+  private _log: LogFunctions;
 
-  constructor(clientConfig: StravaClientSecret, creds: StravaCreds, opts: MainOpts) {
+  constructor(clientConfig: StravaClientSecret, creds: StravaCreds, opts: LogOpts) {
     this.id = clientConfig.id || parseInt(process.env.STRAVA_CLIENT_ID, 10);
     this.secret = clientConfig.secret || process.env.STRAVA_CLIENT_SECRET;
     // this.token = opts.token || process.env.STRAVA_ACCESS_TOKEN;
     this._creds = creds;
-    if (opts && isLogFunction(opts.log)) {
-      this._log = opts.log;
-    }
+    this._log = opts.log;
   }
 
   public toString() {
@@ -169,17 +165,17 @@ export class StravaApi {
       client_secret: this.secret,
       grant_type: 'authorization_code',
     };
-    // this._log('getTokens request', payload);
+    // this._log.info('getTokens request', payload);
     return request
       .post(STRAVA_URL.token)
       .send(payload)
       .then((resp) => {
-        // this._log('getTokens response', resp.body);
-        this._log('Authorization obtained.');
+        // this._log.info('getTokens response', resp.body);
+        this._log.info('Authorization obtained.');
         return this.creds.write(resp.body);
       })
       .then((resp) => {
-        this._log('Credentials written to local storage');
+        this._log.info('Credentials written to local storage');
       });
   }
 
@@ -251,13 +247,31 @@ export class StravaApi {
   }
 
   /**
-   * Retrieve starred segments. We only download starred segments, otherwise
-   * there is too much data.
+   * Retrieve starred segments. We only support download of starred segments,
+   * otherwise there is too much data.
    * @param accum
-   * @param page 
-   * @returns 
+   * @param page
+   * @returns
    */
-  public async getStarredSegments(accum: SummarySegment[], page: number = 1): Promise<void> {
+  public async getStarredSegmentSummaries(): Promise<SummarySegment[]> {
+    let rawResult = [];
+    return this.getStarredSegments(rawResult, 1).then((resp) => {
+      let result = [];
+      rawResult.forEach((item) => {
+        const seg = SummarySegment.newFromResponseData(item);
+        result.push(seg);
+      });
+      return result;
+    });
+  }
+
+  /**
+   * Retrieve the
+   * @param accum
+   * @param page
+   * @returns
+   */
+  public async getStarredSegments(accum: any[], page: number = 1): Promise<void> {
     const perPage = 200;
     return request
       .get(STRAVA_URL.starred)
@@ -265,10 +279,9 @@ export class StravaApi {
       .set('Authorization', 'access_token ' + this.creds.accessToken)
       .then((resp) => {
         if (resp && Array.isArray(resp.body)) {
-          this._log(`  Retrieved ${resp.body.length} starred segments for page ${page}`);
+          this._log.info(`  Retrieved ${resp.body.length} starred segments for page ${page}`);
           resp.body.forEach((item) => {
-            const result = SummarySegment.newFromResponseData(item);
-            accum.push(result);
+            accum.push(item);
           });
           if (resp.body.length >= perPage) {
             return this.getStarredSegments(accum, page + 1);
@@ -288,14 +301,14 @@ export class StravaApi {
     return this.getStreams(source, objId, query)
       .then((resp) => {
         if (Array.isArray(resp.latlng)) {
-          this._log(`  Get ${name} Found ${resp.latlng.length} coordinates`);
+          this._log.info(`  Get ${name} Found ${resp.latlng.length} coordinates`);
           return Promise.resolve(resp.latlng);
         }
-        this._log(`  Get ${name} did not contain any coordinates`);
+        this._log.info(`  Get ${name} did not contain any coordinates`);
         return Promise.resolve([]);
       })
       .catch((err) => {
-        this._log(`  Get ${name} coordinates ${err.message}`);
+        this._log.info(`  Get ${name} coordinates ${err.message}`);
         return Promise.resolve([]);
       });
   }

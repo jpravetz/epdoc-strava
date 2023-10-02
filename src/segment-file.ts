@@ -3,7 +3,7 @@ import { SegmentName } from './models/segment-base';
 import { SummarySegment } from './models/summary-segment';
 import { StravaApi } from './strava-api';
 import { FilePath, IsoDateString, LogFunctions, LogOpts, Metres, readJson, writeJson } from './util';
-import { isDict } from 'epdoc-util';
+import { isArray, isDict } from 'epdoc-util';
 import { dateUtil } from 'epdoc-timeutil';
 
 export type GpsDegrees = number;
@@ -120,11 +120,11 @@ export class SegmentFile {
 
   private async getFromServer(): Promise<void> {
     // this.starredSegments = [];
-    const summarySegments: SummarySegment[] = [];
     this._log.info('  Retrieving starred segments from Strava ...');
     return this._api
-      .getStarredSegments(summarySegments)
-      .then(() => {
+      .getStarredSegmentSummaries()
+      .then((resp) => {
+        const summarySegments: SummarySegment[] = isArray(resp) ? resp : [];
         // this._segments = resp;
         this._log.info(`  Found ${summarySegments.length} starred segments`);
         this._segments = {};
@@ -159,9 +159,9 @@ export class SegmentFile {
   }
 
   /**
-   * Retrieve a segment 
+   * Retrieve a segment
    * @param name
-   * @returns 
+   * @returns
    */
   public getSegment(name: string): SegmentCacheEntry {
     return this._segments[name];
