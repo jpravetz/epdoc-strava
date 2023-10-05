@@ -8,6 +8,6 @@
     "resolveJsonModule": true,
     "esModuleInterop": true
   },
-  "include": ["src/**/*.ts","config/*.json"],
-  "exclude": ["node_modules"]
+  "include": ["src/**/*.ts", "config/*.json"],
+  "exclude": ["node_modules", ".deprecated"]
 }
