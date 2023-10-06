@@ -46,9 +46,19 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "strava -a -d 20191001",
+      "name": "strava api athlete",
       "program": "${workspaceFolder}/dist/src/cli.js",
-      "args": ["-a", "-d", "20191001"],
+      "args": ["api", "athlete"],
+      "console": "integratedTerminal",
+      "preLaunchTask": "tsc: build - tsconfig.json",
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "strava api --id 123 athlete",
+      "program": "${workspaceFolder}/dist/src/cli.js",
+      "args": ["api", "--id", "123", "athlete"],
       "console": "integratedTerminal",
       "preLaunchTask": "tsc: build - tsconfig.json",
       "outFiles": ["${workspaceFolder}/dist/**/*.js"]

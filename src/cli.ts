@@ -115,11 +115,11 @@ async function run(): Promise<void> {
       apiCommand.command('athlete').action(() => {
         logConsole.info(`path: ${program.opts().path}`);
         logConsole.info(`id: ${apiCommand.opts().id}`);
-        const athleteId = apiCommand.opts().id;
+        const athleteId = parseInt(apiCommand.opts().id, 10);
         const main = new Main(mainOpts);
         return main.auth().then((resp) => {
-          return this.main.strava.getAthlete(athleteId).then((resp) => {
-            logConsole.info('athlete:\n' + JSON.stringify(resp));
+          return main.strava.getAthlete(athleteId).then((resp) => {
+            logConsole.info('athlete:\n' + JSON.stringify(resp, null, 2));
           });
         });
       });
