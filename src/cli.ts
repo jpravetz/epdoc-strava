@@ -1,12 +1,17 @@
 const env = process.env['NODE_ENV'] || 'development';
 
 import { Command, Option } from 'commander';
-import { DateRange, EpochMilliseconds, Main, MainOpts, ServerOpts, StravaConfig, logConsole } from 'epdoc-strava-lib';
-import { Dict, delayPromise } from 'epdoc-util';
+// import { DateRange, EpochMilliseconds, Main, MainOpts, ServerOpts, StravaConfig, logConsole } from 'epdoc-strava-lib';
+import { delayPromise } from 'epdoc-util';
 import open from 'open';
 import os from 'os';
 import path from 'path';
 import pkg from '../package.json';
+import { ServerOpts } from './server';
+import { StravaConfig } from './strava-config';
+import { StravaContext } from './strava-context';
+import { DateRange, EpochMilliseconds } from './types';
+import { logConsole } from './util';
 // import { LogFunctions, logConsole } from 'epdoc-strava-lib/dist/src/util';
 // import { Main, MainOpts } from './main-old';
 // import { EpochMilliseconds, LogFunctions } from './util';
@@ -32,23 +37,18 @@ const DAY = 24 * 3600 * 1000;
 
 async function run(): Promise<void> {
   let config: StravaConfig;
+  let serverOpts: ServerOpts;
   let program: Command;
-  let mainOpts: MainOpts = {
-    openUrl: openUrl,
-    log: logConsole,
-  };
 
   // let config = new StravaConfig(configPath, { HOME: home });
   return Promise.resolve()
     .then((resp) => {
       const configPath = path.resolve(__dirname, '../config/project.settings.json');
-      const serverOpts: ServerOpts = { log: logConsole, open: openUrl };
+      serverOpts = { log: logConsole, open: openUrl };
       config = new StravaConfig(configPath, { HOME: os.homedir() }, serverOpts);
-      return config.read();
+      return config.init();
     })
     .then(async (resp) => {
-      mainOpts.config = resp;
-
       program = new Command('strava');
       program.version(pkg.version);
 
@@ -58,6 +58,7 @@ async function run(): Promise<void> {
           "comma separated list of activity date or date ranges in format '20141231-20150105,20150107'. If the last entry in the list is a single date then everything from that date until today will be included."
         ).argParser(dateList),
         athleteId: new Option('-i, --id <athleteId>', 'Athlete ID. Defaults to your login'),
+        gearId: new Option('-i, --id <gearId>', 'Gear ID.'),
         friends: new Option(
           '-g, --friends [opt]',
           'Show athlete friends list (Use --more a complete summary, otherwise id and name are displayed)'
@@ -95,34 +96,61 @@ async function run(): Promise<void> {
         .command('validate')
         .description('Test existing credentials for validity')
         .action(() => {
-          console.log('validate');
-          return delayPromise(1000);
+          const ctx = new StravaContext(config, serverOpts);
+          const valid = ctx.initApi().config.credentialsAreValid(0);
+          logConsole.info(`Access token is ${valid ? 'valid' : 'expired'}`);
         });
       authCommand
         .command('authorize')
         .description('Authorize user')
         .action(() => {
-          const main = new Main(mainOpts);
-          return main.auth();
+          const ctx = new StravaContext(config, serverOpts);
+          return ctx.initApi().authorize();
+        });
+      authCommand
+        .command('authorizationUrl')
+        .description('Get authorization URL')
+        .action(() => {
+          // const main = new Main(mainOpts);
+          // return main.auth();
         });
 
       const apiCommand = new Command('api');
+
       apiCommand.addOption(options.type);
       apiCommand.addOption(options.output);
       apiCommand.addOption(options.athleteId);
       apiCommand.addOption(options.more);
       apiCommand.addOption(options.imperial);
+
       apiCommand.command('athlete').action(() => {
         logConsole.info(`path: ${program.opts().path}`);
         logConsole.info(`id: ${apiCommand.opts().id}`);
         const athleteId = parseInt(apiCommand.opts().id, 10);
-        const main = new Main(mainOpts);
-        return main.auth().then((resp) => {
-          return main.strava.getAthlete(athleteId).then((resp) => {
+        const ctx = new StravaContext(config, serverOpts);
+        return ctx
+          .initApi()
+          .strava.athletes.getLoggedInAthlete()
+          .then((resp) => {
             logConsole.info('athlete:\n' + JSON.stringify(resp, null, 2));
           });
-        });
       });
+
+      apiCommand.addOption(options.gearId);
+      apiCommand.command('gear').action(() => {
+        logConsole.info(`path: ${program.opts().path}`);
+        logConsole.info(`id: ${apiCommand.opts().id}`);
+        const athleteId = parseInt(apiCommand.opts().id, 10);
+        const ctx = new StravaContext(config, serverOpts);
+
+        return ctx
+          .initApi()
+          .strava.gears.getGearById({ id: apiCommand.opts().id })
+          .then((resp) => {
+            logConsole.info('gear:\n' + JSON.stringify(resp, null, 2));
+          });
+      });
+
       apiCommand
         .command('activity')
         .addOption(options.dateRange)
@@ -152,62 +180,11 @@ async function run(): Promise<void> {
       return program.parseAsync(process.argv);
     })
     .then((resp) => {
-      const cmdOpts: Dict = program.opts();
-
-      mainOpts.refreshStarredSegments = cmdOpts.refresh;
-      mainOpts.segmentsCachePath = config.segmentsCachePath;
-      // credentialsFile: credentialsFile;
-      mainOpts.athleteId = parseInt(cmdOpts.id, 10); //  || (config as StravaConfig).athleteId;
-      mainOpts.athlete = cmdOpts.athlete;
-      mainOpts.selectedBikes = cmdOpts.bikes;
-      mainOpts.friends = cmdOpts.friends;
-      mainOpts.dates = cmdOpts.dates || []; // array of date ranges, in seconds (not milliseconds)
-      mainOpts.more = cmdOpts.more;
-      mainOpts.kml = cmdOpts.path && cmdOpts.kml ? path.resolve(cmdOpts.path, cmdOpts.kml) : cmdOpts.kml;
-      mainOpts.xml = cmdOpts.path && cmdOpts.xml ? path.resolve(cmdOpts.path, cmdOpts.xml) : cmdOpts.xml;
-      mainOpts.activities = cmdOpts.activities;
-      // activityFilter= _.without(cmdOpts.filter || [], 'commute', 'nocommute'),
-      mainOpts.commuteOnly = (cmdOpts.filter || []).indexOf('commute') >= 0 ? true : false;
-      mainOpts.nonCommuteOnly = (cmdOpts.filter || []).indexOf('nocommute') >= 0 ? true : false;
-      mainOpts.imperial = cmdOpts.imperial;
-      // auth= cmdOpts.auth;
-      mainOpts.segments = cmdOpts.segments; // Will be true or 'flat'
-      mainOpts.verbose = cmdOpts.verbose || 9;
-
-      mainOpts.dateRanges = []; // used for kml file
-      if (mainOpts.dates && mainOpts.dates.length) {
-        mainOpts.log.info('Date ranges: ');
-        mainOpts.dates.forEach((range) => {
-          // XXX what does toSortableString do?
-          // const tAfter = dateutil.toSortableString(1000 * range.after).replace(/\//g, '-');
-          // const tBefore = dateutil.toSortableString(1000 * range.before).replace(/\//g, '-');
-          // mainOpts.log.info('  From ' + tAfter + ' to ' + tBefore);
-          // mainOpts.dateRanges.push({ after: tAfter.slice(0, 10), before: tBefore.slice(0, 10) });
-        });
-      }
-
-      // program
-      //   .command('auth <action>')
-      //   .description('Test existing credentials for validity')
-      //   .command('validate')
-      //   .description('Validate existing credentials')
-      //   .action(() => {
-      //     console.log(`auth validate`);
-      //     return delayPromise(2000).then((resp) => {
-      //       const main = new Main(mainOpts);
-      //       return main.run();
-      //     });
-      //   });
-
-      // const main = new Main(mainOpts);
-      // return main.run();
-    })
-    .then((resp) => {
-      mainOpts.log.info('done');
+      logConsole.info('done');
       // process.exit(0);     // don't do this else files will not be saved
     })
     .catch((err) => {
-      mainOpts.log.error(err.message);
+      logConsole.error(err.message);
     });
 }
 

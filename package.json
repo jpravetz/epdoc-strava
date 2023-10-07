@@ -22,24 +22,27 @@
   "repository": "",
   "author": "Jim Pravetz",
   "license": "BSD",
+  "depDependencies": {
+    "epdoc-strava-lib": "^2.0.0-alpha.5",
+    "superagent": "^8.0.6",
+    "@types/superagent": "^4.1.3"
+  },
   "dependencies": {
     "async": "^3.2.4",
     "commander": "^9.4.1",
-    "epdoc-strava-lib": "^2.0.0-alpha.5",
     "epdoc-timeutil": "^2.1.6",
     "epdoc-util": "^0.2.4",
     "koa": "^2.10.0",
     "koa-router": "^12.0.0",
     "open": "^8.4.2",
     "pdfkit": "~0.13.0",
-    "superagent": "^8.0.6",
+    "strava": "^2.2.1",
     "xmlbuilder": "^15.1.1"
   },
   "devDependencies": {
     "@types/koa": "^2.0.51",
     "@types/koa-router": "^7.0.42",
     "@types/node": "^18.11.17",
-    "@types/superagent": "^4.1.3",
     "prettier": "^2.8.1",
     "tslint-config-prettier": "^1.18.0",
     "tslint-plugin-prettier": "^2.0.1",
