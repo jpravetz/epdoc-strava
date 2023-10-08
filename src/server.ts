@@ -1,13 +1,28 @@
+import { isDict, isNonEmptyString } from 'epdoc-util';
+import https from 'https';
 import Koa from 'koa';
 import Router from 'koa-router';
-import { LogFunctions, LogOpts, StravaCode } from './types';
+import { SummaryAthlete } from 'strava';
 import { BasicStravaConfig } from './basic-strava-config';
+import {
+  EpochSeconds,
+  LogFunctions,
+  LogOpts,
+  Seconds,
+  StravaAccessToken,
+  StravaCode,
+  StravaRefreshToken,
+  isEpochSeconds,
+} from './types';
 
 const STRAVA_URL_PREFIX = process.env.STRAVA_URL_PREFIX || 'https://www.strava.com';
 // const STRAVA_API_PREFIX = STRAVA_URL_PREFIX + '/api/v3';
+const STRAVA_PATH = {
+  token: '/oauth/token',
+};
 const STRAVA_URL = {
   authorize: STRAVA_URL_PREFIX + '/oauth/authorize',
-  token: STRAVA_URL_PREFIX + '/oauth/token',
+  token: STRAVA_URL_PREFIX + STRAVA_PATH.token,
   // athlete: STRAVA_API_PREFIX + '/athlete',
   // gear: STRAVA_API_PREFIX + '/gear',
   // picture: STRAVA_API_PREFIX + '/athlete/picture',
@@ -30,6 +45,35 @@ const defaultAuthOpts: AuthorizationUrlOpts = {
   state: '',
   approvalPrompt: 'auto',
   redirectUri: 'https://localhost',
+};
+
+export type TokenExchangeResponse = {
+  token_type: string;
+  expires_at: EpochSeconds;
+  expires_in: Seconds;
+  refresh_token: StravaRefreshToken;
+  access_token: StravaAccessToken;
+  athlete: SummaryAthlete;
+};
+
+export function isTokenExchangeResponse(val: any): val is TokenExchangeResponse {
+  if (
+    isDict(val) &&
+    isEpochSeconds(val.expire_at) &&
+    isNonEmptyString(val.refresh_token) &&
+    isNonEmptyString(val.access_token) &&
+    val.token_type === 'Bearer'
+  ) {
+    return true;
+  }
+  return false;
+}
+
+type RequestParams = {
+  query?: Record<string, any>;
+  body?: Record<string, any> | any;
+  headers?: Record<string, any>;
+  access_token?: string;
 };
 
 export class Server {
@@ -63,6 +107,59 @@ export class Server {
     );
   }
 
+  /**
+   * Given a code, now exchange that for new access and refresh tokens
+   * @param code
+   * @returns
+   */
+  private async tokenExchange(code: StravaCode): Promise<void> {
+    const opts = {
+      hostname: 'www.strava.com',
+      path: STRAVA_PATH.token,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    };
+    const payload = {
+      code: code,
+      client_id: this.config.clientId,
+      client_secret: this.config.clientSecret,
+      grant_type: 'authorization_code',
+    };
+    let buf: Buffer = Buffer.alloc(1024);
+
+    return new Promise((resolve, reject) => {
+      const req = https.request(opts, (res) => {
+        res.setEncoding('utf8');
+        res.on('data', (chunk) => {
+          buf += chunk;
+        });
+        res.on('end', () => {
+          try {
+            const resp = buf.toJSON();
+            resolve(resp);
+          } catch (err) {
+            reject(err);
+          }
+        });
+      });
+      req.on('error', (err) => {
+        reject(err);
+      });
+      req.write(JSON.stringify(payload));
+      req.end();
+    })
+      .then((resp) => {
+        if (isTokenExchangeResponse(resp)) {
+          return this.config.updateCredentials(resp);
+        } else {
+          return Promise.reject(new Error('Invalid token exchange response: ' + JSON.stringify(resp)));
+        }
+      })
+      .then((resp) => {
+        this._log.info('Credentials written to local storage');
+      });
+  }
+
   public async run() {
     return new Promise((resolve, reject) => {
       const app = new Koa();
@@ -83,16 +180,15 @@ export class Server {
               s += '<p>Error, access denied</p>';
             } else {
               s += `<p>Authorization code: ${code}</p>`;
-              return this.strava
-                .getTokens(code)
+              return this.tokenExchange(code)
                 .then((resp) => {
-                  s += '<p>Tokens retrieved. Please return to command line.</p>';
+                  s += '<p>Tokens exchanged. You may now close this browser window.</p>';
                   s += '</body></html>';
                   ctx.body = s;
                   this.result = { resolve: 'Tokens retrieved and saved to file' };
                 })
                 .catch((err) => {
-                  s += `<p>Error retrieving tokens: ${err.message}</p>`;
+                  s += `<p>Error exchanging tokens: ${err.message}</p>`;
                   s += '</body></html>';
                   ctx.body = s;
                   this.result = { reject: 'Could not retrieve tokens: ' + err.message };

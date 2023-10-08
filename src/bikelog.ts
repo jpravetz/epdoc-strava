@@ -2,7 +2,8 @@ import { DateUtil, durationUtil } from 'epdoc-timeutil';
 import { Dict, isArray } from 'epdoc-util';
 import fs from 'fs';
 import * as builder from 'xmlbuilder';
-import { DateRange, LogFunctions, LogOpts, Seconds, Activity } from 'epdoc-strava-lib';
+import { DateRange, LogFunctions, LogOpts, Seconds } from './types';
+import { Activity } from './joins';
 
 export type BikeDef = {
   name: string;

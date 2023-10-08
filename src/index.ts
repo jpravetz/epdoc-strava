@@ -1,2 +1,3 @@
-export * from './types';
 export * from './joins';
+export * from './strava-context';
+export * from './types';

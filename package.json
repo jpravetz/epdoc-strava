@@ -3,6 +3,7 @@
   "version": "2.0.0-alpha.1",
   "description": "Strava v3 API application retrieves Strava JSON data, also outputs kml files for Google Earth",
   "main": "dist/src/index.js",
+  "typings": "dist/src/index.d.ts",
   "node-red": {
     "nodes": {
       "strava": "node.js"

@@ -1,6 +1,7 @@
-import { Dict, isArray, isNonEmptyArray, isNonEmptyString, isPosInteger } from 'epdoc-util';
-import { RefreshTokenResponse, SummarySegment } from 'strava';
+import { Dict, deepCopy, isArray, isNonEmptyArray, isNonEmptyString, isPosInteger } from 'epdoc-util';
+import { SummarySegment } from 'strava';
 import { BasicStravaConfig } from './basic-strava-config';
+import { TokenExchangeResponse } from './server';
 import {
   EpochSeconds,
   FilePath,
@@ -19,19 +20,6 @@ export type BikeDef = {
   pattern: string;
 };
 
-export type StravaCredsData = {
-  token_type: string;
-  expires_at: EpochSeconds;
-  expires_in: EpochSeconds;
-  refresh_token: string;
-  access_token: string;
-  athlete: {
-    id?: string;
-    username?: string;
-    [key: string]: any;
-  };
-};
-
 type ProjectSettings = {
   description: string;
   clientSecretPath: FilePath;
@@ -48,7 +36,7 @@ export function newStravaConfig(path: FilePath, replacements: Dict, opts: LogOpt
 
 export class StravaConfig extends BasicStravaConfig {
   public client: StravaClientConfig;
-  public credentials: StravaCredsData;
+  public credentials: TokenExchangeResponse;
   public summarySegments: SummarySegment[];
   public athleteId?: number;
   // accessToken: string;
@@ -79,7 +67,7 @@ export class StravaConfig extends BasicStravaConfig {
     this._settingsPaths.forEach((path) => {
       path = this.applyReplacements(path);
       let job = readJson(path).then((resp) => {
-        let config = resp.deepCopy(resp, { replace: this._replacements });
+        let config = deepCopy(resp, { replace: this._replacements });
         return Promise.resolve(config);
       });
       jobs.push(job);
@@ -104,11 +92,8 @@ export class StravaConfig extends BasicStravaConfig {
     }
   }
 
-  public updateCredentials(res: RefreshTokenResponse): Promise<void> {
-    this.credentials.access_token = res.access_token;
-    this.credentials.refresh_token = res.refresh_token;
-    this.credentials.expires_at = res.expires_at;
-    this.credentials.expires_in = res.expires_in;
+  public updateCredentials(res: TokenExchangeResponse): Promise<void> {
+    this.credentials = res;
     return this.writeCredentials();
   }
 

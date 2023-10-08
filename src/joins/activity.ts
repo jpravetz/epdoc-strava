@@ -1,9 +1,10 @@
 import { durationUtil } from 'epdoc-timeutil';
-import { Dict, isBoolean, isNumber, isString } from 'epdoc-util';
-import { IsoDateString, Kilometres, LogFunctions, LogOpts, Metres, Seconds, StravaCoord, anyXXX } from '../types';
-import { SegmentCacheFile } from '../segment-cache-file';
-import { SegmentData } from './segment-data';
-import { DetailedActivity, DetailedAthlete, SummaryActivity } from 'strava';
+import { Dict, isArray, isString } from 'epdoc-util';
+import { DetailedActivity, DetailedSegmentEffort, SummaryActivity } from 'strava';
+import { IsoDateString, Kilometres, LogFunctions, LogOpts, Metres, Seconds, StravaCoord } from '../types';
+import { BasicStravaConfig } from './../basic-strava-config';
+import { SegmentData, newSegmentData } from './segment-data';
+// import { SegmentData } from './segment-data';
 
 export type ActivityFilter = {
   commuteOnly?: boolean;
@@ -13,7 +14,6 @@ export type ActivityFilter = {
 };
 
 export type ActivityOpts = LogOpts & {
-  segCacheFile?: SegmentCacheFile;
   aliases?: Dict;
 };
 
@@ -22,10 +22,14 @@ const REGEX = {
 };
 
 export class Activity {
+  private _isActivity = true;
+  private _config: BasicStravaConfig;
   public summary: SummaryActivity;
   public details: DetailedActivity;
+  private _coordinates: StravaCoord[] = []; // will contain the latlng coordinates for the activity
 
   public description: string;
+  public data: Dict; // contains arbitrary data
   public keys: string[] = [
     'distance',
     'total_elevation_gain',
@@ -42,36 +46,34 @@ export class Activity {
     averageTemp: 'average_temp',
     deviceName: 'device_name',
   };
-  public data: Dict = {};
 
   public commute: boolean;
   // public type: string;
   public startDate: Date;
   private _log: LogFunctions;
-  private _segCacheFile: SegmentCacheFile;
   private _aliases: Dict;
 
   private _asString: string;
   private _segments: SegmentData[]; // list of starred segments for this Activity
-  private _coordinates: StravaCoord[] = []; // will contain the latlng coordinates for the activity
 
-  constructor(data: Dict, opts: ActivityOpts) {
-    Object.assign(this.data, data);
+  constructor(data: SummaryActivity, config: BasicStravaConfig, opts: ActivityOpts) {
+    this.summary = data;
     this._log = opts.log;
-    this._segCacheFile = opts.segCacheFile;
     this._aliases = opts.aliases;
-    this.startDate = new Date(this.data.start_date);
-    const d = Math.round(this.data.distance / 100) / 10;
-    this._asString = `${this.data.start_date_local.slice(0, 10)}, ${this.type} ${d} km, ${this.name}`;
+    this.startDate = new Date(this.summary.start_date);
+    const d = Math.round(this.summary.distance / 100) / 10;
+    this._asString = `${this.summary.start_date_local.slice(0, 10)}, ${this.summary.type} ${d} km, ${
+      this.summary.name
+    }`;
   }
 
-  public static newFromResponseData(data: Dict, opts: ActivityOpts): Activity {
-    const result = new Activity(data, opts);
-    return result;
+  addDetails(details: DetailedActivity): Activity {
+    this.details = details;
+    return this;
   }
 
   public static isInstance(val: any): val is Activity {
-    return val && isNumber(val.id) && isBoolean(val.commute);
+    return val && val._isActivity === true;
   }
 
   public toString(): string {
@@ -87,47 +89,47 @@ export class Activity {
   }
 
   public get name(): string {
-    return this.data.name;
+    return this.summary.name;
   }
 
   public get id(): number {
-    return this.data.id;
+    return this.summary.id;
   }
 
   public get movingTime(): Seconds {
-    return this.data.moving_time;
+    return this.summary.moving_time;
   }
 
   public get elapsedTime(): Seconds {
-    return this.data.elapsed_time;
+    return this.summary.elapsed_time;
   }
 
   public get distance(): Metres {
-    return this.data.distance;
+    return this.summary.distance;
   }
 
   public distanceRoundedKm(): Kilometres {
-    return Math.round(this.data.distance / 10) / 100;
+    return Math.round(this.summary.distance / 10) / 100;
   }
 
   public get totalElevationGain(): Metres {
-    return this.data.total_elevation_gain;
+    return this.summary.total_elevation_gain;
   }
 
   public get averageTemp(): number {
-    return this.data.average_temp;
+    return this.summary.average_temp;
   }
 
   public get deviceName(): string {
-    return this.data.device_name;
+    return this.details ? this.details.device_name : null;
   }
 
   public get gearId(): string {
-    return this.data.gear_id;
+    return this.summary.gear_id;
   }
 
   public get startDateLocal(): IsoDateString {
-    return this.data.start_date_local;
+    return this.summary.start_date_local;
   }
 
   public get segments(): SegmentData[] {
@@ -135,11 +137,11 @@ export class Activity {
   }
 
   public get type(): string {
-    return this.data.type;
+    return this.summary.type;
   }
 
   public isRide(): boolean {
-    return this.data.type === 'Ride' || this.data.type === 'EBikeRide';
+    return this.summary.type === 'Ride' || this.summary.type === 'EBikeRide';
   }
 
   public hasKmlData(): boolean {
@@ -154,18 +156,22 @@ export class Activity {
    * object and add to Acivity.
    * @param data
    */
-  // public addFromDetailedActivity(data: DetailedActivity) {
-  //   this._log.info('  Adding activity details for ' + this.toString());
-  //   if (DetailedActivity.isInstance(data)) {
-  //     if (isString(data.description)) {
-  //       this._addDescriptionFromDetailedActivity(data);
-  //     }
-  //     if (Array.isArray(data.segment_efforts)) {
-  //       this._addDetailSegmentsFromDetailedActivity(data);
-  //     }
-  //   }
-  // }
+  public addFromDetailedActivity(): Activity {
+    this._log.info('  Adding activity details for ' + this.toString());
+    if (this.details) {
+      this._addDescriptionFromDetailedActivity();
+      if (isArray(this.details.segment_efforts)) {
+        this._addDetailSegmentsFromDetailedActivity();
+      }
+    }
+    return this;
+  }
 
+  /**
+   * This is specific to my needs. Need to look at how to generalize, or remove
+   * from this package.
+   * @returns
+   */
   private _addDescriptionFromDetailedActivity(): Activity {
     if (isString(this.details.description)) {
       const p: string[] = this.details.description.split(/\r\n/);
@@ -194,20 +200,20 @@ export class Activity {
 
   private _addDetailSegmentsFromDetailedActivity(): Activity {
     this._segments = [];
-    this.details.segment_efforts.forEach((effort) => {
-      // @ts-ignore
-      if (this._segCacheFile) {
-        const seg = this._segCacheFile.getSegment(effort.name);
+    this._config.getSummarySegmentCache().then((segs) => {
+      this.details.segment_efforts.forEach((effort) => {
+        // @ts-ignore
+        const seg = BasicStravaConfig.getSummarySegmentByName(effort.name);
         if (seg) {
-          this._log.info('  Found starred segment ' + effort.name);
-          this._addDetailSegment(effort);
+          this._log.info(`  Found starred segment ${effort.name}`);
+          this._addDetailSegmentEffort(effort);
         }
-      }
+      });
     });
     return this;
   }
 
-  private _addDetailSegment(segEffort: anyXXX) {
+  private _addDetailSegmentEffort(segEffort: DetailedSegmentEffort) {
     let name = String(segEffort.name).trim();
     if (this._aliases && this._aliases[name]) {
       name = this._aliases[name];
@@ -216,7 +222,7 @@ export class Activity {
     const sd: string = durationUtil(segEffort.elapsed_time * 1000, ':').format({ ms: false });
     this._log.info(`  Adding segment '${name}, elapsed time ${sd}`);
     // Add segment to this activity
-    this._segments.push(new SegmentData(segEffort));
+    this._segments.push(newSegmentData(segEffort));
   }
 
   public include(filter: ActivityFilter) {

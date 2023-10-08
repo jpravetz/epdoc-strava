@@ -1,4 +1,6 @@
-import { RefreshTokenResponse, SummarySegment } from 'strava';
+import { isArray } from 'epdoc-util';
+import { SummarySegment } from 'strava';
+import { TokenExchangeResponse } from './server';
 import {
   EpochSeconds,
   Seconds,
@@ -15,7 +17,7 @@ export class BasicStravaConfig {
     return Promise.resolve();
   }
 
-  public async updateCredentials(res: RefreshTokenResponse): Promise<void> {
+  public async updateCredentials(res: TokenExchangeResponse): Promise<void> {
     return Promise.resolve();
   }
 
@@ -43,11 +45,19 @@ export class BasicStravaConfig {
     return null;
   }
 
-  public getSummarySegmentCache(): Promise<SummarySegment[]> {
+  public async getSummarySegmentCache(): Promise<SummarySegment[]> {
     return Promise.resolve([]);
   }
 
-  public updateSummarySegmentCache(summarySegments: SummarySegment[]): Promise<SummarySegment[]> {
+  public static getSummarySegmentByName(cache: SummarySegment[], name: string): SummarySegment {
+    if (isArray(cache)) {
+      return cache.find((seg) => {
+        seg.name === name;
+      });
+    }
+  }
+
+  public async updateSummarySegmentCache(summarySegments: SummarySegment[]): Promise<SummarySegment[]> {
     return Promise.resolve([]);
   }
 
