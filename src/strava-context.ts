@@ -1,5 +1,12 @@
-import { Dict, Integer } from 'epdoc-util';
-import { DetailedAthlete, RefreshTokenRequest, RefreshTokenResponse, Strava, SummarySegment } from 'strava';
+import { Dict, Integer, isPosInteger, omit } from 'epdoc-util';
+import {
+  DetailedAthlete,
+  RefreshTokenRequest,
+  RefreshTokenResponse,
+  Strava,
+  SummaryActivity,
+  SummarySegment,
+} from 'strava';
 import { BasicStravaConfig } from './basic-strava-config';
 import { Activity } from './joins/activity';
 // import { AthleteID } from './models';
@@ -10,7 +17,7 @@ import { Activity } from './joins/activity';
 // import { StravaActivityOpts, StravaApi, StravaStreamSource } from './strava-api';
 import { Server, ServerOpts } from './server';
 import { StravaConfig } from './strava-config';
-import { LogFunctions, RefreshOpts, Seconds } from './types';
+import { EpochSeconds, LogFunctions, RefreshOpts, Seconds } from './types';
 
 const REQ_LIMIT = 10;
 const REQ_PAGE_PER_PAGE_LIMIT: Integer = 200;
@@ -20,6 +27,14 @@ type ReqPageOpts = {
   page?: Integer;
   per_page?: Integer;
 };
+type ReqDateRange = {
+  before?: EpochSeconds;
+  after?: EpochSeconds;
+};
+type ReqActivitiesOpts = ReqPageOpts &
+  ReqDateRange & {
+    details?: boolean;
+  };
 
 export function newStravaContext(config: StravaConfig, opts: ServerOpts): StravaContext {
   return new StravaContext(config, opts);
@@ -35,7 +50,7 @@ export class StravaContext {
   config: BasicStravaConfig;
 
   public bikes: Dict = {};
-  public activities: Activity[];
+  public activities: SummaryActivity[];
   public athlete: DetailedAthlete;
   // public summarySegments: Dict[];
   public aliases: Dict; // XXXX
@@ -228,6 +243,35 @@ export class StravaContext {
   //   });
   // }
 
+  async getLoggedInAthleteActivities(params: ReqActivitiesOpts = {}): Promise<SummaryActivity[]> {
+    let queryParams: ReqPageOpts & ReqDateRange = omit(params, 'details');
+    let bRecurse = false;
+    if (!isPosInteger(queryParams.per_page)) {
+      queryParams.per_page = REQ_PAGE_PER_PAGE_LIMIT;
+    }
+    if (!isPosInteger(queryParams.page)) {
+      queryParams.page = 1;
+      bRecurse = true;
+    }
+    let bStillMore = true;
+    let accum: SummaryActivity[] = [];
+    while (bStillMore) {
+      await this.strava.activities.getLoggedInAthleteActivities(queryParams).then((resp) => {
+        accum = accum.concat(resp);
+        if (resp.length < queryParams.per_page || !bRecurse) {
+          bStillMore = false;
+          this.activities = accum;
+        } else {
+          queryParams.page = queryParams.page + 1;
+        }
+      });
+    }
+    if (params.details) {
+      this.addActivitiesDetails();
+    }
+    return Promise.resolve(this.activities);
+  }
+
   /**
    * Read more information using the DetailedActivity object and add these
    * details to the Activity object.
@@ -258,10 +302,12 @@ export class StravaContext {
       });
   }
 
-  private async addActivityDetail(activity: Activity): Promise<void> {
-    return this.api_deprecated.getDetailedActivity(activity).then((data) => {
-      activity.addFromDetailedActivity(data);
-    });
+  private async addActivityDetail(activity: SummaryActivity, includeAllEfforts: boolean = false): Promise<void> {
+    return this.strava.activities
+      .getActivityById({ id: activity.id, include_all_efforts: includeAllEfforts })
+      .then((resp) => {
+        activity.addFromDetailedActivity(resp);
+      });
   }
 
   /**

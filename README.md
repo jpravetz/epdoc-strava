@@ -2,26 +2,27 @@
 
 ## Overview
 
-Written in TypeScript. Compiled to a command line tool and a library that can be
-loaded by any javascriopt application. 
+A [Strava V3 APIs](https://developers.strava.com) querying library and command
+line application
+[bin/strava](https://github.com/jpravetz/epdoc-strava/blob/master/bin/strava).
+Written in TypeScript and wraps [rfoel's strava
+module](https://github.com/rfoel/strava) with the extra capabilities listed
+here. 
 
-A Strava querying library and also a command line application `bin/strava` that
-uses this library. Uses [Strava V3 APIs](https://developers.strava.com). Can
-output raw `json` query results. Can also generate `KML` files suitable for
-import into Google Earth. 
+ * Outputs `json`, or [KML](https://en.wikipedia.org/wiki/Keyhole_Markup_Language)
+ * `KML` line styles and route info may be configured
+ * API pagination, will retrieve more than a single page and combine results
+   (the Strava API is limited to 200 items per request)
+ * Uses a context object that retains retrieved information, making it easier to
+   build deeper data structures (e.g. activities can have additional information
+   added, such as route coordinates)
+ * File or ENV storage of client credentials (eg. in `~/.strava` folder)
+ * Local, cached file storage of starred segments
+ * Can launch a [Strava Oauth2
+   authorization](https://developers.strava.com/docs/authentication/) page in a
+   browser
 
-There is support for Strava OAUTH authorization. Authorization may require that
-a browser page is opened, but, lucky for you, this is handled by the library. 
-
-Can output the following types of Strava information:
-
-- Your activities as JSON or KML. If KML then paths are color coded by activity
-  type, and optionally include a description and [starred
-  segment](<(http://blog.strava.com/keep-track-of-your-favorites-with-starred-segments-6260/)>)
-  times
-- Your efforts, as JSON or KML, for segments that you have [starred in
-  Strava](http://blog.strava.com/keep-track-of-your-favorites-with-starred-segments-6260/),
-  optionally including a description that lists all your times (__NOT WORKING__)
+See [this article on starred segments](http://blog.strava.com/keep-track-of-your-favorites-with-starred-segments-6260/) for more information on controlling the segments you may download.
 
 ## Installation
 
@@ -291,10 +292,6 @@ these will be output as part of the activity description.
 
 ## Credits
 
-The
-[strava-api.ts](https://github.com/jpravetz/strava/blob/master/src/strava-api.ts)
-file is munged from an original implementation at
-[mojodna](https://github.com/mojodna/node-strav3/blob/master/index.js).
 
 ## ToDo
 
