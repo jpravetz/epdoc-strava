@@ -1,4 +1,5 @@
 import { Dict, Integer, isArray, isPosInteger, omit } from 'epdoc-util';
+// See [how to resolve this runtime error](https://dev.to/hulyakarakaya/how-to-fix-regeneratorruntime-is-not-defined-doj)
 import 'regenerator-runtime/runtime';
 import { DetailedAthlete, RefreshTokenRequest, Strava, SummaryActivity, SummarySegment } from 'strava';
 import { BasicStravaConfig } from './basic-strava-config';
@@ -50,21 +51,24 @@ export class StravaContext {
     this._serverOpts = opts;
   }
 
-  initApi(): StravaContext {
-    const request: RefreshTokenRequest = {
-      client_id: String(this.config.clientId),
-      client_secret: this.config.clientSecret,
-      refresh_token: this.config.refreshToken,
-      on_token_refresh: (resp: TokenExchangeResponse) => {
-        if (isTokenExchangeResponse(resp)) {
-          return this.config.updateCredentials(resp);
-        } else {
-          return Promise.reject(new Error('Invalid token exchange response: ' + JSON.stringify(resp)));
-        }
-      },
-    };
-    this.strava = new Strava(request);
-    return this;
+  initApi(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const request: RefreshTokenRequest = {
+        client_id: String(this.config.clientId),
+        client_secret: this.config.clientSecret,
+        refresh_token: this.config.refreshToken,
+        on_token_refresh: (resp: TokenExchangeResponse) => {
+          if (isTokenExchangeResponse(resp)) {
+            return this.config.updateCredentials(resp).then((resp) => {
+              resolve();
+            });
+          } else {
+            reject(new Error('Invalid token exchange response: ' + JSON.stringify(resp)));
+          }
+        },
+      };
+      this.strava = new Strava(request);
+    });
   }
 
   get accessToken(): StravaAccessToken {

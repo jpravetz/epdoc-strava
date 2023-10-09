@@ -1,4 +1,4 @@
-import { Dict, deepCopy, isArray, isNonEmptyArray, isNonEmptyString, isPosInteger } from 'epdoc-util';
+import { Dict, deepCopy, isArray, isNonEmptyArray } from 'epdoc-util';
 import { SummarySegment } from 'strava';
 import { BasicStravaConfig } from './basic-strava-config';
 import { TokenExchangeResponse } from './server';
@@ -12,6 +12,7 @@ import {
   StravaClientId,
   StravaClientSecret,
   StravaRefreshToken,
+  isStravaClientConfig,
 } from './types';
 import { readJson, writeJson } from './util';
 
@@ -36,7 +37,7 @@ export function newStravaConfig(path: FilePath, replacements: Dict, opts: LogOpt
 
 export class StravaConfig extends BasicStravaConfig {
   public client: StravaClientConfig;
-  public credentials: TokenExchangeResponse;
+  public credentials: Partial<TokenExchangeResponse> = {};
   public summarySegments: SummarySegment[];
   public athleteId?: number;
   // accessToken: string;
@@ -74,7 +75,9 @@ export class StravaConfig extends BasicStravaConfig {
     });
     return Promise.all(jobs)
       .then((resp) => {
-        this._settings = Object.assign({}, this._settings, resp);
+        resp.forEach((res) => {
+          this._settings = Object.assign({}, this._settings, res);
+        });
       })
       .then((resp) => {
         return this.readCredentials();
@@ -86,9 +89,13 @@ export class StravaConfig extends BasicStravaConfig {
 
   private async readCredentials(): Promise<void> {
     if (this._settings.credentialsPath) {
-      return readJson(this._settings.credentialsPath).then((resp) => {
-        this.credentials = resp;
-      });
+      return readJson(this._settings.credentialsPath)
+        .then((resp) => {
+          this.credentials = resp;
+        })
+        .catch((err) => {
+          return Promise.reject(err);
+        });
     }
   }
 
@@ -106,19 +113,22 @@ export class StravaConfig extends BasicStravaConfig {
       .then((resp) => {
         if (this._settings.clientSecretPath) {
           return readJson(this._settings.clientSecretPath).then((resp) => {
-            this.client = resp;
+            if (resp && isStravaClientConfig(resp.client)) {
+              this.client = resp.client;
+            }
           });
         }
       })
       .then((resp) => {
-        if (!this.client || !isPosInteger(this.client.id) || !isNonEmptyString(this.client.secret)) {
-          const id = parseInt(process.env.STRAVA_CLIENT_ID, 10);
-          const secret = process.env.STRAVA_CLIENT_SECRET;
-          if (isPosInteger(id) && isNonEmptyString(secret)) {
-            this.client = {
-              id: id,
-              secret: secret,
-            };
+        if (!this.client) {
+          const envConfig: StravaClientConfig = {
+            id: parseInt(process.env.STRAVA_CLIENT_ID, 10),
+            secret: process.env.STRAVA_CLIENT_SECRET,
+          };
+          if (isStravaClientConfig(envConfig)) {
+            this.client = envConfig;
+          } else {
+            return Promise.reject(new Error('Client id and secret not found'));
           }
         }
       });

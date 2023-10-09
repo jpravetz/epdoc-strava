@@ -26,6 +26,16 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "strava auth authurl",
+      "program": "${workspaceFolder}/dist/src/cli.js",
+      "args": ["auth", "authurl"],
+      "console": "integratedTerminal",
+      "preLaunchTask": "tsc: build - tsconfig.json",
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "strava -s",
       "program": "${workspaceFolder}/dist/src/cli.js",
       "args": ["-s"],

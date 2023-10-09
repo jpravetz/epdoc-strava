@@ -1,4 +1,4 @@
-import { isDict, isFunction, isInteger, isNonEmptyString } from 'epdoc-util';
+import { isDict, isFunction, isInteger, isNonEmptyString, isPosInteger } from 'epdoc-util';
 
 export type FilePath = string;
 export type FolderPath = string;
@@ -26,6 +26,9 @@ export type StravaClientConfig = {
   id: StravaClientId;
   secret: StravaClientSecret;
 };
+export function isStravaClientConfig(val: any): val is StravaClientConfig {
+  return isDict(val) && isPosInteger(val.id) && isNonEmptyString(val.secret);
+}
 
 export function isFilePath(val: any): val is FilePath {
   return isNonEmptyString(val);

@@ -1,4 +1,4 @@
-import { isDict, isNonEmptyString } from 'epdoc-util';
+import { isDict, isNonEmptyString, isPosInteger } from 'epdoc-util';
 import https from 'https';
 import Koa from 'koa';
 import Router from 'koa-router';
@@ -93,18 +93,19 @@ export class Server {
   }
 
   public getAuthorizationUrl(options: AuthorizationUrlOpts = {}): string {
-    if (!this.config.clientId) {
-      throw new Error('A client ID is required.');
+    if (this.config && isPosInteger(this.config.clientId)) {
+      const opts = Object.assign(defaultAuthOpts, options);
+      return (
+        `${STRAVA_URL.authorize}?client_id=${this.config.clientId}` +
+        `&redirect_uri=${encodeURIComponent(opts.redirectUri)}` +
+        `&scope=${opts.scope}` +
+        `&state=${opts.state}` +
+        `&approval_prompt=${opts.approvalPrompt}` +
+        `&response_type=code`
+      );
+    } else {
+      throw new Error('Client ID is required and is missing');
     }
-    const opts = Object.assign(defaultAuthOpts, options);
-    return (
-      `${STRAVA_URL.authorize}?client_id=${this.config.clientId}` +
-      `&redirect_uri=${encodeURIComponent(opts.redirectUri)}` +
-      `&scope=${opts.scope}` +
-      `&state=${opts.state}` +
-      `&approval_prompt=${opts.approvalPrompt}` +
-      `&response_type=code`
-    );
   }
 
   /**
