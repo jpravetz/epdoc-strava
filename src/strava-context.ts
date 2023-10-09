@@ -1,4 +1,5 @@
 import { Dict, Integer, isArray, isPosInteger, omit } from 'epdoc-util';
+import 'regenerator-runtime/runtime';
 import { DetailedAthlete, RefreshTokenRequest, Strava, SummaryActivity, SummarySegment } from 'strava';
 import { BasicStravaConfig } from './basic-strava-config';
 import { Activity } from './joins/activity';

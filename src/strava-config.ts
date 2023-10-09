@@ -74,7 +74,7 @@ export class StravaConfig extends BasicStravaConfig {
     });
     return Promise.all(jobs)
       .then((resp) => {
-        this._settings = Object.assign(this._settings, resp);
+        this._settings = Object.assign({}, this._settings, resp);
       })
       .then((resp) => {
         return this.readCredentials();
