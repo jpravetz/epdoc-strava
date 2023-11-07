@@ -1,16 +1,5 @@
-import { Dict } from 'epdoc-util';
 import fs from 'fs';
 import { LogFunctions } from './types';
-
-export function compareDictValue(a: Dict, b: Dict, key: string) {
-  if (a[key] < b[key]) {
-    return -1;
-  }
-  if (a[key] > b[key]) {
-    return 1;
-  }
-  return 0;
-}
 
 export function readJson(path: string): Promise<any> {
   return new Promise((resolve, reject) => {
