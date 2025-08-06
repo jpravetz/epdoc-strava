@@ -117,7 +117,7 @@ export class Main {
   public async run(): Promise<void> {
     return this.init()
       .then(resp => {
-        if (!this.strava.creds.areValid()) {
+        if (!this.strava.creds.isValid()) {
           console.log('Authorization required. Opening web authorization page');
           const authServer = new Server(this.strava);
           return authServer.run().then(resp => {
@@ -129,7 +129,7 @@ export class Main {
         }
       })
       .then(resp => {
-        if (!this.strava.creds.areValid()) {
+        if (!this.strava.creds.isValid()) {
           throw new Error('Invalid credentials');
         }
       })

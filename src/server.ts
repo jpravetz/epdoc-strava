@@ -36,7 +36,7 @@ export class Server {
             } else {
               s += `<p>Authorization code: ${code}</p>`;
               return this.strava
-                .getTokens(code)
+                .requestToken(code)
                 .then((resp) => {
                   s += '<p>Tokens retrieved. Please return to command line.</p>';
                   s += '</body></html>';
