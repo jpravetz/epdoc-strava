@@ -1,5 +1,4 @@
 import { pad } from 'epdoc-util';
-import fs from 'fs';
 
 export function compare(a: Dict, b: Dict, key: string) {
   if (a[key] < b[key]) {
@@ -16,8 +15,6 @@ export type Dict = Record<string, any>;
 export type EpochMilliseconds = number;
 export type EpochSeconds = number;
 export type Seconds = number;
-export type Metres = number;
-export type Kilometres = number;
 export type IsoDateString = string;
 
 export type formatHMSOpts = {
@@ -45,34 +42,14 @@ export function formatMS(s: Seconds): string {
   return result;
 }
 
-export function readJson(path: string): Promise<any> {
-  return new Promise((resolve, reject) => {
-    fs.readFile(path, 'utf8', (err, data) => {
-      if (err) {
-        reject(err);
-      } else {
-        try {
-          let json = JSON.parse(data.toString());
-          resolve(json);
-        } catch (error) {
-          reject(error);
-        }
-      }
-    });
-  });
+export async function readJson(path: string): Promise<any> {
+  const data = await Deno.readTextFile(path);
+  return JSON.parse(data);
 }
 
-export function writeJson(path: string, data): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const buf = new Buffer(JSON.stringify(data, null, '  '));
-    fs.writeFile(path, buf, err => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve();
-      }
-    });
-  });
+export async function writeJson(path: string, data): Promise<void> {
+  const json = JSON.stringify(data, null, '  ');
+  return await Deno.writeTextFile(path, json);
 }
 
 export function precision(num, r, unit) {
@@ -85,10 +62,10 @@ export function julianDate(d: Date): number {
 
 export function fieldCapitalize(name) {
   return name
-    .replace(/^([a-z])/, function($1) {
+    .replace(/^([a-z])/, function ($1) {
       return $1.toUpperCase();
     })
-    .replace(/(\_[a-z])/g, function($1) {
+    .replace(/(\_[a-z])/g, function ($1) {
       return $1.toUpperCase().replace('_', ' ');
     });
 }

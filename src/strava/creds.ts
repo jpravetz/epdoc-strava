@@ -1,5 +1,5 @@
 import { isNumber } from 'epdoc-util';
-import { EpochSeconds, readJson, Seconds, writeJson } from './util';
+import { EpochSeconds, readJson, Seconds, writeJson } from './util.ts';
 
 export type StravaCredsData = {
   token_type: string;

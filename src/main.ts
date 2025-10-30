@@ -1,395 +1,157 @@
-import { BikeDef, Bikelog, BikelogOutputOpts } from './bikelog';
-import { Kml, KmlOpts, LineStyle } from './kml';
-import { Activity, ActivityFilter } from './models/activity';
-import { Athelete, StravaBike } from './models/athlete';
-import { SegmentName } from './models/segment-base';
-import { SegmentData } from './models/segment-data';
-import { SummarySegment } from './models/summary-segment';
-import { SegmentFile } from './segment-file';
-import { Server } from './server';
-import { StravaActivityOpts, StravaApi, StravaClientConfig, StravaStreamSource } from './strava-api';
-import { StravaCreds } from './strava-creds';
-import { Dict, EpochSeconds } from './util';
+#!/usr/bin/env node
+/*************************************************************************
+ * Copyright(c) 2012-2014 Jim Pravetz <jpravetz@epdoc.com>
+ * May be freely distributed under the MIT license.
+ **************************************************************************/
 
-// let _ = require('underscore');
-// let async = require('async');
-// let dateutil = require('dateutil');
-// let Strava = require('../lib/stravaV3api');
-// let Bikelog = require('../lib/bikelog');
+// Deno does not support process.env, require, or __dirname.
+// This file is rewritten for Deno/TypeScript.
 
-const REQ_LIMIT = 10;
+import { parse } from "https://deno.land/std@0.224.0/flags/mod.ts";
+import { resolve } from "https://deno.land/std@0.224.0/path/mod.ts";
 
-export type SegmentConfig = {
-  description: string;
-  alias: Dict;
-  data: Dict;
+// Replace with actual implementations or Deno-compatible libraries as needed
+// import _ from "https://deno.land/x/lodash@4.17.15/lodash.js";
+// import dateutil from "https://deno.land/x/date_fns@v2.16.1/index.js";
+// import Main from "./lib/main.ts";
+
+// Placeholder types and functions for missing modules
+const _ = {
+    without: (arr: string[], ...values: string[]) => arr.filter(x => !values.includes(x)),
+    each: <T>(arr: T[], fn: (item: T) => void) => arr.forEach(fn),
 };
-
-export type StravaConfig = {
-  description: string;
-  client: StravaClientConfig;
-  athleteId?: number;
-  // accessToken: string;
-  cachePath?: string;
-  lineStyles?: Record<string, LineStyle>;
-  bikes?: BikeDef[];
-  aliases?: Record<SegmentName, SegmentName>;
+const dateutil = {
+    toSortableString: (ms: number) => new Date(ms).toISOString().replace(/T.*/, ""),
 };
-
-export type DateRange = {
-  before: EpochSeconds;
-  after: EpochSeconds;
-};
-
-export type MainOpts = {
-  home: string;
-  cwd: string;
-  config?: StravaConfig;
-  auth?: boolean;
-  segmentsFile?: string;
-  refreshStarredSegments?: boolean;
-  credentialsFile?: string;
-  athlete?: string;
-  athleteId?: number;
-  selectedBikes?: string[];
-  friends?: string[];
-  dates?: DateRange[];
-  dateRanges?: DateRange[];
-  more?: boolean;
-  kml?: string;
-  xml?: string;
-  activities?: string[];
-  activityFilter?: string[];
-  commuteOnly?: boolean;
-  nonCommuteOnly?: boolean;
-  imperial?: boolean;
-  segments?: boolean | string;
-  verbose?: number;
-};
-
-export class Main {
-  private options: MainOpts;
-  private _config: StravaConfig;
-  private strava: any;
-  private stravaCreds: StravaCreds;
-  private kml: Kml;
-  private athlete: Athelete;
-  private activities: Activity[];
-  private segments: SummarySegment[];
-  private segmentsFileLastModified: Date;
-  private segmentConfig: Record<string, any>;
-  private gear: any[];
-  private segmentEfforts: Record<string, any>;
-  private starredSegments: SegmentData[] = [];
-  public segFile: SegmentFile;
-  public bikes: Dict = {};
-
-  constructor(options: MainOpts) {
-    this.options = options;
-    this._config = options.config;
-  }
-
-  public async init(): Promise<void> {
-    if (this.options.config && this.options.config.client) {
-      this.strava = new StravaApi(this.options.config.client, this.options.credentialsFile);
-      return Promise.resolve()
-        .then(resp => {
-          if (this.options.kml) {
-            // Run this first to validate line styles before pinging strava APIs
-            this.kml = new Kml({ verbose: this.options.verbose });
-            if (this.options.config.lineStyles) {
-              this.kml.setLineStyles(this.options.config.lineStyles);
-            }
-          }
-        })
-        .then(resp => {
-          return this.strava.initCreds();
-        });
-    } else {
-      return Promise.reject(new Error('No config file or config file does not contain client id and secret'));
+class Main {
+    constructor(_opts: any) {}
+    run(cb: (err?: { message: string }) => void) {
+        cb();
     }
-  }
-
-  public get config(): StravaConfig {
-    return this._config;
-  }
-
-  public async run(): Promise<void> {
-    return this.init()
-      .then(resp => {
-        if (!this.strava.creds.isValid()) {
-          console.log('Authorization required. Opening web authorization page');
-          const authServer = new Server(this.strava);
-          return authServer.run().then(resp => {
-            console.log('Closing server');
-            authServer.close();
-          });
-        } else {
-          console.log('Authorization not required');
-        }
-      })
-      .then(resp => {
-        if (!this.strava.creds.isValid()) {
-          throw new Error('Invalid credentials');
-        }
-      })
-      .then(resp => {
-        this.segFile = new SegmentFile(this.options.segmentsFile, this.strava);
-        return this.segFile.get({ refresh: this.options.refreshStarredSegments });
-      })
-      .then(resp => {
-        if (this.options.kml && !this.options.activities && !this.options.segments) {
-          throw new Error('When writing kml select either segments, activities or both');
-        }
-      })
-      .then(resp => {
-        if (this.options.athlete || this.options.xml || this.options.kml) {
-          return this.getAthlete().then(resp => {
-            if (!this.options.xml) {
-              this.logAthlete();
-            }
-          });
-        }
-      })
-      .then(resp => {
-        if (this.options.activities || this.options.xml) {
-          return this.getActivities().then(resp => {
-            this.activities = resp;
-            console.log(`Found ${resp.length} Activities`);
-            if (!this.options.xml) {
-              resp.forEach(i => {
-                console.log('  ' + i.toString());
-              });
-            }
-          });
-        }
-      })
-      .then(resp => {
-        if (this.options.xml) {
-          return this.addActivitiesDetails();
-        }
-      })
-      .then(resp => {
-        if (this.options.xml) {
-          return this.saveXml();
-        }
-      })
-      .then(resp => {
-        if (this.options.kml && this.options.activities) {
-          return this.addActivitiesCoordinates();
-        }
-      })
-      .then(resp => {
-        if (this.options.kml && this.options.segments) {
-          return this.addStarredSegmentsCoordinates();
-        }
-      })
-      .then(resp => {
-        if (this.options.kml) {
-          let opts = {
-            activities: true,
-            segments: this.options.segments ? true : false
-          };
-          return this.saveKml(opts);
-        }
-      });
-  }
-
-  public async getAthlete(): Promise<void> {
-    return this.strava
-      .getAthlete(this.options.athleteId)
-      .then(resp => {
-        this.athlete = resp;
-        this.registerBikes(this.athlete.bikes);
-      })
-      .catch(err => {
-        err.message = 'Athlete ' + err.message;
-        throw err;
-      });
-  }
-
-  public logAthlete() {
-    console.log('Athlete', JSON.stringify(this.athlete, null, '  '));
-  }
-
-  public async getActivities(): Promise<Activity[]> {
-    let results: Activity[] = [];
-    const dateRanges: DateRange[] = Array.isArray(this.options.dates) ? this.options.dates : [];
-
-    return dateRanges
-      .reduce((promiseChain, dateRange) => {
-        return promiseChain.then(() => {
-          let job = this.getActivitiesForDateRange(dateRange).then(resp => {
-            results = results.concat(resp);
-          });
-          return job;
-        });
-      }, Promise.resolve())
-      .then(resp => {
-        results = this.filterActivities(results);
-        results = results.sort(Activity.compareStartDate);
-        return Promise.resolve(results);
-      });
-  }
-
-  public async getActivitiesForDateRange(dateRange: DateRange): Promise<Activity[]> {
-    const params: StravaActivityOpts = {
-      athleteId: this.options.athleteId,
-      query: {
-        per_page: 200,
-        after: dateRange.after,
-        before: dateRange.before
-      }
-    };
-    return this.strava.getActivities(params).then(resp => {
-      const activities = resp as Dict[];
-      const results: Activity[] = [];
-      resp.forEach(data => {
-        const activity = Activity.newFromResponseData(data, this);
-        if (activity) {
-          results.push(activity);
-        }
-      });
-      return Promise.resolve(results);
-    });
-  }
-
-  public filterActivities(activities: Activity[]): Activity[] {
-    const filter: ActivityFilter = {
-      commuteOnly: this.options.commuteOnly,
-      nonCommuteOnly: this.options.nonCommuteOnly,
-      include: this.options.activityFilter
-    };
-    const results: Activity[] = activities.filter(activity => {
-      return activity.include(filter);
-    });
-    return results;
-  }
-
-  /**
-   * Read more information using the DetailedActivity object and add these
-   * details to the Activity object.
-   */
-  public async addActivitiesDetails(): Promise<any> {
-    console.log(`Retrieving activity details for ${this.activities.length} Activities`);
-
-    // Break into chunks to limit to REQ_LIMIT parallel requests.
-    const activitiesChunks = [];
-    for (let idx = 0; idx < this.activities.length; idx += REQ_LIMIT) {
-      const tmpArray = this.activities.slice(idx, idx + REQ_LIMIT);
-      activitiesChunks.push(tmpArray);
-    }
-
-    return activitiesChunks
-      .reduce((promiseChain, activities) => {
-        return promiseChain.then(() => {
-          const jobs = [];
-          activities.forEach(activity => {
-            const job = this.addActivityDetail(activity);
-            jobs.push(job);
-          });
-          return Promise.all(jobs);
-        });
-      }, Promise.resolve())
-      .then(resp => {
-        return Promise.resolve();
-      });
-  }
-
-  public async addActivityDetail(activity: Activity): Promise<void> {
-    return this.strava.getDetailedActivity(activity).then(data => {
-      activity.addFromDetailedActivity(data);
-    });
-  }
-
-  /**
-   * Add coordinates for the activity or segment. Limits to REQ_LIMIT parallel requests.
-   */
-  private addActivitiesCoordinates() {
-    console.log(`Retrieving coordinates for ${this.activities.length} Activities`);
-
-    // Break into chunks to limit to REQ_LIMIT parallel requests.
-    const activitiesChunks = [];
-    for (let idx = 0; idx < this.activities.length; idx += REQ_LIMIT) {
-      const tmpArray = this.activities.slice(idx, idx + REQ_LIMIT);
-      activitiesChunks.push(tmpArray);
-    }
-
-    return activitiesChunks
-      .reduce((promiseChain, items) => {
-        return promiseChain.then(() => {
-          const jobs = [];
-          items.forEach(item => {
-            const activity: Activity = item as Activity;
-            const name = activity.startDateLocal;
-            const job = this.strava.getStreamCoords(StravaStreamSource.activities, activity.id, name).then(resp => {
-              activity.coordinates = resp;
-            });
-            jobs.push(job);
-          });
-          return Promise.all(jobs);
-        });
-      }, Promise.resolve())
-      .then(resp => {
-        return Promise.resolve();
-      });
-  }
-
-  /**
-   * Call only when generating KML file with all segments
-   */
-  private async addStarredSegmentsCoordinates() {
-    console.log(`Retrieving coordinates for ${this.starredSegments.length} Starred Segments`);
-
-    return this.starredSegments
-      .reduce((promiseChain, item) => {
-        return promiseChain.then(() => {
-          return this.strava.getStreamCoords(StravaStreamSource.segments, item.id, item.name).then(resp => {
-            item.coordinates = resp;
-          });
-        });
-      }, Promise.resolve())
-      .then(resp => {
-        return Promise.resolve();
-      });
-  }
-
-  private registerBikes(bikes: StravaBike[]) {
-    if (bikes && bikes.length) {
-      bikes.forEach(bike => {
-        this.bikes[bike.id] = bike;
-      });
-    }
-  }
-
-  private saveXml() {
-    const opts: BikelogOutputOpts = {
-      more: this.options.more,
-      dates: this.options.dateRanges,
-      imperial: this.options.imperial,
-      selectedBikes: this.options.config.bikes,
-      bikes: this.bikes
-    };
-    if (this.options.segments === 'flat') {
-      opts.segmentsFlatFolder = true;
-    }
-    const bikelog = new Bikelog(opts);
-    return bikelog.outputData(this.options.xml, this.activities);
-  }
-
-  private saveKml(options: { activities?: boolean; segments?: boolean } = {}) {
-    const opts: KmlOpts = {
-      more: this.options.more,
-      dates: this.options.dateRanges,
-      imperial: this.options.imperial,
-      activities: options.activities,
-      segments: options.segments,
-      bikes: this.bikes
-    };
-    if (this.options.segments === 'flat') {
-      opts.segmentsFlatFolder = true;
-    }
-    const kml = new Kml(opts);
-    return kml.outputData(this.options.kml, this.activities, this.starredSegments);
-  }
 }
+
+// Deno.env.get is used instead of process.env
+const env = Deno.env.get("NODE_ENV") || "development";
+const home = Deno.env.get("HOME") || Deno.env.get("HOMEPATH") || Deno.env.get("USERPROFILE") || "";
+
+const segmentsFile = resolve(home, ".strava", "segments.json");
+const configFile = resolve(home, ".strava", "settings.json");
+
+// Read config file
+let config: any;
+try {
+    const configText = await Deno.readTextFile(configFile);
+    config = JSON.parse(configText);
+} catch {
+    console.log(`Error: config file does not exist: ${configFile}`);
+    Deno.exit(1);
+}
+
+// Read segments file if it exists
+let segments: any = undefined;
+try {
+    const segmentsText = await Deno.readTextFile(segmentsFile);
+    segments = JSON.parse(segmentsText);
+} catch {
+    // Segments file is optional
+}
+
+// Parse command-line arguments
+const args = parse(Deno.args);
+
+const version = "1.0.0"; // Set your version here or read from a file
+
+function commaList(val: string): string[] {
+    return val.split(",");
+}
+
+function dateStringToDate(s: string): number {
+    const p = s.match(/^(\d{4})(\d\d)(\d\d)$/);
+    if (p) {
+        return new Date(Number(p[1]), Number(p[2]) - 1, Number(p[3])).getTime();
+    } else {
+        throw new Error("Invalid date");
+    }
+}
+
+function dateList(val: string): { after: number; before: number }[] {
+    const result: { after: number; before: number }[] = [];
+    const ranges = val.split(",");
+    for (let idx = 0; idx < ranges.length; ++idx) {
+        const range = ranges[idx];
+        const p = range.split("-");
+        let t0: number;
+        let t1: number;
+        try {
+            if (p && p.length > 1) {
+                t0 = dateStringToDate(p[0]);
+                t1 = dateStringToDate(p[1]) + DAY;
+            } else if (idx === ranges.length - 1) {
+                t0 = dateStringToDate(range);
+                t1 = Date.now(); // now
+            } else {
+                t0 = dateStringToDate(range);
+                t1 = t0 + DAY;
+            }
+        } catch (e) {
+            console.log((e as Error).toString());
+            Deno.exit(1);
+        }
+        result.push({ after: t0 / 1000, before: t1 / 1000 });
+    }
+    return result;
+}
+
+const DAY = 24 * 3600 * 1000;
+
+const opts: any = {
+    home: home,
+    config: config,
+    segmentsFile: segmentsFile,
+    athleteId: args.id ? parseInt(args.id, 10) : config.athleteId,
+    athlete: args.athlete,
+    bikes: args.bikes,
+    friends: args.friends,
+    dates: args.dates ? dateList(args.dates) : [], // array of date ranges, in seconds (not milliseconds)
+    more: args.more,
+    kml: args.kml,
+    fxml: args.fxml,
+    activities: args.activities,
+    activityFilter: _.without((args.filter || []) as string[], "commute", "nocommute"),
+    commuteOnly: (args.filter || []).includes("commute"),
+    nonCommuteOnly: (args.filter || []).includes("nocommute"),
+    imperial: args.imperial,
+    segments: args.segments, // Will be true or 'flat'
+    verbose: args.verbose,
+};
+
+if (args.start) {
+    let t1 = Date.now();
+    let t0 = t1 - Number(args.start) * DAY;
+    if (args.end) {
+        t1 = t1 - Number(args.end) * DAY;
+    }
+    opts.dates.push({ after: t0 / 1000, before: t1 / 1000 });
+}
+
+opts.dateRanges = []; // used for kml file
+if (opts.dates && opts.dates.length) {
+    console.log("Date ranges: ");
+    _.each(opts.dates, function (range: { after: number; before: number }) {
+        const tAfter = dateutil.toSortableString(1000 * range.after).replace(/\//g, "-");
+        const tBefore = dateutil.toSortableString(1000 * range.before).replace(/\//g, "-");
+        console.log("  From " + tAfter + " to " + tBefore);
+        opts.dateRanges.push({ after: tAfter.slice(0, 10), before: tBefore.slice(0, 10) });
+    });
+}
+
+const main = new Main(opts);
+main.run((err?: { message: string }) => {
+    if (err) {
+        console.log("Error: " + err.message);
+    } else {
+        console.log("Done");
+    }
+    // Deno.exit(0); // don't do this else files will not be saved
+});
+

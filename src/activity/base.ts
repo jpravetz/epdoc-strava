@@ -1,31 +1,25 @@
-import * as dateutil from 'dateutil';
-import { Dict, isBoolean, isNumber, isString } from 'epdoc-util';
+import type { ISODate } from '@epdoc/datetime';
+import type { Seconds } from '@epdoc/duration';
+import type { Dict } from '@epdoc/type';
 import { Main } from '../main';
-import { StravaCoord } from './../strava-api';
-import { IsoDateString, Kilometres, Metres, Seconds } from './../util';
-import { DetailedActivity } from './detailed-activity';
-import { SegmentData } from './segment-data';
-import { SegmentEffort } from './segment-effort';
-
-export type ActivityFilter = {
-  commuteOnly?: boolean;
-  nonCommuteOnly?: boolean;
-  include?: string[];
-  exclude?: string[];
-};
+import * as Segment from '../segment/mod.ts';
+import type * as Strava from '../strava/mod.ts';
+import type { Kilometres, Metres } from '../types.ts';
+import { DetailedActivity } from './detailed.ts';
+import type * as Activity from './types.ts';
 
 const REGEX = {
-  noKmlData: /^(Workout|Yoga|Weight Training)$/i
+  noKmlData: /^(Workout|Yoga|Weight Training)$/i,
 };
 
-export class Activity {
+export class ActivityBase {
   public keys: string[] = [
     'distance',
     'total_elevation_gain',
     'moving_time',
     'elapsed_time',
     'average_temp',
-    'device_name'
+    'device_name',
   ];
   public keyDict: Dict = {
     distance: 'distance',
@@ -33,7 +27,7 @@ export class Activity {
     movingTime: 'moving_time',
     elapsedTime: 'elapsed_time',
     averageTemp: 'average_temp',
-    deviceName: 'device_name'
+    deviceName: 'device_name',
   };
   public data: Dict = {};
 
@@ -44,8 +38,8 @@ export class Activity {
   public startDate: Date;
 
   private _asString: string;
-  private _segments: SegmentData[]; // list of starred segments for this Activity
-  private _coordinates: StravaCoord[] = []; // will contain the latlng coordinates for the activity
+  private _segments: Segment.Data[]; // list of starred segments for this Activity
+  private _coordinates: Strava.Coord[] = []; // will contain the latlng coordinates for the activity
 
   constructor(data: Dict) {
     Object.assign(this.data, data);
@@ -54,25 +48,21 @@ export class Activity {
     this._asString = `${this.data.start_date_local.slice(0, 10)}, ${this.type} ${d} km, ${this.name}`;
   }
 
-  public static newFromResponseData(data: Dict, main: Main): Activity {
-    const result = new Activity(data);
+  public static newFromResponseData(data: Dict, main: Main): ActivityBase {
+    const result = new ActivityBase(data);
     result.main = main;
     return result;
-  }
-
-  public static isInstance(val: any): val is Activity {
-    return val && isNumber(val.id) && isBoolean(val.commute);
   }
 
   public toString(): string {
     return this._asString;
   }
 
-  public get coordinates(): StravaCoord[] {
+  public get coordinates(): Strava.Coord[] {
     return this._coordinates;
   }
 
-  public set coordinates(val: StravaCoord[]) {
+  public set coordinates(val: Strava.Coord[]) {
     this._coordinates = val;
   }
 
@@ -116,11 +106,11 @@ export class Activity {
     return this.data.gear_id;
   }
 
-  public get startDateLocal(): IsoDateString {
+  public get startDateLocal(): ISODate {
     return this.data.start_date_local;
   }
 
-  public get segments(): SegmentData[] {
+  public get segments(): Segment.Data[] {
     return this._segments;
   }
 
@@ -162,7 +152,7 @@ export class Activity {
       // console.log(p)
       if (p && p.length) {
         const a = [];
-        p.forEach(line => {
+        p.forEach((line) => {
           const kv = line.match(/^([^\s\=]+)\s*=\s*(.*)+$/);
           if (kv) {
             this.keys.push(kv[1]);
@@ -183,8 +173,7 @@ export class Activity {
 
   private _addDetailSegmentsFromDetailedActivity(data: DetailedActivity) {
     this._segments = [];
-    data.segment_efforts.forEach(effort => {
-      // @ts-ignore
+    data.segment_efforts.forEach((effort) => {
       if (this.main.segFile) {
         const seg = this.main.segFile.getSegment(effort.name);
         if (seg) {
@@ -195,7 +184,7 @@ export class Activity {
     });
   }
 
-  private _addDetailSegment(segEffort: SegmentEffort) {
+  private _addDetailSegment(segEffort: Segment.Effort) {
     let name = String(segEffort.name).trim();
     const aliases = this.main.config.aliases;
     if (aliases && aliases[name]) {
@@ -204,14 +193,14 @@ export class Activity {
     }
     const sd: string = dateutil.formatMS(segEffort.elapsed_time * 1000, {
       ms: false,
-      hours: true
+      hours: true,
     });
     console.log(`  Adding segment '${name}, elapsed time ${sd}`);
     // Add segment to this activity
-    this._segments.push(new SegmentData(segEffort));
+    this._segments.push(new Segment.Data(segEffort));
   }
 
-  public include(filter: ActivityFilter) {
+  public include(filter: Activity.Filter) {
     if (
       (!filter.commuteOnly && !filter.nonCommuteOnly) ||
       (filter.commuteOnly && this.commute) ||
@@ -232,7 +221,7 @@ export class Activity {
     return false;
   }
 
-  public static compareStartDate(a: Activity, b: Activity) {
+  public static compareStartDate(a: ActivityBase, b: ActivityBase) {
     if (a.startDate < b.startDate) {
       return -1;
     }

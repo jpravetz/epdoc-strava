@@ -1,193 +1,119 @@
-const env = process.env['NODE_ENV'] || 'development';
-
-import { Command } from 'commander';
-import fs from 'fs';
-import path from 'path';
-import pkg from '../package.json';
-import projectConfig from './config/project.settings.json';
-import { DateRange, Main, MainOpts, StravaConfig } from './main';
-import { Dict, EpochMilliseconds, readJson } from './util';
-
-const dateutil = require('dateutil');
+import { parse } from 'deno-flags';
+import * as path from 'https://deno.land/std@0.224.0/path/mod.ts';
+import { App, AppOpts, StravaConfig } from './app.ts';
+import projectConfig from './config/project.settings.json' assert { type: 'json' };
+import { Dict, EpochMilliseconds, readJson } from './util.ts';
 
 const DAY = 24 * 3600 * 1000;
 
-// let root = Path.resolve(__dirname, '..');
-const home = process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE;
-
-//let Config = require('a5config').init(env, [__dirname + '/../config/project.settings.json'], {excludeGlobals: true});
-//let config = Config.get();
-
-async function run(): Promise<void> {
-  const segmentsFile = path.resolve(home, '.strava', 'segments.json');
-  const credentialsFile = path.resolve(home, '.strava', 'credentials.json');
-  const userSettingsFile = path.resolve(home, '.strava', 'user.settings.json');
-  // if (!fs.existsSync(configFile)) {
-  //   console.log('Error: config file does not exist: %s', configFile);
-  //   process.exit(1);
-  // }
+async function main() {
+  const home = Deno.env.get('HOME');
+  const segmentsFile = path.join(home, '.strava', 'segments.json');
+  const credentialsFile = path.join(home, '.strava', 'credentials.json');
+  const userSettingsFile = path.join(home, '.strava', 'user.settings.json');
 
   let segments: Dict;
+  try {
+    segments = await readJson(segmentsFile);
+  } catch (e) {
+    segments = {};
+  }
 
-  return Promise.resolve()
-    .then((resp) => {
-      if (fs.existsSync(segmentsFile)) {
-        return readJson(segmentsFile);
+  let userConfig: Dict;
+  try {
+    userConfig = await readJson(userSettingsFile);
+  } catch (e) {
+    userConfig = {};
+  }
+
+  const config = Object.assign({}, projectConfig, userConfig);
+
+  const flags = parse(Deno.args, {
+    string: ['dates', 'id', 'kml', 'xml', 'activities', 'segments', 'path'],
+    boolean: ['athlete', 'friends', 'refresh', 'more', 'imperial', 'verbose'],
+    alias: {
+      d: 'dates',
+      i: 'id',
+      u: 'athlete',
+      g: 'friends',
+      k: 'kml',
+      x: 'xml',
+      r: 'refresh',
+      a: 'activities',
+      s: 'segments',
+      m: 'more',
+      y: 'imperial',
+      p: 'path',
+      v: 'verbose',
+    },
+  });
+
+  const opts: AppOpts = {
+    home: home,
+    cwd: flags.path,
+    config: config,
+    refreshStarredSegments: flags.refresh,
+    segmentsFile: segmentsFile,
+    credentialsFile: credentialsFile,
+    athleteId: parseInt(flags.id, 10) || (config as StravaConfig).athleteId,
+    athlete: flags.athlete,
+    friends: flags.friends,
+    dates: [], // array of date ranges, in seconds (not milliseconds)
+    more: flags.more,
+    kml: flags.path && flags.kml ? path.join(flags.path, flags.kml) : flags.kml,
+    xml: flags.path && flags.xml ? path.join(flags.path, flags.xml) : flags.xml,
+    activities: flags.activities ? flags.activities.split(',') : [],
+    commuteOnly: (flags.activities || []).indexOf('commute') >= 0 ? true : false,
+    nonCommuteOnly: (flags.activities || []).indexOf('nocommute') >= 0 ? true : false,
+    imperial: flags.imperial,
+    segments: flags.segments, // Will be true or 'flat'
+    verbose: flags.verbose || 9,
+  };
+
+  if (flags.dates) {
+    const ranges = flags.dates.split(',');
+    for (let idx = 0; idx < ranges.length; ++idx) {
+      const range = ranges[idx];
+      const p = range.split('-');
+      let t0: EpochMilliseconds;
+      let t1: EpochMilliseconds;
+      try {
+        if (p && p.length > 1) {
+          t0 = new Date(p[0]).getTime();
+          t1 = new Date(p[1]).getTime() + DAY;
+        } else if (idx === ranges.length - 1) {
+          t0 = new Date(range).getTime();
+          t1 = new Date().getTime(); // now
+        } else {
+          t0 = new Date(range).getTime();
+          t1 = t0 + DAY;
+        }
+      } catch (e) {
+        console.error(e.toString());
+        Deno.exit(1);
       }
-      return Promise.resolve({});
-    })
-    .then((resp) => {
-      segments = resp;
-      if (fs.existsSync(userSettingsFile)) {
-        return readJson(userSettingsFile);
-      }
-      return Promise.resolve({});
-    })
-    .then((resp) => {
-      const userConfig = resp;
-      const config = Object.assign({}, projectConfig, userConfig);
-
-      const program: Dict = new Command('strava');
-      program
-        .version(pkg.version)
-        .option(
-          '-d, --dates <dates>',
-          "Comma separated list of activity date or date ranges in format '20141231-20150105,20150107'. " +
-            'If the last entry in the list is a single date then everything from that date until today will be included.',
-          dateList
-        )
-        .option('-i, --id <athleteId>', 'Athlete ID. Defaults to your login')
-        .option('-u, --athlete', 'Show athlete details including list of bikes')
-        .option(
-          '-g, --friends [opt]',
-          'Show athlete friends list (Use --more a complete summary, otherwise id and name are displayed)'
-        )
-        .option('-k, --kml <file>', 'Create KML file for specified date range')
-        .option(
-          '-x, --xml <file>',
-          'Create Acroforms XML file for specified date range, this is specific to a particular unpublished PDF form document'
-        )
-        .option(
-          '-r, --refresh',
-          'Refresh list of starred segments rather than using local stored copy. Will automatically refresh from server if there is no locally stored copy.'
-        )
-        .option(
-          '-a, --activities [filter]',
-          "Output activities to kml file, optionally filtering by activity type (as defined by Strava, 'Ride', 'EBikeRide', 'Hike', 'Walk', etc), plus 'commute', 'nocommute' and 'moto')",
-          commaList
-        )
-        // .option('-f, --filter <types>', "Filter based on comma-separated list of activity types (as defined by Strava, 'Ride', 'Hike', 'Walk', etc), plus 'commute' and 'nocommute'", commaList)
-        // .option('-p, --prompt', "With --show, when adding segments, prompt user whether to include or exclude a segment.")
-        .option(
-          '-s, --segments [opts]',
-          "Output starred segments to KML, adding efforts within date range to description if --more. Segments are grouped into folders by location unless opts is set to 'flat'."
-        )
-        .option('-m, --more', 'When generating KML file, include additional detail info in KML description field')
-        // .option('--auth', 'Authenticate to Strava API (this is run automatically when required)')
-        .option('-y, --imperial', 'Use imperial units')
-        .option('-p, --path <cwd>', 'Current folder')
-        .option('-v, --verbose', 'Verbose messages')
-        .parse(process.argv);
-
-      const cmdOpts: Dict = program.opts();
-
-      const opts: MainOpts = {
-        home: home,
-        cwd: cmdOpts.cwd,
-        config: config,
-        refreshStarredSegments: cmdOpts.refresh,
-        segmentsFile: segmentsFile,
-        credentialsFile: credentialsFile,
-        athleteId: parseInt(cmdOpts.id, 10) || (config as StravaConfig).athleteId,
-        athlete: cmdOpts.athlete,
-        selectedBikes: cmdOpts.bikes,
-        friends: cmdOpts.friends,
-        dates: cmdOpts.dates || [], // array of date ranges, in seconds (not milliseconds)
-        more: cmdOpts.more,
-        kml: cmdOpts.path && cmdOpts.kml ? path.resolve(cmdOpts.path, cmdOpts.kml) : cmdOpts.kml,
-        xml: cmdOpts.path && cmdOpts.xml ? path.resolve(cmdOpts.path, cmdOpts.xml) : cmdOpts.xml,
-        activities: cmdOpts.activities,
-        // activityFilter: _.without(cmdOpts.filter || [], 'commute', 'nocommute'),
-        commuteOnly: (cmdOpts.filter || []).indexOf('commute') >= 0 ? true : false,
-        nonCommuteOnly: (cmdOpts.filter || []).indexOf('nocommute') >= 0 ? true : false,
-        imperial: cmdOpts.imperial,
-        auth: cmdOpts.auth,
-        segments: cmdOpts.segments, // Will be true or 'flat'
-        verbose: cmdOpts.verbose || 9,
-      };
-
-      opts.dateRanges = []; // used for kml file
-      if (opts.dates && opts.dates.length) {
-        console.log('Date ranges: ');
-        opts.dates.forEach((range) => {
-          const tAfter = dateutil.toSortableString(1000 * range.after).replace(/\//g, '-');
-          const tBefore = dateutil.toSortableString(1000 * range.before).replace(/\//g, '-');
-          console.log('  From ' + tAfter + ' to ' + tBefore);
-          opts.dateRanges.push({ after: tAfter.slice(0, 10), before: tBefore.slice(0, 10) });
-        });
-      }
-
-      const main = new Main(opts);
-      return main.run();
-    })
-    .then((resp) => {
-      console.log('done');
-      // process.exit(0);     // don't do this else files will not be saved
-    })
-    .catch((err) => {
-      console.log('Error: ' + err.message);
-    });
-}
-
-function commaList(val: string) {
-  return val.split(',');
-}
-
-function dateList(val: string): DateRange[] {
-  const result: DateRange[] = [];
-  const ranges = val.split(',');
-  for (let idx = 0; idx < ranges.length; ++idx) {
-    const range = ranges[idx];
-    const p = range.split('-');
-    let t0: EpochMilliseconds;
-    let t1: EpochMilliseconds;
-    try {
-      if (p && p.length > 1) {
-        t0 = dateStringToDate(p[0]);
-        t1 = dateStringToDate(p[1]) + DAY;
-      } else if (idx === ranges.length - 1) {
-        t0 = dateStringToDate(range);
-        t1 = new Date().getTime(); // now
-      } else {
-        t0 = dateStringToDate(range);
-        t1 = t0 + DAY;
-      }
-    } catch (e) {
-      console.log(e.toString());
-      process.exit(1);
+      opts.dates.push({ after: t0 / 1000, before: t1 / 1000 });
     }
-    result.push({ after: t0 / 1000, before: t1 / 1000 });
   }
-  return result;
+
+  opts.dateRanges = []; // used for kml file
+  if (opts.dates && opts.dates.length) {
+    console.info('Date ranges: ');
+    opts.dates.forEach((range) => {
+      const tAfter = new Date(range.after * 1000).toISOString().slice(0, 10);
+      const tBefore = new Date(range.before * 1000).toISOString().slice(0, 10);
+      console.info('  From ' + tAfter + ' to ' + tBefore);
+      opts.dateRanges.push({ after: tAfter, before: tBefore });
+    });
+  }
+
+  const main = new App(opts);
+  try {
+    await main.run();
+    console.info('done');
+  } catch (err) {
+    console.error('Error: ' + err.message);
+  }
 }
 
-function dateStringToDate(s: string): EpochMilliseconds {
-  const p: string[] = s.match(/^(\d{4})(\d\d)(\d\d)$/);
-  if (p) {
-    return new Date(parseInt(p[1], 10), parseInt(p[2], 10) - 1, parseInt(p[3], 10)).getTime();
-  } else {
-    throw new Error('Invalid date');
-  }
-}
-
-run();
-
-// function promptSingleLine(str, fn) {
-//    process.stdout.write(str);
-//    process.stdin.setEncoding('utf8');
-//    process.stdin.once('data', function (val) {
-//        fn(val);
-//    }).resume();
-// }
-
-// [];
+main();
