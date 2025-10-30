@@ -209,6 +209,7 @@
       "jsr:@epdoc/duration@~0.2.3",
       "jsr:@epdoc/fs@^1.0.2",
       "jsr:@epdoc/logger@1003",
+      "jsr:@epdoc/msgbuilder@^0.0.1",
       "jsr:@epdoc/type@^1.1.17",
       "npm:commander@^14.0.2"
     ]
