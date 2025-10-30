@@ -1,12 +1,11 @@
+import type * as FS from '@epdoc/fs/fs';
 import { _, type Dict } from '@epdoc/type';
-import * as assert from 'assert';
-import request from 'superagent';
-import { StravaCreds } from '../strava-creds.ts';
-import { defaultAuthOpts } from './consts.ts';
-import { Activity, Athelete, Segment } from './dep.ts';
+import { assert } from '@std/assert';
+import { StravaCreds } from './creds.ts';
+import * as Models from './models/mod.ts';
 import type * as Strava from './types.ts';
 
-const STRAVA_URL_PREFIX = process.env.STRAVA_URL_PREFIX || 'https://www.strava.com';
+const STRAVA_URL_PREFIX = Deno.env.get('STRAVA_URL_PREFIX') || 'https://www.strava.com';
 const STRAVA_API_PREFIX = STRAVA_URL_PREFIX + '/api/v3';
 const STRAVA_URL = {
   authorize: STRAVA_URL_PREFIX + '/oauth/authorize',
@@ -17,6 +16,13 @@ const STRAVA_URL = {
   starred: STRAVA_API_PREFIX + '/segments/starred',
 };
 
+export const defaultAuthOpts: Strava.AuthUrlOpts = {
+  scope: 'read_all,activity:read_all,profile:read_all',
+  state: '',
+  approvalPrompt: 'auto',
+  redirectUri: 'https://localhost',
+};
+
 export type TokenUrlOpts = {
   code?: string;
 };
@@ -24,39 +30,38 @@ export type TokenUrlOpts = {
 export class StravaApi {
   public id: Strava.ClientId;
   public secret: Strava.Secret;
-  private _credsFile: string;
-  private _creds: StravaCreds;
+  #fsCredsFile: FS.File;
+  #creds: StravaCreds;
 
-  constructor(clientConfig: Strava.ClientConfig, credsFile: string) {
-    this.id = clientConfig.id || parseInt(process.env.STRAVA_CLIENT_ID, 10);
-    this.secret = clientConfig.secret || process.env.STRAVA_CLIENT_SECRET;
+  constructor(clientConfig: Strava.ClientConfig, credsFile: FS.File) {
+    this.id = clientConfig.id || _.asInt(Deno.env.get('STRAVA_CLIENT_ID'), 10);
+    this.secret = clientConfig.secret || Deno.env.get('STRAVA_CLIENT_SECRET') || '';
     // this.token = opts.token || process.env.STRAVA_ACCESS_TOKEN;
-    this._credsFile = credsFile;
+    this.#fsCredsFile = credsFile;
+    this.#creds = new StravaCreds(credsFile);
   }
 
-  public toString() {
+  public toString(): string {
     return '[Strava]';
   }
 
-  public initCreds(): Promise<void> {
-    this._creds = new StravaCreds(this._credsFile);
-    return this._creds.read().then(() => {
-      return this.refreshToken();
-    });
+  async initCreds(): Promise<void> {
+    await this.#creds.read();
+    await this.refreshToken();
   }
 
-  get creds() {
-    return this._creds;
+  get creds(): StravaCreds {
+    return this.#creds;
   }
 
-  public getAuthorizationUrl(options: Strava.AuthorizationUrlOpts = {}): string {
-    assert.ok(this.id, 'A client ID is required.');
+  public getAuthUrl(options: Strava.AuthUrlOpts = {}): string {
+    assert(this.id, 'A client ID is required.');
 
-    const opts = Object.assign(defaultAuthOpts, options);
+    const opts: Strava.AuthUrlOpts = Object.assign(defaultAuthOpts, options);
 
     return (
       `${STRAVA_URL.authorize}?client_id=${this.id}` +
-      `&redirect_uri=${encodeURIComponent(opts.redirectUri)}` +
+      `&redirect_uri=${encodeURIComponent(opts.redirectUri as string)}` +
       `&scope=${opts.scope}` +
       `&state=${opts.state}` +
       `&approval_prompt=${opts.approvalPrompt}` +
@@ -69,26 +74,28 @@ export class StravaApi {
    * tokens to ~/.strava/credentials.json.
    * @param code
    */
-  public async requestToken(code: Strava.Code) {
-    const payload = {
-      // tslint:disable-next-line: object-literal-shorthand
-      code: code,
-      client_id: this.id,
-      client_secret: this.secret,
-      grant_type: 'authorization_code',
+  async requestToken(code: Strava.Code) {
+    const reqOpts: RequestInit = {
+      method: 'POST',
+      body: JSON.stringify({
+        code: code,
+        client_id: this.id,
+        client_secret: this.secret,
+        grant_type: 'authorization_code',
+      }),
+      headers: {
+        'content-type': 'application/json',
+        accept: 'application/json',
+      },
     };
-    // console.log('getTokens request', payload);
-    return request
-      .post(STRAVA_URL.token)
-      .send(payload)
-      .then((resp) => {
-        // console.log('getTokens response', resp.body);
-        console.log('Authorization obtained.');
-        return this.creds.write(resp.body);
-      })
-      .then((resp) => {
-        console.log('Credentials written to local storage');
-      });
+
+    const resp = await fetch(STRAVA_URL.token, reqOpts);
+    if (resp && resp.ok) {
+      console.log('Authorization obtained.');
+      const data: Strava.StravaCredsData = await resp.json();
+      await this.creds.write(data);
+      console.log('Credentials written to local storage');
+    }
   }
 
   private async refreshToken(): Promise<void> {
@@ -100,157 +107,282 @@ export class StravaApi {
         grant_type: 'refresh_token',
         refresh_token: this.creds.refreshToken,
       };
-      return request
-        .post(STRAVA_URL.token)
-        .send(payload)
-        .then((resp) => {
-          console.log('Access token refreshed.');
-          return this.creds.write(resp.body);
-        })
-        .catch((err) => {
-          console.error('Failed to refresh access token:', err.message);
-          throw err;
-        });
+
+      const reqOpts: RequestInit = {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        headers: {
+          'content-type': 'application/json',
+          accept: 'application/json',
+        },
+      };
+
+      try {
+        const resp = await fetch(STRAVA_URL.token, reqOpts);
+        if (!resp.ok) {
+          const errorText = await resp.text();
+          throw new Error(`Failed to refresh access token: ${resp.status} ${resp.statusText} - ${errorText}`);
+        }
+        console.log('Access token refreshed.');
+        const data: Strava.StravaCredsData = await resp.json();
+        await this.creds.write(data);
+      } catch (error: unknown) {
+        const err = _.asError(error);
+        console.error('Failed to refresh access token:', err.message);
+        throw err;
+      }
     }
     return Promise.resolve();
   }
 
-  public async getAthlete(athleteId?: number): Promise<Athelete> {
+  public async getAthlete(athleteId?: number): Promise<Models.DetailedAthlete> {
     await this.refreshToken();
     let url = STRAVA_URL.athlete;
     if (_.isNumber(athleteId)) {
       url = url + '/' + athleteId;
     }
-    return request
-      .get(url)
-      .set('Authorization', 'access_token ' + this.creds.accessToken)
-      .then((resp) => {
-        if (resp && resp instanceof Athelete) {
-          return Promise.resolve(Athelete.newFromResponseData(resp.body));
-        }
-        throw new Error('Invalid Athelete return value');
-      });
+
+    const reqOpts: RequestInit = {
+      method: 'GET',
+      headers: {
+        'Authorization': 'Bearer ' + this.creds.accessToken, // Strava API uses Bearer token
+        'accept': 'application/json',
+      },
+    };
+
+    const resp = await fetch(url, reqOpts);
+    if (!resp.ok) {
+      const errorText = await resp.text();
+      throw new Error(`Failed to get athlete: ${resp.status} ${resp.statusText} - ${errorText}`);
+    }
+
+    const data = await resp.json() as Models.DetailedAthlete;
+    return data;
   }
 
   public async getActivities(options: Strava.ActivityOpts): Promise<Dict[]> {
     await this.refreshToken();
-    let url = STRAVA_URL.activities;
+    let url = new URL(STRAVA_URL.activities);
     if (_.isNumber(options.athleteId)) {
-      url = url + '/' + options.athleteId;
+      url = new URL(url.toString() + '/' + options.athleteId);
     }
-    return request
-      .get(url)
-      .set('Authorization', 'access_token ' + this.creds.accessToken)
-      .query(options.query)
-      .then((resp) => {
-        if (!resp || !Array.isArray(resp.body)) {
-          throw new Error(JSON.stringify(resp.body));
-        }
-        return Promise.resolve(resp.body);
-      })
-      .catch((err) => {
-        err.message = 'Activities - ' + err.message;
-        throw err;
-      });
+
+    if (options.query) {
+      for (const [key, value] of Object.entries(options.query)) {
+        url.searchParams.append(key, String(value));
+      }
+    }
+
+    const reqOpts: RequestInit = {
+      method: 'GET',
+      headers: {
+        'Authorization': 'Bearer ' + this.creds.accessToken,
+        'accept': 'application/json',
+      },
+    };
+
+    try {
+      const resp = await fetch(url.toString(), reqOpts);
+      if (!resp.ok) {
+        const errorText = await resp.text();
+        throw new Error(`Failed to get activities: ${resp.status} ${resp.statusText} - ${errorText}`);
+      }
+
+      const data = await resp.json();
+      if (!Array.isArray(data)) {
+        throw new Error('Invalid activities return value: Expected an array.');
+      }
+      return data;
+    } catch (error: unknown) {
+      const err = _.asError(error);
+      err.message = 'Activities - ' + err.message;
+      throw err;
+    }
   }
 
-  public async getStarredSegments(accum: Segment.Summary[], page: number = 1): Promise<void> {
+  public async getStarredSegments(accum: Models.SummarySegment[], page: number = 1): Promise<void> {
     await this.refreshToken();
     const perPage = 200;
-    return request
-      .get(STRAVA_URL.starred)
-      .query({ per_page: perPage, page: page })
-      .set('Authorization', 'access_token ' + this.creds.accessToken)
-      .then((resp) => {
-        if (resp && Array.isArray(resp.body)) {
-          console.log(`  Retrieved ${resp.body.length} starred segments for page ${page}`);
-          resp.body.forEach((item) => {
-            const result = Segment.Summary.newFromResponseData(item);
-            accum.push(result);
-          });
-          if (resp.body.length >= perPage) {
-            return this.getStarredSegments(accum, page + 1);
-          }
-          return Promise.resolve();
-        }
-        throw new Error('Invalid starred segments return value');
+    const url = new URL(STRAVA_URL.starred);
+    url.searchParams.append('per_page', String(perPage));
+    url.searchParams.append('page', String(page));
+
+    const reqOpts: RequestInit = {
+      method: 'GET',
+      headers: {
+        'Authorization': 'Bearer ' + this.creds.accessToken,
+        'accept': 'application/json',
+      },
+    };
+
+    const resp = await fetch(url.toString(), reqOpts);
+    if (!resp.ok) {
+      const errorText = await resp.text();
+      throw new Error(`Failed to get starred segments: ${resp.status} ${resp.statusText} - ${errorText}`);
+    }
+
+    const data = await resp.json();
+    if (_.isArray(data)) {
+      console.log(`  Retrieved ${data.length} starred segments for page ${page}`);
+      data.forEach((item: unknown) => { // Use unknown for now, as Segment.Summary.newFromResponseData expects raw data
+        accum.push(item as Models.SummarySegment);
       });
+      if (data.length >= perPage) {
+        return this.getStarredSegments(accum, page + 1);
+      }
+      return Promise.resolve();
+    }
+    throw new Error('Invalid starred segments return value');
   }
 
-  public getStreamCoords(source: Strava.StreamSource, objId: Strava.ObjId, name: string) {
-    const result: Strava.Coord[] = [];
+  public async getStreamCoords(
+    source: Models.StreamKeyType,
+    objId: Strava.ObjId,
+    name: string,
+  ): Promise<Strava.Coord[]> {
     const query: Dict = {
-      keys: Strava.StreamType.latlng,
+      keys: Models.StreamKeys.LatLng,
       key_by_type: '',
     };
-    return this.getStreams(source, objId, query)
-      .then((resp) => {
-        if (Array.isArray(resp.latlng)) {
-          console.log(`  Get ${name} Found ${resp.latlng.length} coordinates`);
-          return Promise.resolve(resp.latlng);
-        }
-        console.log(`  Get ${name} did not contain any coordinates`);
-        return Promise.resolve([]);
-      })
-      .catch((err) => {
-        console.log(`  Get ${name} coordinates ${err.message}`);
-        return Promise.resolve([]);
-      });
+    try {
+      const resp = await this.getStreams(source, objId, query);
+      if (Array.isArray(resp.latlng)) {
+        console.log(`  Get ${name} Found ${resp.latlng.length} coordinates`);
+        return resp.latlng;
+      }
+      console.log(`  Get ${name} did not contain unknown coordinates`);
+      return [];
+    } catch (error: unknown) {
+      const err = _.asError(error);
+      console.log(`  Get ${name} coordinates ${err.message}`);
+      return [];
+    }
   }
 
-  public async getDetailedActivity(activity: Activity.Base): Promise<Activity.Detailed> {
+  public async getDetailedActivity(activity: Models.SummaryActivity): Promise<Models.DetailedActivity> {
     await this.refreshToken();
-    return request
-      .get(STRAVA_URL.activities + '/' + activity.data.id)
-      .set('Authorization', 'access_token ' + this.creds.accessToken)
-      .then((resp) => {
-        if (resp && resp.body instanceof Activity.Detailed) {
-          return Promise.resolve(Activity.Detailed.newFromResponseData(resp.body));
-        }
-        throw new Error('Invalid DetailedActivity return value');
-      })
-      .catch((err) => {
-        err.message = `getActivity id='${activity.data.id}' ${err.message} (${activity.toString()})`;
-        throw err;
-      });
+    const url = STRAVA_URL.activities + '/' + activity.id;
+
+    const reqOpts: RequestInit = {
+      method: 'GET',
+      headers: {
+        'Authorization': 'Bearer ' + this.creds.accessToken,
+        'accept': 'application/json',
+      },
+    };
+
+    try {
+      const resp = await fetch(url, reqOpts);
+      if (!resp.ok) {
+        const errorText = await resp.text();
+        throw new Error(`Failed to get detailed activity: ${resp.status} ${resp.statusText} - ${errorText}`);
+      }
+
+      const data = await resp.json();
+      if (data) {
+        return data as Models.DetailedActivity;
+      }
+      throw new Error('Invalid DetailedActivity return value');
+    } catch (error: unknown) {
+      const err = _.asError(error);
+      err.message = `getActivity id='${activity.id}' ${err.message} (${activity.toString()})`;
+      throw err;
+    }
   }
 
   /**
    * Retrieve data for the designated type of stream
    * @param objId The activity or segement ID
    * @param types An array, usually [ 'latlng' ]
-   * @param options Additional query string parameters, if any
+   * @param options Additional query string parameters, if unknown
    * @returns {*}
    */
-  public async getStreams(source: Strava.StreamSource, objId: Strava.SegmentId, options: Query) {
+  public async getStreams(
+    source: Models.StreamKeyType,
+    objId: Strava.SegmentId,
+    options: Strava.Query,
+  ): Promise<Dict> {
     await this.refreshToken();
-    return request
-      .get(`${STRAVA_API_PREFIX}/${source}/${objId}/streams`)
-      .set('Authorization', 'access_token ' + this.creds.accessToken)
-      .query(options)
-      .then((resp) => {
-        if (resp && Array.isArray(resp.body)) {
-          const result: Dict = {};
-          resp.body.forEach((item) => {
-            if (Array.isArray(item.data)) {
-              result[item.type] = item.data;
-            }
-          });
-          return Promise.resolve(result);
+    const url = new URL(`${STRAVA_API_PREFIX}/${source}/${objId}/streams`);
+
+    if (options) {
+      for (const key in options) {
+        url.searchParams.append(key, String(options[key]));
+      }
+    }
+
+    const reqOpts: RequestInit = {
+      method: 'GET',
+      headers: {
+        'Authorization': 'Bearer ' + this.creds.accessToken,
+        'accept': 'application/json',
+      },
+    };
+
+    const resp = await fetch(url.toString(), reqOpts);
+    if (!resp.ok) {
+      const errorText = await resp.text();
+      throw new Error(`Failed to get streams: ${resp.status} ${resp.statusText} - ${errorText}`);
+    }
+
+    const data = await resp.json();
+    if (Array.isArray(data)) {
+      const result: Dict = {};
+      data.forEach((item: unknown) => {
+        if (_.isDict(item) && _.isArray(item.data) && _.isString(item.type)) {
+          result[item.type] = item.data;
         }
-        throw new Error(`Invalid data returned for ${source}`);
       });
+      return result;
+    }
+    throw new Error(`Invalid data returned for ${source}`);
   }
 
-  public async getSegment(segmentId: Strava.SegmentId): Promise<void> {
+  public async getSegment(segmentId: Strava.SegmentId): Promise<unknown> { // Changed return type to unknown
     await this.refreshToken();
-    return request
-      .get(STRAVA_API_PREFIX + '/segments/' + segmentId)
-      .set('Authorization', 'access_token ' + this.creds.accessToken);
+    const url = STRAVA_API_PREFIX + '/' + 'segments/' + segmentId;
+
+    const reqOpts: RequestInit = {
+      method: 'GET',
+      headers: {
+        'Authorization': 'Bearer ' + this.creds.accessToken,
+        'accept': 'application/json',
+      },
+    };
+
+    const resp = await fetch(url, reqOpts);
+    if (!resp.ok) {
+      const errorText = await resp.text();
+      throw new Error(`Failed to get segment: ${resp.status} ${resp.statusText} - ${errorText}`);
+    }
+
+    return resp.json(); // Return the JSON data
   }
 
-  public async getSegmentEfforts(segmentId: Strava.SegmentId, params: Query) {
+  public async getSegmentEfforts(segmentId: Strava.SegmentId, params: Strava.Query): Promise<unknown> { // Changed return type to unknown
     await this.refreshToken();
-    return request.get(STRAVA_API_PREFIX + '/segments/' + segmentId + '/all_efforts').query(params);
+    const url = new URL(STRAVA_API_PREFIX + '/' + 'segments/' + segmentId + '/' + 'all_efforts');
+
+    if (params) {
+      for (const key in params) {
+        url.searchParams.append(key, String(params[key]));
+      }
+    }
+
+    const reqOpts: RequestInit = {
+      method: 'GET',
+      headers: {
+        'Authorization': 'Bearer ' + this.creds.accessToken,
+        'accept': 'application/json',
+      },
+    };
+
+    const resp = await fetch(url.toString(), reqOpts);
+    if (!resp.ok) {
+      const errorText = await resp.text();
+      throw new Error(`Failed to get segment efforts: ${resp.status} ${resp.statusText} - ${errorText}`);
+    }
+
+    return resp.json(); // Return the JSON data
   }
 }

@@ -7,17 +7,6 @@ export type AccessToken = string;
 export type RefreshToken = string;
 export type ClientId = number;
 
-export enum StreamSource {
-  activities = 'activities',
-  segments = 'segments',
-  routes = 'routes',
-  segmentEfforts = 'segment_efforts',
-}
-export enum StreamType {
-  latlng = 'latlng',
-  distance = 'distance',
-  altitude = 'altitude',
-}
 export type ObjId = number;
 export type EffortId = ObjId;
 export type SegmentId = ObjId;
@@ -37,7 +26,7 @@ export type ApiOpts = ClientConfig & {
   token: AccessToken;
 };
 
-export type AuthorizationUrlOpts = {
+export type AuthUrlOpts = {
   redirectUri?: string;
   scope?: string;
   state?: string;
@@ -56,11 +45,15 @@ export type ActivityOpts = {
 
 export type ActivityId = string;
 
-export interface MetaAthlete {
-  id: number;
-}
-
-export interface DetailedActivity {
-  id: ActivityId;
-  athlete: MetaAthlete;
-}
+export type StravaCredsData = {
+  token_type?: string;
+  expires_at: EpochSeconds;
+  expires_in: EpochSeconds;
+  refresh_token?: string;
+  access_token?: string;
+  athlete: {
+    id?: string;
+    username?: string;
+    [key: string]: unknown;
+  };
+};

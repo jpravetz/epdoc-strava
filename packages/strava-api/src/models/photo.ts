@@ -4,3 +4,8 @@ export interface PhotoSummary_primary {
   unique_id: string;
   urls: string;
 }
+
+export interface PhotoSummary {
+  count: number;
+  primary: PhotoSummary_primary;
+}
