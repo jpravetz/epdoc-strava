@@ -2,10 +2,7 @@ import type { ISODate } from '@epdoc/datetime';
 import type { Seconds } from '@epdoc/duration';
 import { _, type Dict } from '@epdoc/type';
 import type * as Schema from '../schema/mod.ts';
-import type * as Strava from '../strava/mod.ts';
-import type { Kilometres, Metres } from '../types.ts';
-import { ActivityDetailed } from './detailed.ts';
-import type * as Activity from './types.ts';
+import type { Coord, Kilometres, Metres } from '../types.ts';
 
 const REGEX = {
   noKmlData: /^(Workout|Yoga|Weight Training)$/i,
@@ -31,7 +28,7 @@ export class Activity {
   // };
 
   // public main: Main;
-  private _coordinates: Strava.Coord[] = []; // will contain the latlng coordinates for the activity
+  private _coordinates: Coord[] = []; // will contain the latlng coordinates for the activity
 
   constructor(data: Schema.SummaryActivity | Schema.DetailedActivity) {
     this.data = data;
@@ -50,11 +47,11 @@ export class Activity {
     return `${this.data.start_date_local.slice(0, 10)}, ${this.type} ${d} km, ${this.name}`;
   }
 
-  public get coordinates(): Strava.Coord[] {
+  public get coordinates(): Coord[] {
     return this._coordinates;
   }
 
-  public set coordinates(val: Strava.Coord[]) {
+  public set coordinates(val: Coord[]) {
     this._coordinates = val;
   }
 
@@ -92,6 +89,10 @@ export class Activity {
 
   public get deviceName(): string {
     return this.data.device_name;
+  }
+
+  get commute(): boolean {
+    return this.data.commute;
   }
 
   public get gearId(): string {

@@ -37,6 +37,14 @@ export class StravaCreds {
     return this.#fsCredsFile.path;
   }
 
+  /**
+   * Checks if the credentials object contains a non-empty refresh token.
+   * @returns {boolean} True if a refresh token is present and not empty, false otherwise.
+   */
+  hasRefreshToken(): boolean {
+    return this.#data && _.isNonEmptyString(this.#data.refresh_token) ? true : false;
+  }
+
   isValid(t: Seconds = 0): boolean {
     const tLimit: EpochSeconds = Date.now() / 1000 + t;
     return this.#data && this.#data.token_type === 'Bearer' && this.#data.expires_at > tLimit;

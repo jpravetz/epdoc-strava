@@ -1,5 +1,6 @@
-import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import * as Strava from './strava/mod.ts'
+// import { serve } from "@std/http/server";
+import * as Strava from './dep.ts'
+import * as Ctx from '../context.ts'
 
 export class Server {
   strava: unknown;
@@ -13,14 +14,12 @@ export class Server {
     this.strava = strava;
   }
 
-  public async run() {
-    const authOpts = {
-      redirectUri: 'http://localhost:3000/token'
-    };
-    const authUrl = this.strava.getAuthorizationUrl(authOpts);
+  public async run(ctx:Ctx.Context) {
+    const authOpts = { redirectUri: 'http://localhost:3000/token' };
+    const authUrl = Strava.getAuthorizationUrl(authOpts);
 
-    console.info('Server running on port 3000');
-    console.info('Opening browser for authentication...');
+    ctx.log.info.h2('Server running on port 3000').emit()
+    ctx.log.info.h2('Opening browser for authentication...').emit()
     Deno.run({ cmd: ['open', authUrl] });
 
     for await (const req of serve({ port: 3000 })) {

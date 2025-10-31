@@ -1,5 +1,5 @@
 import type { SummaryGear } from './gear.ts';
-import type { FollowerStatusType, ResourceStateType, SexType, SportType, UnitSystemType } from './types.ts';
+import type { ResourceStateType, SexType, SportType, UnitSystemType } from './types.ts';
 
 export interface SummaryClub {
   id: number;
@@ -19,34 +19,6 @@ export interface SummaryClub {
   url: string;
 }
 
-export interface DetailedAthlete {
-  id: number;
-  resource_state: ResourceStateType;
-  firstname: string;
-  lastname: string;
-  profile_medium: string;
-  profile: string;
-  city: string;
-  state: string;
-  country: string;
-  sex: string;
-  friend: FollowerStatusType;
-  follower: FollowerStatusType;
-  premium: boolean;
-  created_at: Date;
-  updated_at: Date;
-  follower_count: number;
-  friend_count: number;
-  mutual_friend_count: number;
-  measurement_preference: UnitSystemType;
-  email: string;
-  ftp: number;
-  weight: number;
-  clubs: SummaryClub;
-  bikes: SummaryGear;
-  shoes: SummaryGear;
-}
-
 export interface SummaryAthlete {
   id: number;
   resource_state: ResourceStateType;
@@ -58,11 +30,23 @@ export interface SummaryAthlete {
   state: string;
   country: string;
   sex: SexType;
-  friend: string;
-  follower: string;
-  premium: boolean;
+  // friend: string;
+  // follower: string;
+  // premium: boolean;
+  summit: boolean;
   created_at: Date;
   updated_at: Date;
+}
+
+export interface DetailedAthlete extends SummaryAthlete {
+  follower_count: number;
+  friend_count: number;
+  measurement_preference: UnitSystemType;
+  ftp: number;
+  weight: number;
+  clubs: SummaryClub;
+  bikes: SummaryGear;
+  shoes: SummaryGear;
 }
 
 export interface Comment {

@@ -1,6 +1,5 @@
 import * as CliApp from '@epdoc/cliapp';
-import pkg from '../../../deno.json' with { type: 'json' };
-import { App, type Ctx } from '../dep.ts';
+import type { Ctx } from '../dep.ts';
 import * as Kml from '../kml/mod.ts';
 import * as Pdf from '../pdf/mod.ts';
 import * as Cmd from '../types.ts';
@@ -12,12 +11,10 @@ import type * as Root from './types.ts';
  * uses the App class to perform the specified operations.
  */
 export class RootCmd {
-  app: App.Main;
   cmd: Cmd.Command;
 
-  constructor() {
-    this.app = new App.Main();
-    this.cmd = new Cmd.Command(pkg);
+  constructor(ctx: Ctx.Context) {
+    this.cmd = new Cmd.Command(ctx.pkg);
   }
   /**
    * Executes the main application logic based on command-line arguments.
@@ -27,17 +24,16 @@ export class RootCmd {
    */
   async init(ctx: Ctx.Context): Promise<Cmd.Command> {
     // let forceOffline = false;
-    const onlinePromise = this.app.checkInternetAccess(ctx);
+    const onlinePromise = ctx.app.checkInternetAccess(ctx);
     //   if (resp === true && !forceOffline) {
     //     ctx.online = true;
     //   } else {
     //     this.app.notifyOffline = true;
     //   }
     // });
-    ctx.app = this.app;
-    ctx.pkg = pkg;
-    this.cmd.init(ctx);
-    await this.app.initOpts();
+    await this.cmd.init(ctx);
+    await ctx.app.initClient();
+    // await ctx.app.initOpts();
     // await this.app.init(ctx, { config: true });
 
     const pdfCmd = new Pdf.Cmd();
@@ -51,17 +47,17 @@ export class RootCmd {
       CliApp.configureLogging(ctx, opts);
       if (opts.offline) {
         ctx.online = false;
-        this.app.notifyOffline;
+        ctx.app.notifyOffline;
         await onlinePromise; // do nothing with result
       } else {
         ctx.online = await onlinePromise;
         if (!ctx.online) {
-          this.app.notifyOffline = true;
+          ctx.app.notifyOffline = true;
         }
       }
       // ctx.log.warn.warn('Offline - some operations may not be available').emit();
 
-      await this.app.setProfile(opts.profile);
+      await ctx.app.setAthleteId(opts.athleteId);
       // ctx.testOpts = this.configureTestOpts(ctx, opts);
       // if (ctx.dryRun) {
       //   ctx.log.warn.warn('RUNNING IN TEST MODE');
@@ -84,21 +80,14 @@ export class RootCmd {
    */
   addOptions(_ctx: Ctx.Context): this {
     const options = [
-      new CliApp.Commander.Option('-P, --profile <urn>', 'Profile URN to use for this run.').default(
-        this.app.opts.urn,
-      ),
-      new CliApp.Commander.Option('--offline', 'Force offline behavior'),
+      new CliApp.Commander.Option('-i, --id <athleteId>', 'Athlete ID. Defaults to your login.'),
+      new CliApp.Commander.Option('--imperial', 'Use imperial units'),
+      new CliApp.Commander.Option('--offline', 'Offline mode'),
     ];
 
     options.forEach((option) => this.cmd.addOption(option));
 
-    this.cmd.addHelpText(
-      'after',
-      [
-        '\nA configuration file is required when using finsync.',
-        'All messages and attachments are downloaded and retained in a database and file folder that is specified in the configuration file.',
-      ].join(' '),
-    );
+    this.cmd.addHelpText('after', ['\nAdd a note about login here.'].join(' '));
     return this;
   }
 }

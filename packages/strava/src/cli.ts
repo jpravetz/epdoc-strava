@@ -3,6 +3,7 @@ import * as path from 'https://deno.land/std@0.224.0/path/mod.ts';
 import { App, AppOpts, StravaConfig } from './app/app.ts';
 import projectConfig from './config/project.settings.json' assert { type: 'json' };
 import { Dict, EpochMilliseconds, readJson } from './fmt.ts';
+import * as CliApp from '@epdoc/cliapp';
 
 const DAY = 24 * 3600 * 1000;
 
@@ -117,3 +118,41 @@ async function main() {
 }
 
 main();
+
+type CliOpts = CliApp.Opts;
+
+/**
+ * The main command line interface.
+ */
+class Cli {
+  /**
+   * Runs the command line interface.
+   * @param ctx The command line context.
+   */
+  async run(ctx: CliApp.ICtx<MsgBuilder, Logger>): Promise<void> {
+    const customPkg: CliApp.DenoPkg = { description: 'Hacienda tools', name: 'main', version: pkg.version };
+    const cmd = new CliApp.Command(customPkg);
+    cmd.init(ctx);
+
+    cmd.hook('preAction', (cmd, _actionCmd) => {
+      const opts = cmd.opts();
+      CliApp.configureLogging(ctx, opts);
+    });
+
+    const processCmd = new HaciendaCR.Convert.Cmd();
+    const schemaCmd = new HaciendaCR.Schema.Cmd();
+
+    cmd.addCommand(await processCmd.init(ctx));
+    cmd.addCommand(await schemaCmd.init(ctx));
+
+    cmd.addLogging(ctx);
+    await cmd.parseOpts();
+    // CliApp.configureLogging(ctx, opts);
+  }
+}
+
+const ctx = new Context();
+const app = new Cli();
+
+// Use CliApp utility run method that adds logging and error handling
+CliApp.run(ctx, () => app.run(ctx));

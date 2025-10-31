@@ -1,129 +1,81 @@
 import type { DateRanges } from '@epdoc/daterange';
-import { FileSpec } from '@epdoc/fs';
-import { type Integer, jsonSerialize } from '@epdoc/type';
-import * as Base from '../base/mod.ts';
-import type { App, Cmd, Ctx, Msg } from '../dep.ts';
-import { Kv, MsgOp } from '../dep.ts';
-import type * as Options from '../options/mod.ts';
+import type * as FS from '@epdoc/fs/fs';
+import type { Ctx } from '../dep.ts';
+import * as Options from '../options/mod.ts';
+import type * as Cmd from '../types.ts';
 
-export const cmdConfig: Options.Config = {
+/**
+ * Defines the CLI interface for the `assign` command.
+ */
+const cmdConfig: Options.Config = {
   options: {
-    archived: true,
     date: true,
-    limit: true,
-    dryRun: true,
-    list: {
-      description: 'List messages that were downloaded. Specify a filename to save messages to a file.',
-      params: '[filename]',
-    },
-    search: true,
-    assign: true,
-    export: { description: 'Export PDF files of messages that could be assigned to a provider.' },
-    update: {
-      description: 'Update CSV files and Google Sheets of messages that could be assigned to a provider.',
-    },
-    refresh: {
-      description:
-        'Retrieve and save messages that are already downloaded (default is to only retrieve new messages).',
-    },
+    output: true,
   },
 };
 
-type FetchOpts = Options.IList & {
-  archived: boolean;
-  date: DateRanges;
-  limit?: Integer;
-  dryRun?: boolean;
-  search?: string[];
-  assign?: boolean;
-  export?: boolean;
-  update?: boolean;
-  refresh?: boolean;
+/**
+ * Holds the parsed options for the `assign` command.
+ */
+type KmlOpts = {
+  date?: DateRanges;
+  output?: FS.FilePath;
 };
 
-export class FetchCmd extends Base.SubCmd {
-  tNow: Date | undefined;
-
+/**
+ * Implements the `assign` command, which is responsible for analyzing messages
+ * and assigning them to providers based on predefined conditions.
+ */
+export class KmlCmd extends Options.BaseSubCmd {
   constructor() {
-    super('fetch', 'Fetch GMail messages within the date range and store under "new".');
+    super(
+      'kml',
+      'Output messages to KML file.',
+    );
   }
 
+  /**
+   * Initializes the `assign` command and its action.
+   *
+   * The command's action performs the following workflow:
+   * 1. Fetches messages to be processed, either from command-line arguments or
+   *    by searching with the provided options.
+   * 2. Analyzes the messages to determine their provider assignments.
+   * 3. Optionally exports associated PDFs.
+   * 4. Optionally lists the results of the analysis.
+   *
+   * @param ctx - The application context.
+   * @returns A promise that resolves to the initialized command object.
+   */
   init(ctx: Ctx.Context): Promise<Cmd.Command> {
     this.cmd.init(ctx)
-      .action(async (opts: FetchOpts) => {
-        await ctx.app.init(ctx, { services: true, db: true, config: true, searches: true, gmail: true });
-        await this.fetch(ctx, opts);
+      .action(async (args: string[], kmlOpts: KmlOpts) => {
+        const msgs: Msg.Messages = await this.getMessages(ctx, args, assignOpts);
+        await ctx.app.init(ctx, { db: true, config: true, services: true });
+
+        const analyzerOpts: MsgOp.AnalyzerOpts = {
+          limit: assignOpts.limit,
+          refresh: assignOpts.refresh,
+          refreshLabels: true,
+        };
+        await msgs.analyze(analyzerOpts);
+
+        if (assignOpts.export) {
+          const exportOpts: Msg.ExportPdfOpts = {
+            overwrite: assignOpts.overwrite,
+            validate: false,
+            dryRun: assignOpts.dryRun,
+          };
+          await msgs.exportPdfs(exportOpts);
+        }
+
+        if (assignOpts.list && !assignOpts.dryRun) {
+          const listOpts: IOutput = {};
+          if (assignOpts.list instanceof FileSpec) listOpts.output = assignOpts.list;
+          await msgs.list(listOpts);
+        }
       });
     this.addOptions(cmdConfig);
     return Promise.resolve(this.cmd);
-  }
-
-  async fetch(ctx: Ctx.Context, opts: FetchOpts): Promise<Kv.Msg[]> {
-    // This will return a manual setting or the last fetch date, if no manual setting
-    const [dateRanges, manualDateRanges] = await ctx.resolveDateRanges(opts.date, Kv.Op.fetch);
-
-    const searchOpts: App.SearchOpts = {
-      archived: opts.archived,
-      dateRanges: dateRanges,
-      limit: opts.limit,
-      search: opts.search,
-      all: opts.refresh,
-    };
-    const tNow = new Date();
-    const msgIds: Msg.Id[] = await ctx.app.search(ctx, searchOpts);
-
-    const line = ctx.log.info.h2('There are').count(msgIds.length);
-    if (opts.refresh) {
-      line.h2('message').h2('to retrieve or refresh').emit();
-    } else {
-      line.h2('new message').h2('to retrieve').emit();
-    }
-
-    if (opts.dryRun === true) {
-      const pl = msgIds.length > 1;
-      ctx.log.info.h2('Would skip downloading').h2(pl ? 'these' : 'this')
-        .count(msgIds.length).h2('message').h2(':').emit();
-      ctx.log.indent();
-      for (const msgId of msgIds) {
-        ctx.log.info.value(msgId).emit();
-      }
-      ctx.log.outdent();
-      return [];
-    }
-
-    const retrieveOpts: MsgOp.FetchOpts = {
-      overwrite: opts.refresh,
-      meta: true,
-      bodyText: ctx.config.prefs?.retrieveBodyText || true,
-      bodyHtml: ctx.config.prefs?.retrieveBodyHtml ?? false,
-      attachments: true,
-      docs: true,
-      labels: true,
-    };
-    const retriever = new MsgOp.Retriever(ctx, msgIds);
-    const kvMsgs = await retriever.retrieveAll(retrieveOpts);
-
-    if (kvMsgs.length && opts.list instanceof FileSpec) {
-      ctx.log.info.h1('Will save').count(msgIds.length).h1('message').h1('to').fs(opts.list)
-        .emit();
-      const s = jsonSerialize(kvMsgs, null, 2);
-      opts.list.ensureParentDir();
-      opts.list.write(s);
-      return kvMsgs;
-    }
-
-    if (!opts.dryRun && !manualDateRanges) {
-      ctx.db.setSetting('lastFetched', tNow);
-      ctx.log.verbose.h2('Saved last fetch date:').date(tNow).emit();
-    }
-
-    if (opts.assign) {
-      const assignOpts: MsgOp.AnalyzerOpts = { refreshLabels: false, dryRun: opts.dryRun, list: opts.list };
-      const analyzer = new MsgOp.Analyzer(ctx);
-      await analyzer.analyzeMsgs(ctx, kvMsgs, assignOpts);
-    }
-    ctx.log.info.section().emit();
-
-    return kvMsgs;
   }
 }

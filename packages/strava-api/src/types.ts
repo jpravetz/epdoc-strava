@@ -7,6 +7,9 @@ export type AccessToken = string;
 export type RefreshToken = string;
 export type ClientId = number;
 
+export type Kilometres = number;
+export type Metres = number;
+
 export type ObjId = number;
 export type EffortId = ObjId;
 export type SegmentId = ObjId;

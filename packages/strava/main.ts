@@ -27,6 +27,6 @@ import * as Strava from './src/mod.ts';
 
 if (import.meta.main) {
   const ctx = new Strava.Ctx.Context();
-  const cli = new Strava.Cmd.Root.Cmd();
+  const cli = new Strava.Cmd.Root.Cmd(ctx);
   await CliApp.run<Strava.Ctx.MsgBuilder, Strava.Ctx.Logger>(ctx, () => cli.init(ctx));
 }

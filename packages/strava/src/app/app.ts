@@ -1,6 +1,10 @@
 import * as FS from '@epdoc/fs/fs';
+import { _ } from '@epdoc/type';
+import { assert } from '@std/assert/assert';
 import { Kml, KmlOpts } from '../../kml/kml.ts';
 import { Bikelog, BikelogOutputOpts } from '../bikelog/bikelog.ts';
+import rawConfig from '../config.json' with { type: 'json' };
+import type * as Ctx from '../context.ts';
 import { Strava } from '../dep.ts';
 import { Dict } from '../fmt.ts';
 import { Activity, ActivityFilter } from '../models/activity.ts';
@@ -11,21 +15,23 @@ import { SummarySegment } from '../segment/summary.ts';
 import { Server } from '../server.ts';
 import { StravaActivityOpts, StravaStreamSource } from '../strava-api.ts';
 import { StravaCreds } from '../strava-creds.ts';
-import type * as App from './types.ts';
+import * as App from './types.ts';
 
 const home = Deno.env.get('HOME');
-const segmentsFile = new FS.File().home('.strava', 'segments.json');
-const credentialsFile = new FS.File().home('.strava', 'credentials.json');
-const userSettingsFile = new FS.File().home('.strava', 'user.settings.json');
+assert(home, 'Environment variable HOME is missing');
+const config: App.ConfigFile = _.deepCopy(rawConfig, { replace: { home: home as string } }) as App.ConfigFile;
 
 const REQ_LIMIT = 10;
 
 export class Main {
+  #api?: Strava.Api<Ctx.MsgBuilder, Ctx.Logger>;
+  #user?: UserSettings;
   private options: App.Opts;
   private _config: App.StravaConfig;
   private strava: unknown;
   private stravaCreds: StravaCreds;
   private kml: Kml;
+  #athleteId?: string;
   private athlete: Athelete;
   private activities: Activity[];
   private segments: SummarySegment[];
@@ -36,39 +42,54 @@ export class Main {
   private starredSegments: SegmentData[] = [];
   public segFile: SegmentFile;
   public bikes: Dict = {};
+  notifyOffline = false;
 
-  constructor(options: App.Opts) {
-    this.options = options;
+  constructor() {
+    // this.options = options;
+  }
+
+  async initClient(): Promise<void> {
+    const clientApp = await new FS.File(config.settings.clientAppFile).readJson<App.ClientApp>();
+    assert(clientApp && clientApp.client, `Invalid app key file ${config.settings.clientAppFile}`);
+    this.#api = new Strava.Api(this.options.config.client, new FS.File(config.settings.credentialsFile));
+    this.#user = await new FS.File(config.settings.userSettingsFile).readJson<App.UserSettings>();
+
+    return Promise.resolve()
+      .then((resp) => {
+        if (this.options.kml) {
+          // Run this first to validate line styles before pinging strava APIs
+          this.kml = new Kml({ verbose: this.options.verbose });
+          if (this.options.config.lineStyles) {
+            this.kml.setLineStyles(this.options.config.lineStyles);
+          }
+        }
+      })
+      .then((resp) => {
+        return this.strava.initCreds();
+      });
+  }
+
+  setAthleteId(id: string): Promise<void> {
+    this.#athleteId = id;
+    return Promise.resolve();
   }
 
   async init(): Promise<void> {
-    await this.readConfig();
-    if (this.options.config && this.options.config.client) {
-      this.strava = new Strava.Api(this.options.config.client, this.options.credentialsFile);
-      return Promise.resolve()
-        .then((resp) => {
-          if (this.options.kml) {
-            // Run this first to validate line styles before pinging strava APIs
-            this.kml = new Kml({ verbose: this.options.verbose });
-            if (this.options.config.lineStyles) {
-              this.kml.setLineStyles(this.options.config.lineStyles);
-            }
-          }
-        })
-        .then((resp) => {
-          return this.strava.initCreds();
-        });
+  }
+
+  async initAuth(ctx: Ctx.Context): Promise<void> {
+    const creds = new Strava.Creds(new FS.File(config.settings.credentialsFile));
+    await creds.read();
+    if (!creds.isValid()) {
+      ctx.log.info.h2('Authorization required. Opening web authorization page').emit();
+      await this.#api!.auth(ctx);
+      const authServer = new Server(this.strava);
+      await authServer.run();
+      ctx.log.info.h2('Closing server').emit();
+      authServer.close();
     } else {
-      return Promise.reject(new Error('No config file or config file does not contain client id and secret'));
+      console.log('Authorization not required');
     }
-  }
-
-  async readConfig(): Promise<void> {
-    this._config = await userSettingsFile.readJson<App.StravaConfig>();
-  }
-
-  get config(): App.StravaConfig {
-    return this._config;
   }
 
   public async run(): Promise<void> {
@@ -350,5 +371,9 @@ export class Main {
     }
     const kml = new Kml(opts);
     return kml.outputData(this.options.kml, this.activities, this.starredSegments);
+  }
+
+  checkInternetAccess(_ctx: Ctx.Context): Promise<boolean> {
+    return Promise.resolve(true);
   }
 }

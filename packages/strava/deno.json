@@ -24,7 +24,10 @@
     "@epdoc/fs": "jsr:@epdoc/fs@^1.0.2",
     "@epdoc/logger": "jsr:@epdoc/logger@^1003.0.0",
     "@epdoc/msgbuilder": "jsr:@epdoc/msgbuilder@^0.0.1",
-    "@epdoc/type": "jsr:@epdoc/type@^1.1.17",
+    "@epdoc/type": "jsr:@epdoc/type@^1.1.18",
+    "@std/assert": "jsr:@std/assert@^1.0.15",
+    "@std/fmt": "jsr:@std/fmt@^1.0.8",
+    "@std/http": "jsr:@std/http@^1.0.21",
     "commander": "npm:commander@^14.0.2"
   },
 
