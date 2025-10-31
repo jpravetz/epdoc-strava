@@ -1,4 +1,4 @@
-import type { Metres } from "../../src/types.ts";
+import type { Metres } from '../../../src/types.ts';
 
 export type StravaBike = {
   id?: string;

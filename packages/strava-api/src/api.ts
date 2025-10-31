@@ -1,8 +1,9 @@
 import type * as FS from '@epdoc/fs/fs';
 import { _, type Dict } from '@epdoc/type';
 import { assert } from '@std/assert';
+import type * as Ctx from './context.ts';
 import { StravaCreds } from './creds.ts';
-import * as Models from './models/mod.ts';
+import * as Schema from './schema/mod.ts';
 import type * as Strava from './types.ts';
 
 const STRAVA_URL_PREFIX = Deno.env.get('STRAVA_URL_PREFIX') || 'https://www.strava.com';
@@ -27,7 +28,7 @@ export type TokenUrlOpts = {
   code?: string;
 };
 
-export class StravaApi {
+export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
   public id: Strava.ClientId;
   public secret: Strava.Secret;
   #fsCredsFile: FS.File;
@@ -45,9 +46,9 @@ export class StravaApi {
     return '[Strava]';
   }
 
-  async initCreds(): Promise<void> {
+  async initCreds(ctx: Ctx.IBare<M, L>): Promise<void> {
     await this.#creds.read();
-    await this.refreshToken();
+    await this.refreshToken(ctx);
   }
 
   get creds(): StravaCreds {
@@ -74,7 +75,7 @@ export class StravaApi {
    * tokens to ~/.strava/credentials.json.
    * @param code
    */
-  async requestToken(code: Strava.Code) {
+  async requestToken(ctx: Ctx.IBare<M, L>, code: Strava.Code) {
     const reqOpts: RequestInit = {
       method: 'POST',
       body: JSON.stringify({
@@ -89,18 +90,19 @@ export class StravaApi {
       },
     };
 
+    const m0 = ctx.log.mark();
     const resp = await fetch(STRAVA_URL.token, reqOpts);
     if (resp && resp.ok) {
-      console.log('Authorization obtained.');
+      ctx.log.info.h2('Authorization obtained.').ewt(m0);
       const data: Strava.StravaCredsData = await resp.json();
+      const m1 = ctx.log.mark();
       await this.creds.write(data);
-      console.log('Credentials written to local storage');
+      ctx.log.info.h2('Credentials written to local storage').path(this.creds.path).ewt(m1);
     }
   }
 
-  private async refreshToken(): Promise<void> {
+  private async refreshToken(ctx: Ctx.IBare<M, L>): Promise<void> {
     if (this.creds.needsRefresh()) {
-      console.log('Refreshing access token...');
       const payload = {
         client_id: this.id,
         client_secret: this.secret,
@@ -117,26 +119,27 @@ export class StravaApi {
         },
       };
 
+      const m0 = ctx.log.mark();
       try {
         const resp = await fetch(STRAVA_URL.token, reqOpts);
         if (!resp.ok) {
           const errorText = await resp.text();
           throw new Error(`Failed to refresh access token: ${resp.status} ${resp.statusText} - ${errorText}`);
         }
-        console.log('Access token refreshed.');
+        ctx.log.info.h2('Refreshed Access Token.').ewt(m0);
         const data: Strava.StravaCredsData = await resp.json();
         await this.creds.write(data);
       } catch (error: unknown) {
         const err = _.asError(error);
-        console.error('Failed to refresh access token:', err.message);
+        ctx.log.info.h2('Failed to refresh access token').err(err).ewt(m0);
         throw err;
       }
     }
     return Promise.resolve();
   }
 
-  public async getAthlete(athleteId?: number): Promise<Models.DetailedAthlete> {
-    await this.refreshToken();
+  public async getAthlete(ctx: Ctx.IBare<M, L>, athleteId?: number): Promise<Schema.DetailedAthlete> {
+    await this.refreshToken(ctx);
     let url = STRAVA_URL.athlete;
     if (_.isNumber(athleteId)) {
       url = url + '/' + athleteId;
@@ -156,11 +159,16 @@ export class StravaApi {
       throw new Error(`Failed to get athlete: ${resp.status} ${resp.statusText} - ${errorText}`);
     }
 
-    const data = await resp.json() as Models.DetailedAthlete;
+    const data = await resp.json() as Schema.DetailedAthlete;
     return data;
   }
 
-  public async getActivities(options: Strava.ActivityOpts): Promise<Dict[]> {
+  /**
+   * Returns a DetailedActivity
+   * @param options
+   * @returns
+   */
+  public async getActivities(ctx: Ctx.IBare<M, L>, options: Strava.ActivityOpts): Promise<Dict[]> {
     await this.refreshToken();
     let url = new URL(STRAVA_URL.activities);
     if (_.isNumber(options.athleteId)) {
@@ -200,8 +208,12 @@ export class StravaApi {
     }
   }
 
-  public async getStarredSegments(accum: Models.SummarySegment[], page: number = 1): Promise<void> {
-    await this.refreshToken();
+  public async getStarredSegments(
+    ctx: Ctx.IBare<M, L>,
+    accum: Schema.SummarySegment[],
+    page: number = 1,
+  ): Promise<void> {
+    await this.refreshToken(ctx);
     const perPage = 200;
     const url = new URL(STRAVA_URL.starred);
     url.searchParams.append('per_page', String(perPage));
@@ -215,52 +227,60 @@ export class StravaApi {
       },
     };
 
+    const m0 = ctx.log.mark();
     const resp = await fetch(url.toString(), reqOpts);
     if (!resp.ok) {
       const errorText = await resp.text();
       throw new Error(`Failed to get starred segments: ${resp.status} ${resp.statusText} - ${errorText}`);
     }
 
-    const data = await resp.json();
+    const data: Schema.SummarySegment[] = await resp.json() as Schema.SummarySegment[];
     if (_.isArray(data)) {
-      console.log(`  Retrieved ${data.length} starred segments for page ${page}`);
-      data.forEach((item: unknown) => { // Use unknown for now, as Segment.Summary.newFromResponseData expects raw data
-        accum.push(item as Models.SummarySegment);
+      ctx.log.info.h2('Retrieved').count(data.length).h2('starred segments for page').value(page).ewt(m0);
+      data.forEach((item: Schema.SummarySegment) => { // Use unknown for now, as Segment.Summary.newFromResponseData expects raw data
+        accum.push(item);
       });
       if (data.length >= perPage) {
-        return this.getStarredSegments(accum, page + 1);
+        return this.getStarredSegments(ctx, accum, page + 1);
       }
       return Promise.resolve();
+    } else {
+      ctx.log.demark(m0);
     }
     throw new Error('Invalid starred segments return value');
   }
 
   public async getStreamCoords(
-    source: Models.StreamKeyType,
+    ctx: Ctx.IBare<M, L>,
+    source: Schema.StreamKeyType,
     objId: Strava.ObjId,
     name: string,
   ): Promise<Strava.Coord[]> {
     const query: Dict = {
-      keys: Models.StreamKeys.LatLng,
+      keys: Schema.StreamKeys.LatLng,
       key_by_type: '',
     };
+    const m0 = ctx.log.mark();
     try {
-      const resp = await this.getStreams(source, objId, query);
+      const resp = await this.getStreams(ctx, source, objId, query);
       if (Array.isArray(resp.latlng)) {
-        console.log(`  Get ${name} Found ${resp.latlng.length} coordinates`);
+        ctx.log.info.h2('Get').value(name).h2('Found').count(resp.latlng.length).h2('coordinates').ewt(m0);
         return resp.latlng;
       }
-      console.log(`  Get ${name} did not contain unknown coordinates`);
+      ctx.log.info.h2('Get').value(name).h2('did not contain unknown coordinates').ewt(m0);
       return [];
     } catch (error: unknown) {
       const err = _.asError(error);
-      console.log(`  Get ${name} coordinates ${err.message}`);
+      ctx.log.error.h2('Get').value(name).h2('coordinates').err(err).ewt(m0);
       return [];
     }
   }
 
-  public async getDetailedActivity(activity: Models.SummaryActivity): Promise<Models.DetailedActivity> {
-    await this.refreshToken();
+  public async getDetailedActivity(
+    ctx: Ctx.IBare<M, L>,
+    activity: Schema.SummaryActivity,
+  ): Promise<Schema.DetailedActivity> {
+    await this.refreshToken(ctx);
     const url = STRAVA_URL.activities + '/' + activity.id;
 
     const reqOpts: RequestInit = {
@@ -280,7 +300,7 @@ export class StravaApi {
 
       const data = await resp.json();
       if (data) {
-        return data as Models.DetailedActivity;
+        return data as Schema.DetailedActivity;
       }
       throw new Error('Invalid DetailedActivity return value');
     } catch (error: unknown) {
@@ -298,11 +318,12 @@ export class StravaApi {
    * @returns {*}
    */
   public async getStreams(
-    source: Models.StreamKeyType,
+    ctx: Ctx.IBare<M, L>,
+    source: Schema.StreamKeyType,
     objId: Strava.SegmentId,
     options: Strava.Query,
   ): Promise<Dict> {
-    await this.refreshToken();
+    await this.refreshToken(ctx);
     const url = new URL(`${STRAVA_API_PREFIX}/${source}/${objId}/streams`);
 
     if (options) {
@@ -338,8 +359,8 @@ export class StravaApi {
     throw new Error(`Invalid data returned for ${source}`);
   }
 
-  public async getSegment(segmentId: Strava.SegmentId): Promise<unknown> { // Changed return type to unknown
-    await this.refreshToken();
+  public async getSegment(ctx: Ctx.IBare<M, L>, segmentId: Strava.SegmentId): Promise<unknown> { // Changed return type to unknown
+    await this.refreshToken(ctx);
     const url = STRAVA_API_PREFIX + '/' + 'segments/' + segmentId;
 
     const reqOpts: RequestInit = {
@@ -359,8 +380,12 @@ export class StravaApi {
     return resp.json(); // Return the JSON data
   }
 
-  public async getSegmentEfforts(segmentId: Strava.SegmentId, params: Strava.Query): Promise<unknown> { // Changed return type to unknown
-    await this.refreshToken();
+  public async getSegmentEfforts(
+    ctx: Ctx.IBare<M, L>,
+    segmentId: Strava.SegmentId,
+    params: Strava.Query,
+  ): Promise<unknown> { // Changed return type to unknown
+    await this.refreshToken(ctx);
     const url = new URL(STRAVA_API_PREFIX + '/' + 'segments/' + segmentId + '/' + 'all_efforts');
 
     if (params) {

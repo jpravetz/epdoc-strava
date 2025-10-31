@@ -1,96 +1,97 @@
+import { DateEx } from '@epdoc/datetime';
 import type { FileSpec } from '@epdoc/fs';
+import { _ } from '@epdoc/type';
 import type * as Ctx from '../context.ts';
-import { StravaApi } from './strava-api';
-import type { SegmentSummary } from './summary.ts';
+import type { Strava } from './dep.ts';
 import type * as Segment from './types.ts';
 
-type SegmentCache = {
-  description?: string;
-  segments: Segment.CacheEntry[];
-};
-
 export class SegmentFile {
-  private fsFile: FileSpec;
-  private api: StravaApi;
-  private lastModified: Date;
-  private segments: SegmentCache = {};
+  #fsFile: FileSpec;
+  #api: Strava.Api;
+  #segments: Map<Segment.Name, Segment.CacheEntry> = new Map();
 
-  constructor(fsFile: FileSpec, stravaApi: StravaApi) {
-    this.fsFile = fsFile;
-    this.api = stravaApi;
+  constructor(fsFile: FileSpec, stravaApi: Strava.Api) {
+    this.#fsFile = fsFile;
+    this.#api = stravaApi;
   }
 
-  public async get(opts: { refresh?: boolean }): Promise<void> {
-    console.log('Retrieving list of starred segments');
-    if (opts.refresh) {
-      return this.getFromServer().then((resp) => {
-        return this.write();
-      });
-    } else {
-      return this.read().catch((err) => {
-        console.log(`  Error reading starred segments from ${fsFile.path}`);
-        console.log('    ' + err.message);
-        return this.getFromServer().then(() => {
-          return this.write();
-        });
-      });
-    }
-  }
-
-  public async read(ctx: Ctx.Context): Promise<void> {
-    const isFile = await this.fsFile.isFile();
-    if (isFile) {
-      const data = await this.fsFile.readJson<{ segments: SegmentCache }>();
-      if (data.segments) {
-        this.segments = data.segments;
+  async get(ctx: Ctx.Context, opts: { refresh?: boolean }): Promise<void> {
+    ctx.log.info.h2('Retrieving list of starred segments').emit();
+    try {
+      if (opts.refresh) {
+        await this.#getFromServer(ctx);
+        await this.write(ctx);
+      } else {
+        await this.read(ctx);
       }
-      ctx.log.info.h2('Read').count(Object.keys(this.segments).length).h2('starred segment').h2('from').path(
-        this.fsFile.path,
-      ).emit();
-    } else {
-      ctx.log.info.h2('File not found').path(this.fsFile.path).emit();
+    } catch (err) {
+      ctx.log.info.h2(`Error reading starred segments from ${this.#fsFile.path}`).ewt(ctx.log.mark());
+      ctx.log.info.h2('    ' + (err as Error).message).ewt(ctx.log.mark());
+      await this.#getFromServer(ctx);
+      await this.write(ctx);
     }
   }
 
-  private async getFromServer(): Promise<void> {
+  async #getFromServer(ctx: Ctx.Context): Promise<void> {
     // this.starredSegments = [];
-    const summarySegments: SegmentSummary[] = [];
-    console.log('  Retrieving starred segments from Strava ...');
-    return this.api
-      .getStarredSegments(summarySegments)
-      .then(() => {
-        // this.segments = resp;
-        console.log('  Found %s starred segments', summarySegments.length);
-        this.segments = {};
-        summarySegments.forEach((seg) => {
-          const newEntry = seg.asCacheEntry();
-          if (this.segments[seg.name]) {
-            console.log(
-              `Segment ${seg.name} (${this.segments[seg.name].distance},${
-                this.segments[seg.name].elevation
-              }) already exists. Overwriting with (${newEntry.distance},${newEntry.elevation}).`,
-            );
-          }
-          this.segments[seg.name] = newEntry;
-        });
-      })
-      .catch((err) => {
-        err.message = 'Starred segments - ' + err.message;
-        throw err;
+    let summarySegments: Strava.Schema.SegmentSummary[] = [];
+    ctx.log.info.h2('Retrieving starred segments from Strava ...').emit();
+    const m0 = ctx.log.mark();
+    try {
+      summarySegments = await this.#api.getStarredSegments(summarySegments);
+      ctx.log.info.h2('Found').count(summarySegments.length).h2('starred segments').ewt(m0);
+      this.#segments = new Map();
+      summarySegments.forEach((seg) => {
+        const newEntry = seg.asCacheEntry();
+        if (this.#segments.has(seg.name)) {
+          const exists = this.#segments.get(seg.name);
+          ctx.log.info.h2('Segment').label(seg.name)
+            .h2(`(${exists!.distance},${exists!.elevation}) already exists.`)
+            .h2(`Overwriting with (${newEntry.distance},${newEntry.elevation}).`)
+            .emit();
+        }
+        this.#segments.set(seg.name, newEntry);
       });
+    } catch (e) {
+      const err = _.asError(e);
+      err.message = 'Starred segments - ' + err.message;
+      throw err;
+    }
   }
 
-  public async write(): Promise<void> {
-    const json: Record<string, any> = {
+  async read(ctx: Ctx.Context): Promise<void> {
+    const m0 = ctx.log.mark();
+    const isFile = await this.#fsFile.isFile();
+    if (isFile) {
+      const data = await this.#fsFile.readJson<Segment.CacheFile>();
+      if (data.segments) {
+        this.#segments = new Map(Object.entries(data.segments));
+      }
+      ctx.log.info.h2('Read').count(this.#segments.size).h2('starred segment')
+        .h2('from').path(this.#fsFile.path).ewt(m0);
+    } else {
+      ctx.log.info.h2('File not found').path(this.#fsFile.path).ewt(m0);
+    }
+  }
+
+  async write(ctx: Ctx.Context): Promise<void> {
+    const json: Record<string, unknown> = {
       description: 'Strava segments',
-      segments: this.segments,
+      lastModified: new DateEx().toISOLocalString(),
+      segments: Object.fromEntries(this.#segments),
     };
-    return writeJson(this.filepath, json).then((resp) => {
-      console.log(`Wrote ${Object.keys(this.segments).length} starred segments to ${this.filepath}`);
-    });
+    const m0 = ctx.log.mark();
+    try {
+      await this.#fsFile.writeJson(json);
+      ctx.log.info.h2('Wrote').count(this.#segments.size)
+        .h2('starred segments to').path(this.#fsFile).ewt(m0);
+    } catch (e) {
+      const err = _.asError(e);
+      ctx.log.error.h2('Error writing to file').err(err).path(this.#fsFile.path).ewt(m0);
+    }
   }
 
-  public getSegment(name: string): SegmentCacheEntry {
-    return this.segments[name];
+  getSegment(name: string): Segment.CacheEntry | undefined {
+    return this.#segments.get(name);
   }
 }

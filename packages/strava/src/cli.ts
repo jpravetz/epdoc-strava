@@ -1,6 +1,6 @@
 import { parse } from 'deno-flags';
 import * as path from 'https://deno.land/std@0.224.0/path/mod.ts';
-import { App, AppOpts, StravaConfig } from './app.ts';
+import { App, AppOpts, StravaConfig } from './app/app.ts';
 import projectConfig from './config/project.settings.json' assert { type: 'json' };
 import { Dict, EpochMilliseconds, readJson } from './fmt.ts';
 

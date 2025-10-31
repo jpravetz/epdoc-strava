@@ -1,4 +1,5 @@
 export { StravaApi as Api } from './api.ts';
+export * as Ctx from './context.ts';
 export { StravaCreds as Creds } from './creds.ts';
-export * from './models/mod.ts';
+export * as Schema from './schema/mod.ts';
 export type * from './types.ts';

@@ -2,8 +2,8 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import * as Strava from './strava/mod.ts'
 
 export class Server {
-  strava: any;
-  server: any;
+  strava: unknown;
+  server: unknown;
   result: {
     resolve?: string;
     reject?: string;

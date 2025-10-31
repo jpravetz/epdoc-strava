@@ -1,102 +1,27 @@
-import * as dateutil from 'dateutil';
-import { Dict, isNumber, isString } from 'epdoc-util';
-import * as fs from 'fs';
-import { DateRange, Main } from './main';
+import { type Dict } from '@epdoc/ActivityType';
+import * as FS from '@epdoc/fs/fs';
+import { isValidActivityType, isValidLineStyle } from './guards.ts';
+import { defaultLineStyles } from './linestyles.ts';
+import { Main } from './main';
 import { Activity } from './models/activity';
 import { SegmentData } from './models/segment-data';
-import {
-  compare,
-  escapeHtml,
-  fieldCapitalize,
-  getDistanceString,
-  getElevationString,
-  getTemperatureString
-} from './util';
-
-export type LineStyle = {
-  color: string;
-  width: number;
-};
-
-export type KmlOpts = {
-  more?: boolean; // include additional description for each activity
-  dates?: DateRange[]; // date range for which to output data
-  imperial?: boolean; // use legacy imperial units
-  activities?: boolean; // output activities
-  segments?: boolean; // output segments
-  segmentsFlatFolder?: boolean;
-  verbose?: number; // log level (0 for none)
-  bikes?: Dict;
-};
-
-export type PlacemarkParams = {
-  description?: string;
-  coordinates?: any[];
-  placemarkId?: string;
-  name?: string;
-  styleName?: string;
-};
+import * as Kml from './types.ts';
 
 const REGEX = {
   color: /^[a-zA-Z0-9]{8}$/,
-  moto: /^moto$/i
-};
-// Colors are aabbggrr
-const defaultLineStyles = {
-  Default: {
-    color: 'C00000FF',
-    width: 4
-  },
-  Ride: {
-    color: 'C00000A0',
-    width: 4
-  },
-  EBikeRide: {
-    color: '7FFF00FF',
-    width: 4
-  },
-  Moto: {
-    color: '6414F03C',
-    width: 4
-  },
-  Segment: {
-    color: 'C0FFFFFF',
-    width: 6
-  },
-  Commute: {
-    color: 'C085037D',
-    width: 4
-  },
-  Hike: {
-    color: 'F0FF0000',
-    width: 4
-  },
-  Walk: {
-    color: 'F0f08000',
-    width: 4
-  },
-  'Stand Up Paddling': {
-    color: 'F0f08000',
-    width: 4
-  },
-  'Nordic Ski': {
-    color: 'F0f08000',
-    width: 4
-  }
+  moto: /^moto$/i,
 };
 
-export class Kml {
+export class KmlMain {
   private main: Main;
-  private opts: KmlOpts;
-  private lineStyles: Record<string, LineStyle> = defaultLineStyles;
-  private verbose: number = 9;
+  private opts: Kml.Opts;
+  private lineStyles: Kml.LineStyleDefs = defaultLineStyles;
   private buffer: string = '';
   private stream: fs.WriteStream;
   private trackIndex: number = 0;
 
-  constructor(opts: KmlOpts = {}) {
+  constructor(opts: Kml.Opts = {}) {
     this.opts = opts;
-    this.verbose = opts.verbose;
   }
 
   get imperial(): boolean {
@@ -107,15 +32,14 @@ export class Kml {
     return this.opts && this.opts.more === true;
   }
 
-  public setLineStyles(styles: Record<string, LineStyle>) {
-    Object.keys(styles).forEach(name => {
-      const style = styles[name];
-      if (style && isString(style.color) && isNumber(style.width) && REGEX.color.test(style.color)) {
+  public setLineStyles(styles: Kml.LineStyleDefs) {
+    Object.entries(styles).forEach(([name, style]) => {
+      if (isValidActivityType(name) && isValidLineStyle(style)) {
         this.lineStyles[name] = style;
       } else {
         console.log(
           'Warning: ignoring line style error for %s. Style must be in form \'{ "color": "C03030C0", "width": 2 }\'',
-          name
+          name,
         );
       }
     });
@@ -123,32 +47,33 @@ export class Kml {
 
   public outputData(filepath: string, activities: Activity[], segments: SegmentData[]): Promise<void> {
     const file = filepath || 'Activities.kml';
+    const fsFile: FS.File = new FS.File(FS.Folder.cwd(), filepath);
 
     return new Promise((resolve, reject) => {
       this.stream = fs.createWriteStream(file);
 
-      this.stream.once('open', fd => {
+      this.stream.once('open', (fd) => {
         this.header()
-          .then(resp => {
+          .then((resp) => {
             if (this.opts.activities) {
               return this.addActivities(activities);
             }
           })
-          .then(resp => {
+          .then((resp) => {
             if (this.opts.segments) {
               return this.addSegments(segments);
             }
           })
-          .then(resp => {
+          .then((resp) => {
             return this.footer();
           })
-          .then(resp => {
+          .then((resp) => {
             this.stream.end();
             console.log('Wrote ' + file);
           });
       });
 
-      this.stream.once('error', err => {
+      this.stream.once('error', (err) => {
         this.stream.end();
         err.message = 'Stream error ' + err.message;
         reject(err);
@@ -171,7 +96,10 @@ export class Kml {
       const dateString = this._dateString();
 
       const indent = 2;
-      this.writeln(indent, '<Folder><name>Activities' + (dateString ? ' ' + dateString : '') + '</name><open>1</open>');
+      this.writeln(
+        indent,
+        '<Folder><name>Activities' + (dateString ? ' ' + dateString : '') + '</name><open>1</open>',
+      );
 
       return activities
         .reduce((promiseChain, activity: Activity) => {
@@ -185,7 +113,7 @@ export class Kml {
             return job;
           });
         }, Promise.resolve())
-        .then(resp => {
+        .then((resp) => {
           this.writeln(indent, '</Folder>');
           return this.flush();
         });
@@ -196,7 +124,7 @@ export class Kml {
   private _dateString() {
     if (Array.isArray(this.opts.dates)) {
       const ad = [];
-      this.opts.dates.forEach(range => {
+      this.opts.dates.forEach((range) => {
         ad.push(range.after + ' to ' + range.before);
       });
       return ad.join(', ');
@@ -214,8 +142,8 @@ export class Kml {
         this.outputSegments(indent, sortedSegments);
       } else {
         const regions = this.getSegmentRegionList(segments);
-        Object.keys(regions).forEach(country => {
-          Object.keys(regions[country]).forEach(state => {
+        Object.keys(regions).forEach((country) => {
+          Object.keys(regions[country]).forEach((state) => {
             this.outputSegments(indent, sortedSegments, country, state);
           });
         });
@@ -234,8 +162,11 @@ export class Kml {
       title += ' for ' + country;
     }
     this.writeln(indent, '<Folder><name>' + title + '</name><open>1</open>');
-    this.writeln(indent + 1, '<description>Efforts for ' + (dateString ? ' ' + dateString : '') + '</description>');
-    segments.forEach(segment => {
+    this.writeln(
+      indent + 1,
+      '<description>Efforts for ' + (dateString ? ' ' + dateString : '') + '</description>',
+    );
+    segments.forEach((segment) => {
       if (!country || (country === segment.country && state == segment.state)) {
         this.outputSegment(indent + 2, segment);
       }
@@ -245,7 +176,7 @@ export class Kml {
 
   private getSegmentRegionList(segments) {
     const regions = {};
-    segments.forEach(segment => {
+    segments.forEach((segment) => {
       regions[segment.country] = regions[segment.country] || {};
       if (segment.state) {
         regions[segment.country][segment.state] = true;
@@ -276,7 +207,7 @@ export class Kml {
       name: t0 + ' - ' + escapeHtml(activity.name),
       description: this._buildActivityDescription(activity),
       styleName: styleName,
-      coordinates: activity.coordinates
+      coordinates: activity.coordinates,
     };
     this.placemark(indent, params);
   }
@@ -286,7 +217,7 @@ export class Kml {
     // console.log(activity.keys)
     if (this.more) {
       const arr = [];
-      Object.keys(activity.keyDict).forEach(field => {
+      Object.keys(activity.keyDict).forEach((field) => {
         // console.log(field + ' = ' + activity[field]);
         if (activity[field]) {
           let key = field;
@@ -303,9 +234,8 @@ export class Kml {
           } else if (field === '_segments' && activity[field].length) {
             const segs = [];
             segs.push('<b>Segments:</b><br><ul>');
-            activity[field].forEach(segment => {
-              const s =
-                '<li><b>' +
+            activity[field].forEach((segment) => {
+              const s = '<li><b>' +
                 segment.name +
                 ':</b> ' +
                 dateutil.formatMS(segment.elapsedTime * 1000, { ms: false, hours: true }) +
@@ -339,7 +269,7 @@ export class Kml {
       name: escapeHtml(segment.name),
       description: this.buildSegmentDescription(segment),
       styleName: 'Segment',
-      coordinates: segment.coordinates
+      coordinates: segment.coordinates,
     };
     this.placemark(indent, params);
   }
@@ -350,7 +280,10 @@ export class Kml {
 
   private _addLineStyle(name, style) {
     this.write(2, '<Style id="StravaLineStyle' + name + '">\n');
-    this.write(3, '<LineStyle><color>' + style.color + '</color><width>' + style.width + '</width></LineStyle>\n');
+    this.write(
+      3,
+      '<LineStyle><color>' + style.color + '</color><width>' + style.width + '</width></LineStyle>\n',
+    );
     this.write(3, '<PolyStyle><color>' + style.color + '</color></PolyStyle>\n');
     this.write(2, '</Style>\n');
   }
@@ -368,7 +301,7 @@ export class Kml {
     this.writeln(indent + 2, '<tessellate>1</tessellate>');
     if (params.coordinates && params.coordinates.length) {
       this.writeln(indent + 2, '<coordinates>');
-      params.coordinates.forEach(coord => {
+      params.coordinates.forEach((coord) => {
         this.write(0, '' + [coord[1], coord[0], 0].join(',') + ' ');
       });
       this.writeln(indent + 2, '</coordinates>');
@@ -381,12 +314,12 @@ export class Kml {
     this.write(0, '<?xml version="1.0" encoding="UTF-8"?>\n');
     this.write(
       1,
-      '<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">'
+      '<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">',
     );
     this.write(1, '<Document>\n');
     this.write(2, '<name>Strava Activities</name>\n');
     this.write(2, '<open>1</open>\n');
-    Object.keys(this.lineStyles).forEach(name => {
+    Object.keys(this.lineStyles).forEach((name) => {
       this._addLineStyle(name, this.lineStyles[name]);
     });
     return this.flush();

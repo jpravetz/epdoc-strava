@@ -1,17 +1,11 @@
 import type { ActivityType, MetaActivity, MetaAthlete } from './types.ts';
 
-export interface SummarySegmentEffort {
-  id: number;
-  elapsed_time: number;
-  start_date: Date;
-  start_date_local: Date;
-  distance: number;
-  is_kom: boolean;
-}
+export type SegmentName = string;
+export type SegmentId = number;
 
 export interface SummarySegment {
-  id: number;
-  name: string;
+  id: SegmentId;
+  name: SegmentName;
   activity_type: ActivityType;
   distance: number;
   average_grade: number;
@@ -28,13 +22,16 @@ export interface SummarySegment {
   athlete_pr_effort: SummarySegmentEffort;
 }
 
-export interface DetailedSegmentEffort {
+export interface SummarySegmentEffort {
   id: number;
   elapsed_time: number;
   start_date: Date;
   start_date_local: Date;
   distance: number;
   is_kom: boolean;
+}
+
+export interface DetailedSegmentEffort extends SummarySegmentEffort {
   name: string;
   activity: MetaActivity;
   athlete: MetaAthlete;

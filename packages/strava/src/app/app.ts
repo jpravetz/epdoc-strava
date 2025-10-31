@@ -1,97 +1,50 @@
-import { BikeDef, Bikelog, BikelogOutputOpts } from './bikelog.ts';
-import { Dict, EpochSeconds } from './fmt.ts';
-import { Kml, KmlOpts, LineStyle } from './kml.ts';
-import { Activity, ActivityFilter } from './models/activity.ts';
-import { Athelete, StravaBike } from './models/athlete.ts';
-import { SegmentName } from './segment/base.ts';
-import { SegmentData } from './segment/data.ts';
-import { SegmentFile } from './segment/file.ts';
-import { SummarySegment } from './segment/summary.ts';
-import { Server } from './server.ts';
-import { StravaActivityOpts, StravaApi, StravaClientConfig, StravaStreamSource } from './strava-api.ts';
-import { StravaCreds } from './strava-creds.ts';
+import * as FS from '@epdoc/fs/fs';
+import { Kml, KmlOpts } from '../../kml/kml.ts';
+import { Bikelog, BikelogOutputOpts } from '../bikelog/bikelog.ts';
+import { Strava } from '../dep.ts';
+import { Dict } from '../fmt.ts';
+import { Activity, ActivityFilter } from '../models/activity.ts';
+import { Athelete, StravaBike } from '../models/athlete.ts';
+import { SegmentData } from '../segment/data.ts';
+import { SegmentFile } from '../segment/file.ts';
+import { SummarySegment } from '../segment/summary.ts';
+import { Server } from '../server.ts';
+import { StravaActivityOpts, StravaStreamSource } from '../strava-api.ts';
+import { StravaCreds } from '../strava-creds.ts';
+import type * as App from './types.ts';
 
-// let _ = require('underscore');
-// let async = require('async');
-// let dateutil = require('dateutil');
-// let Strava = require('../lib/stravaV3api');
-// let Bikelog = require('../lib/bikelog');
+const home = Deno.env.get('HOME');
+const segmentsFile = new FS.File().home('.strava', 'segments.json');
+const credentialsFile = new FS.File().home('.strava', 'credentials.json');
+const userSettingsFile = new FS.File().home('.strava', 'user.settings.json');
 
 const REQ_LIMIT = 10;
 
-export type SegmentConfig = {
-  description: string;
-  alias: Dict;
-  data: Dict;
-};
-
-export type StravaConfig = {
-  description: string;
-  client: StravaClientConfig;
-  athleteId?: number;
-  // accessToken: string;
-  cachePath?: string;
-  lineStyles?: Record<string, LineStyle>;
-  bikes?: BikeDef[];
-  aliases?: Record<SegmentName, SegmentName>;
-};
-
-export type DateRange = {
-  before: EpochSeconds;
-  after: EpochSeconds;
-};
-
-export type AppOpts = {
-  home: string;
-  cwd: string;
-  config?: StravaConfig;
-  auth?: boolean;
-  segmentsFile?: string;
-  refreshStarredSegments?: boolean;
-  credentialsFile?: string;
-  athlete?: string;
-  athleteId?: number;
-  selectedBikes?: string[];
-  friends?: string[];
-  dates?: DateRange[];
-  dateRanges?: DateRange[];
-  more?: boolean;
-  kml?: string;
-  xml?: string;
-  activities?: string[];
-  activityFilter?: string[];
-  commuteOnly?: boolean;
-  nonCommuteOnly?: boolean;
-  imperial?: boolean;
-  segments?: boolean | string;
-  verbose?: number;
-};
-
-export class App {
-  private options: AppOpts;
-  private _config: StravaConfig;
-  private strava: any;
+export class Main {
+  private options: App.Opts;
+  private _config: App.StravaConfig;
+  private strava: unknown;
   private stravaCreds: StravaCreds;
   private kml: Kml;
   private athlete: Athelete;
   private activities: Activity[];
   private segments: SummarySegment[];
   private segmentsFileLastModified: Date;
-  private segmentConfig: Record<string, any>;
-  private gear: any[];
-  private segmentEfforts: Record<string, any>;
+  private segmentConfig: Record<string, unknown>;
+  private gear: unknown[];
+  private segmentEfforts: Record<string, unknown>;
   private starredSegments: SegmentData[] = [];
   public segFile: SegmentFile;
   public bikes: Dict = {};
 
-  constructor(options: AppOpts) {
+  constructor(options: App.Opts) {
     this.options = options;
-    this._config = options.config;
   }
 
-  public async init(): Promise<void> {
+  async init(): Promise<void> {
+    await this.readConfig();
     if (this.options.config && this.options.config.client) {
-      this.strava = new StravaApi(this.options.config.client, this.options.credentialsFile);
+      this.strava = new Strava.Api(this.options.config.client, this.options.credentialsFile);
       return Promise.resolve()
         .then((resp) => {
           if (this.options.kml) {
@@ -110,7 +63,11 @@ export class App {
     }
   }
 
-  public get config(): StravaConfig {
+  async readConfig(): Promise<void> {
+    this._config = await userSettingsFile.readJson<App.StravaConfig>();
+  }
+
+  get config(): App.StravaConfig {
     return this._config;
   }
 
@@ -244,13 +201,13 @@ export class App {
     return this.strava.getActivities(params).then((resp) => {
       const activities = resp as Dict[];
       const results: Activity[] = [];
-      resp.forEach((data) => {
+      activities.forEach((data) => {
         const activity = Activity.newFromResponseData(data, this);
         if (activity) {
           results.push(activity);
         }
       });
-      return Promise.resolve(results);
+      return results;
     });
   }
 
@@ -270,7 +227,7 @@ export class App {
    * Read more information using the DetailedActivity object and add these
    * details to the Activity object.
    */
-  public async addActivitiesDetails(): Promise<any> {
+  public async addActivitiesDetails(): Promise<unknown> {
     console.log(`Retrieving activity details for ${this.activities.length} Activities`);
 
     // Break into chunks to limit to REQ_LIMIT parallel requests.

@@ -11,7 +11,7 @@ export function compare(a: Dict, b: Dict, key: string) {
   return 0;
 }
 
-export type Dict = Record<string, any>;
+export type Dict = Record<string, unknown>;
 
 export type formatHMSOpts = {
   seconds?: boolean;

@@ -2,6 +2,7 @@
   "version": "5",
   "specifiers": {
     "jsr:@epdoc/cliapp@1": "1.0.0",
+    "jsr:@epdoc/daterange@~0.2.15": "0.2.15",
     "jsr:@epdoc/datetime@^2.0.1": "2.0.1",
     "jsr:@epdoc/duration@~0.2.3": "0.2.3",
     "jsr:@epdoc/fs@^1.0.2": "1.0.2",
@@ -32,6 +33,13 @@
         "jsr:@epdoc/type",
         "jsr:@std/fmt@^1.0.8",
         "npm:commander"
+      ]
+    },
+    "@epdoc/daterange@0.2.15": {
+      "integrity": "7dc2a7f1e22d09762be01f3e71b6924d574c1e54815519116102bf9bd2fe1b54",
+      "dependencies": [
+        "jsr:@epdoc/datetime",
+        "jsr:@epdoc/type"
       ]
     },
     "@epdoc/datetime@2.0.1": {
@@ -239,6 +247,7 @@
       "packages/strava": {
         "dependencies": [
           "jsr:@epdoc/cliapp@1",
+          "jsr:@epdoc/daterange@~0.2.15",
           "jsr:@epdoc/datetime@^2.0.1",
           "jsr:@epdoc/duration@~0.2.3",
           "jsr:@epdoc/fs@^1.0.2",
@@ -250,8 +259,11 @@
       },
       "packages/strava-api": {
         "dependencies": [
+          "jsr:@epdoc/datetime@^2.0.1",
           "jsr:@epdoc/duration@~0.2.3",
           "jsr:@epdoc/fs@^1.0.2",
+          "jsr:@epdoc/logger@1003",
+          "jsr:@epdoc/msgbuilder@^0.0.1",
           "jsr:@epdoc/type@^1.1.17",
           "jsr:@std/assert@^1.0.15",
           "jsr:@std/expect@0.212",

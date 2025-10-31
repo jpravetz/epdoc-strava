@@ -20,8 +20,11 @@
     ]
   },
   "imports": {
+    "@epdoc/datetime": "jsr:@epdoc/datetime@^2.0.1",
     "@epdoc/duration": "jsr:@epdoc/duration@^0.2.3",
     "@epdoc/fs": "jsr:@epdoc/fs@^1.0.2",
+    "@epdoc/logger": "jsr:@epdoc/logger@^1003.0.0",
+    "@epdoc/msgbuilder": "jsr:@epdoc/msgbuilder@^0.0.1",
     "@epdoc/type": "jsr:@epdoc/type@^1.1.17",
     "@std/assert": "jsr:@std/assert@^1.0.15",
     "@std/testing/bdd": "jsr:@std/testing@^0.212.0/bdd",

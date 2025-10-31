@@ -1,8 +1,7 @@
 import type { ISODate } from '@epdoc/datetime';
 import type { Seconds } from '@epdoc/duration';
 import { _, type Dict } from '@epdoc/type';
-import { Main } from '../main';
-import * as Segment from '../segment/mod.ts';
+import type * as Schema from '../schema/mod.ts';
 import type * as Strava from '../strava/mod.ts';
 import type { Kilometres, Metres } from '../types.ts';
 import { ActivityDetailed } from './detailed.ts';
@@ -12,50 +11,43 @@ const REGEX = {
   noKmlData: /^(Workout|Yoga|Weight Training)$/i,
 };
 
-export class ActivityBase {
-  public keys: string[] = [
-    'distance',
-    'total_elevation_gain',
-    'moving_time',
-    'elapsed_time',
-    'average_temp',
-    'device_name',
-  ];
-  public keyDict: Dict = {
-    distance: 'distance',
-    totalElevationGain: 'total_elevation_gain',
-    movingTime: 'moving_time',
-    elapsedTime: 'elapsed_time',
-    averageTemp: 'average_temp',
-    deviceName: 'device_name',
-  };
-  public data: Dict = {};
+export class Activity {
+  public data: Schema.SummaryActivity | Schema.DetailedActivity;
+  // public keys: string[] = [
+  //   'distance',
+  //   'total_elevation_gain',
+  //   'moving_time',
+  //   'elapsed_time',
+  //   'average_temp',
+  //   'device_name',
+  // ];
+  // public keyDict: Dict = {
+  //   distance: 'distance',
+  //   totalElevationGain: 'total_elevation_gain',
+  //   movingTime: 'moving_time',
+  //   elapsedTime: 'elapsed_time',
+  //   averageTemp: 'average_temp',
+  //   deviceName: 'device_name',
+  // };
 
-  public description: string;
-  public main: Main;
-  public commute: boolean;
-  // public type: string;
-  public startDate: Date;
-
-  private _asString: string;
-  private _segments: Segment.Data[]; // list of starred segments for this Activity
+  // public main: Main;
   private _coordinates: Strava.Coord[] = []; // will contain the latlng coordinates for the activity
 
-  constructor(data: Dict) {
-    Object.assign(this.data, data);
-    this.startDate = new Date(this.data.start_date);
-    const d = Math.round(this.data.distance / 100) / 10;
-    this._asString = `${this.data.start_date_local.slice(0, 10)}, ${this.type} ${d} km, ${this.name}`;
+  constructor(data: Schema.SummaryActivity | Schema.DetailedActivity) {
+    this.data = data;
   }
 
-  public static newFromResponseData(data: Dict, main: Main): ActivityBase {
-    const result = new ActivityBase(data);
-    result.main = main;
-    return result;
+  update(data: Schema.SummaryActivity | Schema.DetailedActivity) {
+    this.data = data;
+  }
+
+  get startDate(): Date {
+    return new Date(this.data.start_date);
   }
 
   public toString(): string {
-    return this._asString;
+    const d = Math.round(this.data.distance / 100) / 10;
+    return `${this.data.start_date_local.slice(0, 10)}, ${this.type} ${d} km, ${this.name}`;
   }
 
   public get coordinates(): Strava.Coord[] {
@@ -123,52 +115,45 @@ export class ActivityBase {
   }
 
   public hasKmlData(): boolean {
-    if (!isString(this.type) || REGEX.noKmlData.test(this.type)) {
+    if (!_.isString(this.type) || REGEX.noKmlData.test(this.type)) {
       return false;
     }
     return this._coordinates.length > 0 ? true : false;
   }
 
-  /**
-   * Get starred segment_efforts and descriptions from the DetailedActivity
-   * object and add to Acivity.
-   * @param data
-   */
-  public addFromDetailedActivity(data: ActivityDetailed) {
-    console.log('  Adding activity details for ' + this.toString());
-    if (data instanceof ActivityDetailed) {
-      if (_.isString(data.description)) {
-        this._addDescriptionFromDetailedActivity(data);
-      }
-      if (Array.isArray(data.segment_efforts)) {
-        this._addDetailSegmentsFromDetailedActivity(data);
-      }
-    }
-  }
-
-  private _addDescriptionFromDetailedActivity(data: ActivityDetailed): void {
-    if (_.isString(data.description)) {
-      const p: string[] = data.description.split(/\r\n/);
+  getCustomProperties(): Dict {
+    const result: Dict = {};
+    if ('description' in this.data && _.isString(this.data.description)) {
+      const p: string[] = this.data.description.split(/\r?\n/);
       // console.log(p)
       if (p && p.length) {
-        const a = [];
+        const a: string[] = [];
         p.forEach((line) => {
-          const kv = line.match(/^([^\s\=]+)\s*=\s*(.*)+$/);
-          if (kv) {
-            this.keys.push(kv[1]);
-            this[kv[1]] = kv[2];
+          const match = line.match(/^([^\s\=]+)\s*=\s*(.*)+$/);
+          if (match) {
+            const [, key, value] = match;
+            result[key] = value;
           } else {
             a.push(line);
           }
         });
         if (a.length) {
-          this.description = a.join('\n');
+          result.description = a.join('\n');
         }
       } else {
-        this.description = data.description;
+        result.description = this.data.description;
       }
-      this.keys.push('description');
     }
+    return result;
+  }
+
+  getSegments(): Segment.Effort[] {
+    const result: Segment.Effort[] = [];
+    if ('segment_efforts' in this.data && _.isNonEmptyArray(this.data.segment_efforts)) {
+      for (const segEffort in this.data.segment_efforts) {
+      }
+    }
+    return result;
   }
 
   private _addDetailSegmentsFromDetailedActivity(data: ActivityDetailed) {
@@ -221,7 +206,7 @@ export class ActivityBase {
     return false;
   }
 
-  public static compareStartDate(a: ActivityBase, b: ActivityBase) {
+  public static compareStartDate(a: Activity, b: Activity) {
     if (a.startDate < b.startDate) {
       return -1;
     }

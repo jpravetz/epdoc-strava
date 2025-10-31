@@ -8,7 +8,7 @@ import type { Ctx, Seconds } from './dep.ts';
 export class SegmentEffort extends SegmentBase {
   country: string;
   state: string;
-  coordinates: any;
+  coordinates: unknown;
   more: boolean;
   efforts: Dict[];
   elevation_high: number;

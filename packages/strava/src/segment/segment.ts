@@ -22,7 +22,7 @@ export class Segment extends SegmentBase {
     return new Segment(data);
   }
 
-  static isInstance(val: any): val is Segment {
+  static isInstance(val: unknown): val is Segment {
     return val && val.klass === 'Segment';
   }
 }

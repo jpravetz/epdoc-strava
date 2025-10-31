@@ -33,6 +33,10 @@ export class StravaCreds {
     return this.#data.access_token;
   }
 
+  get path(): FS.FilePath {
+    return this.#fsCredsFile.path;
+  }
+
   isValid(t: Seconds = 0): boolean {
     const tLimit: EpochSeconds = Date.now() / 1000 + t;
     return this.#data && this.#data.token_type === 'Bearer' && this.#data.expires_at > tLimit;

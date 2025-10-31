@@ -2,23 +2,24 @@ import * as Log from '@epdoc/logger';
 // Import both CliApp and the Commander object
 import type * as CliApp from '@epdoc/cliapp';
 import type { Console } from '@epdoc/msgbuilder';
+import type { Strava } from './dep.ts';
 
 // deno run -A examples/basic.ts -D
 
-export type MsgBuilder = Console.Builder;
-export type Logger = Log.Std.Logger<MsgBuilder>;
+export type M = Console.Builder;
+export type L = Log.Std.Logger<M>;
 
-const logMgr: Log.Mgr<MsgBuilder> = new Log.Mgr<MsgBuilder>().init();
+const logMgr: Log.Mgr<M> = new Log.Mgr<M>().init();
 logMgr.threshold = 'info';
 
-export class Context implements CliApp.ICtx<MsgBuilder, Logger> {
-  log: Logger;
-  logMgr: Log.Mgr<MsgBuilder>;
+export class Context implements CliApp.ICtx<M, L>, Strava.Ctx.IBare<M, L> {
+  log: L;
+  logMgr: Log.Mgr<M>;
   dryRun: false;
 
   constructor() {
     this.logMgr = logMgr;
-    this.log = logMgr.getLogger<Logger>();
+    this.log = logMgr.getLogger<L>();
   }
 
   close(): Promise<void> {
