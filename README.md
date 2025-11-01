@@ -1,3 +1,9 @@
+# THIS PROJECT HAS MOVED
+
+This project has been moved to [@epdoc/strava](https://github.com/epdoc/strava). The version in this repository is outdated and no longer maintained.
+
+---
+
 # Strava KML File Generator
 
 ## Overview
@@ -12,7 +18,7 @@ information:
   segment](<(http://blog.strava.com/keep-track-of-your-favorites-with-starred-segments-6260/)>)
   times
 - Your efforts for segments that you have [starred in
-  Strava](http://blog.strava.com/keep-track-of-your-favorites-with-starred-segments-6260/),
+  Strava](http://blog.strava.com/keep-track-of-your-favorites-with-starred-segments-6260/),"
   optionally including a description that lists all your times (__NOT WORKING__ )
 
 ## Installation
@@ -150,7 +156,7 @@ object are the full activity name , and the values include KML line color
 Using `--more` will result in a description field being added to the KML activity or segment.
 For activities this will include the following fields (see notes afterwards):
 
-```
+'''
   Distance: 45.28 km
   Total Elevation Gain: 1507 m
   Moving Time: 03:47:41
@@ -159,7 +165,7 @@ For activities this will include the following fields (see notes afterwards):
   Tires: Knobbies
   Wt: 84.5kg
   Description: 1 garter snake, 1 banana slug, 1 deer, lots of California Salamanders
-```
+'''
 
 Notes:
 
