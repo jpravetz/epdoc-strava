@@ -35,9 +35,17 @@ export class Main {
    * Initialize the Strava API client.
    */
   async initClient(): Promise<void> {
-    // For now, create a basic API instance
-    // TODO: Implement proper client initialization with credentials
-    this.#api = new Api.Api();
+    // For now, create a minimal client config
+    // TODO: Load actual client config from file
+    const clientConfig = {
+      id: Deno.env.get('STRAVA_CLIENT_ID') || '',
+      secret: Deno.env.get('STRAVA_CLIENT_SECRET') || '',
+    };
+    
+    // Create a temporary credentials file path
+    const credsFile = new FS.File(home, '.strava', 'credentials.json');
+    
+    this.#api = new Api.Api(clientConfig, credsFile);
   }
 
   /**
@@ -70,7 +78,8 @@ export class Main {
       this.athlete = await this.api.getAthlete(ctx, athleteId);
       ctx.log.info.info(`Retrieved athlete: ${this.athlete.firstname} ${this.athlete.lastname}`).emit();
     } catch (err) {
-      ctx.log.error.error(`Failed to get athlete: ${err.message}`).emit();
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      ctx.log.error.error(`Failed to get athlete: ${errorMsg}`).emit();
       throw err;
     }
   }

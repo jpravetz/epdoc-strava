@@ -25,23 +25,24 @@ export class AthleteCmd extends Options.BaseSubCmd {
         // Display athlete information
         if (ctx.app.athlete) {
           ctx.log.info.h2('Athlete Information').emit();
-          ctx.log.info.kv('Name', `${ctx.app.athlete.firstname} ${ctx.app.athlete.lastname}`).emit();
-          ctx.log.info.kv('ID', ctx.app.athlete.id.toString()).emit();
-          ctx.log.info.kv('City', ctx.app.athlete.city || 'Not specified').emit();
-          ctx.log.info.kv('State', ctx.app.athlete.state || 'Not specified').emit();
-          ctx.log.info.kv('Country', ctx.app.athlete.country || 'Not specified').emit();
+          ctx.log.info.info(`Name: ${ctx.app.athlete.firstname} ${ctx.app.athlete.lastname}`).emit();
+          ctx.log.info.info(`ID: ${ctx.app.athlete.id}`).emit();
+          ctx.log.info.info(`City: ${ctx.app.athlete.city || 'Not specified'}`).emit();
+          ctx.log.info.info(`State: ${ctx.app.athlete.state || 'Not specified'}`).emit();
+          ctx.log.info.info(`Country: ${ctx.app.athlete.country || 'Not specified'}`).emit();
           
           if (ctx.app.athlete.bikes && ctx.app.athlete.bikes.length > 0) {
             ctx.log.info.h3('Bikes').emit();
             ctx.app.athlete.bikes.forEach((bike) => {
-              ctx.log.info.kv(bike.name, `${bike.brand_name} ${bike.model_name || ''} (${bike.id})`).emit();
+              ctx.log.info.info(`${bike.name}: ${bike.id}`).emit();
             });
           }
         } else {
           ctx.log.warn.warn('No athlete information retrieved').emit();
         }
       } catch (err) {
-        ctx.log.error.error(`Failed to retrieve athlete information: ${err.message}`).emit();
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        ctx.log.error.error(`Failed to retrieve athlete information: ${errorMsg}`).emit();
         throw err;
       }
     });
