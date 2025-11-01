@@ -1,8 +1,8 @@
-import { describe, it } from '@std/testing/bdd';
-import { expect } from '@std/expect';
-import { isValidCredData, StravaCreds } from '../src/creds.ts';
-import type { StravaCredsData } from '../src/types.ts';
 import type * as FS from '@epdoc/fs/fs'; // Import FS for type casting
+import { expect } from '@std/expect';
+import { describe, it } from '@std/testing/bdd';
+import { isValidCredData, StravaCreds } from '../src/auth/creds.ts';
+import type { StravaCredsData } from '../src/types.ts';
 
 class MockFile {
   #content: unknown | undefined;

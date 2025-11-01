@@ -1,10 +1,8 @@
-import { duration } from '@epdoc/duration';
 import type * as FS from '@epdoc/fs/fs';
 import { _, type Dict } from '@epdoc/type';
-import { assert } from '@std/assert';
+import type { StravaCreds } from './auth/creds.ts';
 import * as Auth from './auth/mod.ts';
 import type * as Ctx from './context.ts';
-import { StravaCreds } from './creds.ts';
 import * as Schema from './schema/mod.ts';
 import type * as Strava from './types.ts';
 
@@ -19,197 +17,41 @@ const STRAVA_URL = {
   starred: STRAVA_API_PREFIX + '/segments/starred',
 };
 
-export const defaultAuthOpts: Strava.AuthUrlOpts = {
-  scope: 'read_all,activity:read_all,profile:read_all',
-  state: '',
-  approvalPrompt: 'auto',
-  redirectUri: 'https://localhost',
-};
-
 export type TokenUrlOpts = {
   code?: string;
 };
 
 export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
-  public id: Strava.ClientId;
-  public secret: Strava.Secret;
-  #creds: StravaCreds;
+  #auth: Auth.Service<M, L>;
+  // public id: Strava.ClientId;
+  // public secret: Strava.Secret;
+  // #creds: StravaCreds;
 
   constructor(clientConfig: Strava.ClientConfig, credsFile: FS.File) {
-    this.id = clientConfig.id || _.asInt(Deno.env.get('STRAVA_CLIENT_ID'), 10);
-    this.secret = clientConfig.secret || Deno.env.get('STRAVA_CLIENT_SECRET') || '';
+    this.#auth = new Auth.Service(clientConfig, credsFile);
+    // this.id = clientConfig.id || _.asInt(Deno.env.get('STRAVA_CLIENT_ID'), 10);
+    // this.secret = clientConfig.secret || Deno.env.get('STRAVA_CLIENT_SECRET') || '';
     // this.token = opts.token || process.env.STRAVA_ACCESS_TOKEN;
-    this.#creds = new StravaCreds(credsFile);
+    // this.#creds = new StravaCreds(credsFile);
   }
 
   public toString(): string {
     return '[Strava]';
   }
 
-  async initCreds(ctx: Ctx.IBare<M, L>): Promise<void> {
-    await this.#creds.read();
-    await this.#refreshToken(ctx);
+  async init(ctx: Ctx.IContext<M, L>, opts: { force: boolean } = { force: false }): Promise<boolean> {
+    return await this.#auth.init(ctx, opts);
   }
 
   get creds(): StravaCreds {
-    return this.#creds;
+    return this.#auth.creds;
   }
 
-  async auth(ctx: Ctx.IBare<M, L>, opts: { force: boolean } = { force: false }): Promise<boolean> {
-    const m0 = ctx.log.mark();
-    ctx.log.verbose.h2('Authenticating Strava API ...').emit();
-    ctx.log.indent();
-    await this.#refreshToken(ctx, opts.force);
-    const hasAuth = this.#creds.isValid();
-    if (hasAuth && opts.force !== true) {
-      await this.logAuthStatus(ctx);
-      return true;
-    }
-
-    api.registerTokenCallback();
-    const authServer: AuthService<M, L> = new AuthService<M, L>(api);
-    const resp2 = await authServer.runAuthWebPage(ctx);
-    if (!api.credsAreValid()) {
-      throw new Error('Invalid credentials');
-    }
-    ctx.log.info.h2(resp2).emit();
-    return true;
-
-    const service = new Auth.Service<M, L>();
-    return await service.runAuthWebPage(ctx);
+  async #refreshToken(ctx: Ctx.IContext<M, L>, force = false): Promise<void> {
+    await this.#auth.refreshToken(ctx, force);
   }
 
-  public getAuthUrl(options: Strava.AuthUrlOpts = {}): string {
-    assert(this.id, 'A client ID is required.');
-
-    const opts: Strava.AuthUrlOpts = Object.assign(defaultAuthOpts, options);
-
-    return (
-      `${STRAVA_URL.authorize}?client_id=${this.id}` +
-      `&redirect_uri=${encodeURIComponent(opts.redirectUri as string)}` +
-      `&scope=${opts.scope}` +
-      `&state=${opts.state}` +
-      `&approval_prompt=${opts.approvalPrompt}` +
-      `&response_type=code`
-    );
-  }
-
-  /**
-   * Registers a callback to automatically save new tokens when they are refreshed.
-   * The 'tokens' event is emitted by the `OAuth2Client` whenever the access token is refreshed.
-   * @param {Ctx.ICtx<M, L>} [ctx] - The application context for logging.
-   */
-  registerTokenCallback(ctx?: Ctx.ICtx<M, L>): void {
-    this.oauth2Client.on('tokens', async (tokens: g.Auth.Credentials) => {
-      if (this.creds && isCredentials(tokens)) {
-        // store the refresh_token in my database!
-        ctx && ctx.log.trace.text('onToken callback, writing tokens to file').emit();
-        const resp = await this.creds.write(ctx, tokens);
-        if (resp.isError()) {
-          ctx && ctx.log.error.error('Error saving credentials').path(this.creds.path).emit();
-        } else {
-          this.setOAuth2ClientCreds(tokens);
-          ctx && ctx.log.trace
-            .text('Saved new token data from callback')
-            .data({
-              tokens: tokens,
-            })
-            .emit();
-        }
-        // req && req.log.trace.value(JSON.stringify(tokens, null, 2)).emit();
-      } else {
-        ctx && ctx.log.warn
-          .text('Invalid token data on token event')
-          .data({
-            tokens: tokens,
-          })
-          .emit();
-      }
-    });
-  }
-
-  /**
-   * Logs the current authentication status, including token expiration.
-   * @private
-   */
-  private logAuthStatus(ctx: Ctx.ICtx<M, L>): Promise<boolean> {
-    const formatter = duration().narrow.fractionalDigits(3);
-    const delta = this.#creds.expiresAt - new Date().getTime();
-    ctx.log.debug.h2(`Authorization is still valid, expires in ${formatter.format(delta)}`).emit();
-    return Promise.resolve(true);
-  }
-
-  /**
-   * Exchanges code for refresh and access tokens from Strava. Writes these
-   * tokens to ~/.strava/credentials.json.
-   * @param code
-   */
-  async requestToken(ctx: Ctx.IBare<M, L>, code: Strava.Code): Promise<boolean> {
-    const reqOpts: RequestInit = {
-      method: 'POST',
-      body: JSON.stringify({
-        code: code,
-        client_id: this.id,
-        client_secret: this.secret,
-        grant_type: 'authorization_code',
-      }),
-      headers: {
-        'content-type': 'application/json',
-        accept: 'application/json',
-      },
-    };
-
-    const m0 = ctx.log.mark();
-    const resp = await fetch(STRAVA_URL.token, reqOpts);
-    if (resp && resp.ok) {
-      ctx.log.info.h2('Authorization obtained.').ewt(m0);
-      const data: Strava.StravaCredsData = await resp.json();
-      const m1 = ctx.log.mark();
-      await this.creds.write(data);
-      ctx.log.info.h2('Credentials written to local storage').path(this.creds.path).ewt(m1);
-      return true;
-    }
-    return false;
-  }
-
-  async #refreshToken(ctx: Ctx.IBare<M, L>, force = false): Promise<void> {
-    if (this.creds.needsRefresh() || force) {
-      const payload = {
-        client_id: this.id,
-        client_secret: this.secret,
-        grant_type: 'refresh_token',
-        refresh_token: this.creds.refreshToken,
-      };
-
-      const reqOpts: RequestInit = {
-        method: 'POST',
-        body: JSON.stringify(payload),
-        headers: {
-          'content-type': 'application/json',
-          accept: 'application/json',
-        },
-      };
-
-      const m0 = ctx.log.mark();
-      try {
-        const resp = await fetch(STRAVA_URL.token, reqOpts);
-        if (!resp.ok) {
-          const errorText = await resp.text();
-          throw new Error(`Failed to refresh access token: ${resp.status} ${resp.statusText} - ${errorText}`);
-        }
-        ctx.log.info.h2('Refreshed Access Token.').ewt(m0);
-        const data: Strava.StravaCredsData = await resp.json();
-        await this.creds.write(data);
-      } catch (error: unknown) {
-        const err = _.asError(error);
-        ctx.log.info.h2('Failed to refresh access token').err(err).ewt(m0);
-        throw err;
-      }
-    }
-    return Promise.resolve();
-  }
-
-  public async getAthlete(ctx: Ctx.IBare<M, L>, athleteId?: number): Promise<Schema.DetailedAthlete> {
+  public async getAthlete(ctx: Ctx.IContext<M, L>, athleteId?: number): Promise<Schema.DetailedAthlete> {
     await this.#refreshToken(ctx);
     let url = STRAVA_URL.athlete;
     if (_.isNumber(athleteId)) {
@@ -239,7 +81,7 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
    * @param options
    * @returns
    */
-  public async getActivities(ctx: Ctx.IBare<M, L>, options: Strava.ActivityOpts): Promise<Dict[]> {
+  public async getActivities(ctx: Ctx.IContext<M, L>, options: Strava.ActivityOpts): Promise<Dict[]> {
     await this.#refreshToken(ctx);
     let url = new URL(STRAVA_URL.activities);
     if (_.isNumber(options.athleteId)) {
@@ -280,7 +122,7 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
   }
 
   public async getStarredSegments(
-    ctx: Ctx.IBare<M, L>,
+    ctx: Ctx.IContext<M, L>,
     accum: Schema.SummarySegment[],
     page: number = 1,
   ): Promise<void> {
@@ -322,7 +164,7 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
   }
 
   public async getStreamCoords(
-    ctx: Ctx.IBare<M, L>,
+    ctx: Ctx.IContext<M, L>,
     source: Schema.StreamKeyType,
     objId: Strava.ObjId,
     name: string,
@@ -348,7 +190,7 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
   }
 
   public async getDetailedActivity(
-    ctx: Ctx.IBare<M, L>,
+    ctx: Ctx.IContext<M, L>,
     activity: Schema.SummaryActivity,
   ): Promise<Schema.DetailedActivity> {
     await this.#refreshToken(ctx);
@@ -389,7 +231,7 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
    * @returns {*}
    */
   public async getStreams(
-    ctx: Ctx.IBare<M, L>,
+    ctx: Ctx.IContext<M, L>,
     source: Schema.StreamKeyType,
     objId: Strava.SegmentId,
     options: Strava.Query,
@@ -430,7 +272,7 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
     throw new Error(`Invalid data returned for ${source}`);
   }
 
-  public async getSegment(ctx: Ctx.IBare<M, L>, segmentId: Strava.SegmentId): Promise<unknown> { // Changed return type to unknown
+  public async getSegment(ctx: Ctx.IContext<M, L>, segmentId: Strava.SegmentId): Promise<unknown> { // Changed return type to unknown
     await this.#refreshToken(ctx);
     const url = STRAVA_API_PREFIX + '/' + 'segments/' + segmentId;
 
@@ -452,7 +294,7 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
   }
 
   public async getSegmentEfforts(
-    ctx: Ctx.IBare<M, L>,
+    ctx: Ctx.IContext<M, L>,
     segmentId: Strava.SegmentId,
     params: Strava.Query,
   ): Promise<unknown> { // Changed return type to unknown

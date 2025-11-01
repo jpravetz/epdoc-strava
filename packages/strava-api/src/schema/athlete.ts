@@ -1,3 +1,4 @@
+import type { ISODate } from '@epdoc/datetime';
 import type { SummaryGear } from './gear.ts';
 import type { ResourceStateType, SexType, SportType, UnitSystemType } from './types.ts';
 
@@ -30,12 +31,11 @@ export interface SummaryAthlete {
   state: string;
   country: string;
   sex: SexType;
-  // friend: string;
-  // follower: string;
-  // premium: boolean;
   summit: boolean;
-  created_at: Date;
-  updated_at: Date;
+  created_at: ISODate;
+  updated_at: ISODate;
+  weight?: number;
+  badge_type_id?: number;
 }
 
 export interface DetailedAthlete extends SummaryAthlete {
@@ -43,10 +43,11 @@ export interface DetailedAthlete extends SummaryAthlete {
   friend_count: number;
   measurement_preference: UnitSystemType;
   ftp: number;
-  weight: number;
-  clubs: SummaryClub;
-  bikes: SummaryGear;
-  shoes: SummaryGear;
+  clubs: SummaryClub[];
+  bikes: SummaryGear[];
+  shoes: SummaryGear[];
+  email?: string;
+  athlete_type?: number;
 }
 
 export interface Comment {

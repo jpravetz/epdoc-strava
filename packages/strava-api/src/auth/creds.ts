@@ -1,7 +1,7 @@
 import type { EpochSeconds, Seconds } from '@epdoc/duration';
 import * as FS from '@epdoc/fs/fs';
 import { _ } from '@epdoc/type';
-import type { StravaCredsData } from './types.ts';
+import type { StravaCredsData } from '../types.ts';
 
 const defaultStravaToken: StravaCredsData = {
   expires_at: 0,

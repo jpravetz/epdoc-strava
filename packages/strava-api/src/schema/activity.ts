@@ -1,4 +1,4 @@
-import { ISODate } from 'jsr:@epdoc/datetime@^2.0.1';
+import type { ISODate } from '@epdoc/datetime';
 import type * as Consts from './consts.ts';
 import type { SummaryGear } from './gear.ts';
 import type { PhotoSummary } from './photo.ts';
@@ -107,12 +107,24 @@ export interface DetailedActivity extends SummaryActivity {
   gear: SummaryGear;
   calories: number;
   segment_efforts: DetailedSegmentEffort[];
-  device_name: string;
   embed_token: string;
-  splits_metric: Split;
-  splits_standard: Split;
+  splits_metric: Split[];
+  splits_standard: Split[];
   laps: Lap[];
   best_efforts: DetailedSegmentEffort[];
+  device_watts?: boolean;
+  has_heartrate?: boolean;
+  heartrate_mode?: string;
+  max_watts?: number;
+  weighted_average_watts?: number;
+  kilojoules?: number;
+  average_watts?: number;
+  max_heartrate?: number;
+  average_heartrate?: number;
+  suffer_score?: number;
+  segment_leaderboard_opt_out?: boolean;
+  private_note?: string;
+  sport_type?: string;
 }
 
 export interface Lap {
@@ -131,7 +143,7 @@ export interface Lap {
   name: string;
   pace_zone: number;
   split: number;
-  start_date: Date;
-  start_date_local: Date;
+  start_date: ISODate;
+  start_date_local: ISODate;
   total_elevation_gain: number;
 }

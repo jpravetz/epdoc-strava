@@ -28,6 +28,10 @@ export const ActivityName = {
   Windsurf: 'Windsurf',
   Workout: 'Workout',
   Yoga: 'Yoga',
+  Handcycle: 'Handcycle',
+  Velomobile: 'Velomobile',
+  VirtualRun: 'VirtualRun',
+  Wheelchair: 'Wheelchair',
 } as const;
 
 export const ActivityZoneDefs = {

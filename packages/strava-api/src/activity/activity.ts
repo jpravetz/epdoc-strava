@@ -1,8 +1,10 @@
 import type { ISODate } from '@epdoc/datetime';
+import { DateEx } from '@epdoc/datetime'; // Import DateEx
 import type { Seconds } from '@epdoc/duration';
 import { _, type Dict } from '@epdoc/type';
 import type * as Schema from '../schema/mod.ts';
 import type { Coord, Kilometres, Metres } from '../types.ts';
+import type { Filter, SegmentData, SegmentEffort } from './types.ts'; // Corrected import for new types
 
 const REGEX = {
   noKmlData: /^(Workout|Yoga|Weight Training)$/i,
@@ -27,11 +29,22 @@ export class Activity {
   //   deviceName: 'device_name',
   // };
 
-  // public main: Main;
+  // public main: Main; // Removed reference to main
   private _coordinates: Coord[] = []; // will contain the latlng coordinates for the activity
+  #segments: SegmentData[] = []; // Will be declared here
+  #aliases?: Record<string, string>; // Private property for aliases
+  #segmentProvider?: { getSegment(name: string): Schema.SummarySegment | undefined }; // Private property for segment provider
 
-  constructor(data: Schema.SummaryActivity | Schema.DetailedActivity) {
+  constructor(
+    data: Schema.SummaryActivity | Schema.DetailedActivity,
+    opts?: {
+      aliases?: Record<string, string>;
+      segmentProvider?: { getSegment(name: string): Schema.SummarySegment | undefined };
+    },
+  ) {
     this.data = data;
+    this.#aliases = opts?.aliases;
+    this.#segmentProvider = opts?.segmentProvider;
   }
 
   update(data: Schema.SummaryActivity | Schema.DetailedActivity) {
@@ -103,8 +116,8 @@ export class Activity {
     return this.data.start_date_local;
   }
 
-  public get segments(): Segment.Data[] {
-    return this._segments;
+  public get segments(): SegmentData[] { // Updated type to SegmentData[]
+    return this.#segments; // Use private property
   }
 
   public get type(): string {
@@ -148,45 +161,41 @@ export class Activity {
     return result;
   }
 
-  getSegments(): Segment.Effort[] {
-    const result: Segment.Effort[] = [];
-    if ('segment_efforts' in this.data && _.isNonEmptyArray(this.data.segment_efforts)) {
-      for (const segEffort in this.data.segment_efforts) {
-      }
-    }
+  getSegments(): SegmentEffort[] { // Updated type to SegmentEffort[]
+    const result: SegmentEffort[] = [];
+    // TODO: Implement logic to process segment_efforts if needed.
+    // The previous loop was empty and did not populate 'result'.
     return result;
   }
 
-  private _addDetailSegmentsFromDetailedActivity(data: ActivityDetailed) {
-    this._segments = [];
-    data.segment_efforts.forEach((effort) => {
-      if (this.main.segFile) {
-        const seg = this.main.segFile.getSegment(effort.name);
-        if (seg) {
-          console.log('  Found starred segment', effort.name);
-          this._addDetailSegment(effort);
-        }
-      }
-    });
-  }
+  // /** Do not delete */
+  // private _addDetailSegmentsFromDetailedActivity(data: Schema.DetailedActivity) { // Updated type to Schema.DetailedActivity
+  //   this.#segments = []; // Use private property
+  //   data.segment_efforts.forEach((effort: Schema.DetailedSegmentEffort) => { // Explicitly typed effort
+  //     if (this.#segmentProvider) { // Use injected segmentProvider
+  //       const seg = this.#segmentProvider.getSegment(effort.name); // Use injected segmentProvider
+  //       if (seg) {
+  //         console.log('  Found starred segment', effort.name);
+  //         this._addDetailSegment(effort);
+  //       }
+  //     }
+  //   });
+  // }
 
-  private _addDetailSegment(segEffort: Segment.Effort) {
+  private _addDetailSegment(segEffort: SegmentEffort) { // Updated type to SegmentEffort
     let name = String(segEffort.name).trim();
-    const aliases = this.main.config.aliases;
+    const aliases = this.#aliases; // Use injected aliases
     if (aliases && aliases[name]) {
       name = aliases[name];
       segEffort.name = name;
     }
-    const sd: string = dateutil.formatMS(segEffort.elapsed_time * 1000, {
-      ms: false,
-      hours: true,
-    });
+    const sd: string = new DateEx(segEffort.elapsed_time * 1000).format('HH:mm:ss'); // Replaced dateutil.formatMS
     console.log(`  Adding segment '${name}, elapsed time ${sd}`);
     // Add segment to this activity
-    this._segments.push(new Segment.Data(segEffort));
+    this.#segments.push(segEffort); // Removed redundant cast
   }
 
-  public include(filter: Activity.Filter) {
+  public include(filter: Filter) { // Updated type to Filter
     if (
       (!filter.commuteOnly && !filter.nonCommuteOnly) ||
       (filter.commuteOnly && this.commute) ||

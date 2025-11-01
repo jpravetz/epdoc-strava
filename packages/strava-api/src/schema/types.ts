@@ -10,8 +10,10 @@ export type UnitSystemType = typeof Consts.UnitSystem[keyof typeof Consts.UnitSy
 
 export interface MetaAthlete {
   id: number;
+  resource_state: ResourceStateType;
 }
 
 export interface MetaActivity {
   id: number;
+  resource_state: ResourceStateType;
 }

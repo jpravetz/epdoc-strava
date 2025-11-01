@@ -10,6 +10,7 @@ export interface DetailedGear {
   model_name: string;
   frame_type: number;
   description: string;
+  converted_distance?: number;
 }
 
 export interface SummaryGear {
