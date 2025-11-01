@@ -32,17 +32,38 @@ export class Main {
   }
 
   /**
+   * Initialize the application with specified services.
+   * @param ctx - Application context
+   * @param opts - Initialization options specifying what to initialize
+   */
+  async init(ctx: Ctx.Context, opts: { strava?: boolean; config?: boolean } = {}): Promise<void> {
+    if (opts.config) {
+      // TODO: Load configuration files
+    }
+    
+    if (opts.strava) {
+      await this.initClient();
+    }
+  }
+
+  /**
    * Initialize the Strava API client.
    */
   async initClient(): Promise<void> {
-    // For now, create a minimal client config
-    // TODO: Load actual client config from file
-    const clientConfig = {
-      id: Deno.env.get('STRAVA_CLIENT_ID') || '',
-      secret: Deno.env.get('STRAVA_CLIENT_SECRET') || '',
-    };
+    // Check for required environment variables
+    const clientId = Deno.env.get('STRAVA_CLIENT_ID');
+    const clientSecret = Deno.env.get('STRAVA_CLIENT_SECRET');
     
-    // Create a temporary credentials file path
+    if (!clientId || !clientSecret) {
+      throw new Error(
+        'Missing Strava API credentials. Please set:\n' +
+        '  export STRAVA_CLIENT_ID="your_client_id"\n' +
+        '  export STRAVA_CLIENT_SECRET="your_client_secret"\n\n' +
+        'Get credentials at: https://www.strava.com/settings/api'
+      );
+    }
+    
+    const clientConfig = { id: clientId, secret: clientSecret };
     const credsFile = new FS.File(home, '.strava', 'credentials.json');
     
     this.#api = new Api.Api(clientConfig, credsFile);

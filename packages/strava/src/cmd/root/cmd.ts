@@ -33,7 +33,8 @@ export class RootCmd {
     //   }
     // });
     await this.cmd.init(ctx);
-    await ctx.app.initClient();
+    // Individual commands will call ctx.app.init() with what they need
+    // await ctx.app.initClient(); // Removed - let commands initialize what they need
     // await ctx.app.initOpts();
     // await this.app.init(ctx, { config: true });
 

@@ -19,6 +19,9 @@ export class AthleteCmd extends Options.BaseSubCmd {
   init(ctx: Ctx.Context): Promise<Cmd.Command> {
     this.cmd.init(ctx).action(async () => {
       try {
+        // Initialize only what we need for this command
+        await ctx.app.init(ctx, { strava: true });
+        
         // Delegate to app layer for business logic
         await ctx.app.getAthlete(ctx);
         
