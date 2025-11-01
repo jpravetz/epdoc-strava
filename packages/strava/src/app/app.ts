@@ -50,15 +50,34 @@ export class Main {
    * Initialize the Strava API client.
    */
   async initClient(): Promise<void> {
-    // Check for required environment variables
-    const clientId = Deno.env.get('STRAVA_CLIENT_ID');
-    const clientSecret = Deno.env.get('STRAVA_CLIENT_SECRET');
+    let clientId = Deno.env.get('STRAVA_CLIENT_ID');
+    let clientSecret = Deno.env.get('STRAVA_CLIENT_SECRET');
+    
+    // Try loading from config file if env vars not set
+    if (!clientId || !clientSecret) {
+      try {
+        const clientAppFile = new FS.File(home, '.strava', 'clientapp.secrets.json');
+        const clientApp = await clientAppFile.readJson();
+        clientId = clientId || clientApp.client?.id;
+        clientSecret = clientSecret || clientApp.client?.secret;
+      } catch {
+        // Config file doesn't exist or is invalid
+      }
+    }
     
     if (!clientId || !clientSecret) {
       throw new Error(
         'Missing Strava API credentials. Please set:\n' +
         '  export STRAVA_CLIENT_ID="your_client_id"\n' +
         '  export STRAVA_CLIENT_SECRET="your_client_secret"\n\n' +
+        'Or create ~/.strava/clientapp.secrets.json with:\n' +
+        '{\n' +
+        '  "description": "Strava API credentials",\n' +
+        '  "client": {\n' +
+        '    "id": "your_client_id",\n' +
+        '    "secret": "your_client_secret"\n' +
+        '  }\n' +
+        '}\n\n' +
         'Get credentials at: https://www.strava.com/settings/api'
       );
     }
