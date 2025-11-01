@@ -5,7 +5,7 @@ import type { Console } from '@epdoc/msgbuilder';
 import { _ } from '@epdoc/type';
 import pkg from '../deno.json' with { type: 'json' };
 import * as App from './app/mod.ts';
-import type { Strava } from './dep.ts';
+import type { Api } from './dep.ts';
 
 // deno run -A examples/basic.ts -D
 
@@ -15,7 +15,7 @@ export type Logger = Log.Std.Logger<MsgBuilder>;
 const logMgr: Log.Mgr<MsgBuilder> = new Log.Mgr<MsgBuilder>().init();
 logMgr.threshold = 'info';
 
-export class Context implements CliApp.ICtx<MsgBuilder, Logger>, Strava.Ctx.IBare<MsgBuilder, Logger> {
+export class Context implements CliApp.ICtx<MsgBuilder, Logger>, Api.Ctx.IBare<MsgBuilder, Logger> {
   log: Logger;
   logMgr: Log.Mgr<MsgBuilder>;
   dryRun = false;

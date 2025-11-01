@@ -1,7 +1,7 @@
 import type * as CliApp from '@epdoc/cliapp';
 import type * as FS from '@epdoc/fs/fs';
 import type { Dict, Integer } from '@epdoc/type';
-import type { Strava } from '../dep.ts';
+import type { Api } from '../dep.ts';
 import type { LineStyle } from '../kml/mod.ts';
 
 export type SegmentConfig = {
@@ -33,7 +33,7 @@ export type UserSettings = {
   cachePath?: string;
   lineStyles?: Record<string, LineStyle>;
   bikes?: BikeDef[];
-  aliases?: Record<Strava.Schema.SegmentName, Strava.Schema.SegmentName>;
+  aliases?: Record<Api.Schema.SegmentName, Api.Schema.SegmentName>;
 };
 
 export type ConfigFile = {
@@ -61,7 +61,7 @@ export type CredsFile = {
   token_type: 'Bearer';
   expires_at: Integer;
   expires_in: Integer;
-  refresh_token: Strava.RefreshToken;
-  access_token: Strava.AccessToken;
-  athlete: Strava.Schema.SummaryAthlete;
+  refresh_token: Api.RefreshToken;
+  access_token: Api.AccessToken;
+  athlete: Api.Schema.SummaryAthlete;
 };

@@ -14,13 +14,17 @@ const REGEX = {
 
 export class KmlMain {
   private main: Main;
-  private opts: Kml.Opts;
+  private opts: Kml.Opts = {};
   private lineStyles: Kml.LineStyleDefs = defaultLineStyles;
   private buffer: string = '';
   private stream: fs.WriteStream;
   private trackIndex: number = 0;
 
   constructor(opts: Kml.Opts = {}) {
+    this.opts = opts;
+  }
+
+  setOptions(opts: Kml.Opts = {}) {
     this.opts = opts;
   }
 

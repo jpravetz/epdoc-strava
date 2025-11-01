@@ -20,8 +20,10 @@ export interface SummaryClub {
   url: string;
 }
 
+export type AthleteId = number;
+
 export interface SummaryAthlete {
-  id: number;
+  id: AthleteId;
   resource_state: ResourceStateType;
   firstname: string;
   lastname: string;

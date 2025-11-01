@@ -1,5 +1,6 @@
 import * as CliApp from '@epdoc/cliapp';
 import type { Ctx } from '../dep.ts';
+import * as Athlete from '../athlete/mod.ts';
 import * as Kml from '../kml/mod.ts';
 import * as Pdf from '../pdf/mod.ts';
 import * as Cmd from '../types.ts';
@@ -38,9 +39,11 @@ export class RootCmd {
 
     const pdfCmd = new Pdf.Cmd();
     const kmlCmd = new Kml.Cmd();
+    const athleteCmd = new Athlete.Cmd();
 
     this.cmd.addCommand(await pdfCmd.init(ctx));
     this.cmd.addCommand(await kmlCmd.init(ctx));
+    this.cmd.addCommand(await athleteCmd.init(ctx));
 
     this.cmd.hook('preAction', async (cmd, _actionCmd) => {
       const opts = cmd.opts<Root.RootOpts>();

@@ -1,3 +1,4 @@
+export * as Athlete from './athlete/mod.ts';
 export * as Kml from './kml/mod.ts';
 export * as Pdf from './pdf/cmd.ts';
 export * as Root from './root/mod.ts';

@@ -1,10 +1,10 @@
 import { _ } from '@epdoc/type';
-import { Strava } from '../dep.ts';
+import { Api } from '../dep.ts';
 import type { LineStyle } from './types.ts';
 
-export function isValidActivityType(name: string): name is Strava.ActivityType {
+export function isValidActivityType(name: string): name is Api.ActivityType {
   // Define what constitutes a valid ActivityType, for example:
-  return name in Strava.ActivityName || name === 'Default';
+  return name in Api.ActivityName || name === 'Default';
 }
 
 export function isValidLineStyle(val: LineStyle): val is LineStyle {

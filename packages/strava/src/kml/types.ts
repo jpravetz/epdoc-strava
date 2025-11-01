@@ -1,13 +1,13 @@
 import type { DateRanges } from '@epdoc/daterange';
 import type { Dict } from '@epdoc/type';
-import type { Strava } from '../dep.ts';
+import type { Api } from '../dep.ts';
 
 export type LineStyle = {
   color: string;
   width: number;
 };
 
-export type LineStyleDefs = Record<Strava.ActivityType | 'Default', LineStyle>;
+export type LineStyleDefs = Record<Api.ActivityType | 'Default', LineStyle>;
 
 export type Opts = {
   more?: boolean; // include additional description for each activity

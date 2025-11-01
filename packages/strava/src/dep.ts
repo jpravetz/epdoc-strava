@@ -1,1 +1,1 @@
-export * as Strava from '../../strava-api/src/mod.ts';
+export * as Api from '../../strava-api/src/mod.ts';

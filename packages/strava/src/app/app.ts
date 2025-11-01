@@ -1,14 +1,12 @@
 import * as FS from '@epdoc/fs/fs';
-import { _ } from '@epdoc/type';
+import { _, type Dict } from '@epdoc/type';
 import { assert } from '@std/assert/assert';
-import { Kml, KmlOpts } from '../../kml/kml.ts';
 import { Bikelog, BikelogOutputOpts } from '../bikelog/bikelog.ts';
 import rawConfig from '../config.json' with { type: 'json' };
 import type * as Ctx from '../context.ts';
-import { Strava } from '../dep.ts';
-import { Dict } from '../fmt.ts';
+import { Api } from '../dep.ts';
+import * as Kml from '../kml/mod.ts';
 import { Activity, ActivityFilter } from '../models/activity.ts';
-import { Athelete, StravaBike } from '../models/athlete.ts';
 import { SegmentData } from '../segment/data.ts';
 import { SegmentFile } from '../segment/file.ts';
 import { SummarySegment } from '../segment/summary.ts';
@@ -16,6 +14,7 @@ import { Server } from '../server.ts';
 import { StravaActivityOpts, StravaStreamSource } from '../strava-api.ts';
 import { StravaCreds } from '../strava-creds.ts';
 import * as App from './types.ts';
+import { DateRanges } from '@epdoc/daterange';
 
 const home = Deno.env.get('HOME');
 assert(home, 'Environment variable HOME is missing');
@@ -24,15 +23,15 @@ const config: App.ConfigFile = _.deepCopy(rawConfig, { replace: { home: home as 
 const REQ_LIMIT = 10;
 
 export class Main {
-  #api?: Strava.Api<Ctx.MsgBuilder, Ctx.Logger>;
+  #api?: Api.Api<Ctx.MsgBuilder, Ctx.Logger>;
   #user?: UserSettings;
   private options: App.Opts;
   private _config: App.StravaConfig;
   private strava: unknown;
   private stravaCreds: StravaCreds;
-  private kml: Kml;
+  private kml: Kml.Main = new Kml.Main();
   #athleteId?: string;
-  private athlete: Athelete;
+  athlete?: Api.Schema.DetailedAthlete;
   private activities: Activity[];
   private segments: SummarySegment[];
   private segmentsFileLastModified: Date;
@@ -48,10 +47,14 @@ export class Main {
     // this.options = options;
   }
 
+  get api(): Api.Api<Ctx.MsgBuilder, Ctx.Logger> {
+    return this.#api!;
+  }
+
   async initClient(): Promise<void> {
     const clientApp = await new FS.File(config.settings.clientAppFile).readJson<App.ClientApp>();
     assert(clientApp && clientApp.client, `Invalid app key file ${config.settings.clientAppFile}`);
-    this.#api = new Strava.Api(this.options.config.client, new FS.File(config.settings.credentialsFile));
+    this.#api = new Api.Api(this.options.config.client, new FS.File(config.settings.credentialsFile));
     this.#user = await new FS.File(config.settings.userSettingsFile).readJson<App.UserSettings>();
 
     return Promise.resolve()
@@ -78,7 +81,7 @@ export class Main {
   }
 
   async initAuth(ctx: Ctx.Context): Promise<void> {
-    const creds = new Strava.Creds(new FS.File(config.settings.credentialsFile));
+    const creds = new Api.Creds(new FS.File(config.settings.credentialsFile));
     await creds.read();
     if (!creds.isValid()) {
       ctx.log.info.h2('Authorization required. Opening web authorization page').emit();
@@ -173,24 +176,24 @@ export class Main {
       });
   }
 
-  public async getAthlete(): Promise<void> {
-    return this.strava
-      .getAthlete(this.options.athleteId)
-      .then((resp) => {
-        this.athlete = resp;
-        this.registerBikes(this.athlete.bikes);
-      })
-      .catch((err) => {
-        err.message = 'Athlete ' + err.message;
-        throw err;
+  async getAthlete(ctx: Ctx.Context, athleteId?: Api.Schema.AthleteId): Promise<void> {
+    this.athlete = await this.api.getAthlete(ctx, athleteId || this.options.athleteId);
+    await this.#registerBikes(this.athlete.bikes);
+  }
+
+  #registerBikes(bikes: StravaBike[]) {
+    if (bikes && bikes.length) {
+      bikes.forEach((bike) => {
+        this.bikes[bike.id] = bike;
       });
+    }
   }
 
   public logAthlete() {
     console.log('Athlete', JSON.stringify(this.athlete, null, '  '));
   }
 
-  public async getActivities(): Promise<Activity[]> {
+  async getActivities(dateRanges: DateRanges): Promise<Activity[]> {
     let results: Activity[] = [];
     const dateRanges: DateRange[] = Array.isArray(this.options.dates) ? this.options.dates : [];
 
@@ -332,14 +335,6 @@ export class Main {
       .then((resp) => {
         return Promise.resolve();
       });
-  }
-
-  private registerBikes(bikes: StravaBike[]) {
-    if (bikes && bikes.length) {
-      bikes.forEach((bike) => {
-        this.bikes[bike.id] = bike;
-      });
-    }
   }
 
   private saveXml() {

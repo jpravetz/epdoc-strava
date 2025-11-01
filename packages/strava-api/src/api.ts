@@ -51,7 +51,10 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
     await this.#auth.refreshToken(ctx, force);
   }
 
-  public async getAthlete(ctx: Ctx.IContext<M, L>, athleteId?: number): Promise<Schema.DetailedAthlete> {
+  public async getAthlete(
+    ctx: Ctx.IContext<M, L>,
+    athleteId?: Schema.AthleteId,
+  ): Promise<Schema.DetailedAthlete> {
     await this.#refreshToken(ctx);
     let url = STRAVA_URL.athlete;
     if (_.isNumber(athleteId)) {

@@ -1,12 +1,6 @@
 import * as CliApp from '@epdoc/cliapp';
 import pkg from '../../../deno.json' with { type: 'json' };
-import * as Assign from '../assign/mod.ts';
-import * as Clean from '../clean/mod.ts';
 import { App, type Ctx } from '../dep.ts';
-import * as Export from '../export/mod.ts';
-import * as Fetch from '../fetch/mod.ts';
-import * as Interactive from '../interactive/mod.ts';
-import * as List from '../list/mod.ts';
 import * as Cmd from '../types.ts';
 import type * as Root from './types.ts';
 
@@ -44,20 +38,6 @@ export class RootCmd {
     await this.app.initOpts();
     // await this.app.init(ctx, { config: true });
 
-    const fetchCmd = new Fetch.Cmd();
-    const assignCmd = new Assign.Cmd();
-    const exportCmd = new Export.Cmd();
-    const listCmd = new List.Cmd();
-    const cleanCmd = new Clean.Cmd();
-    const interactiveCmd = new Interactive.Cmd();
-
-    this.cmd.addCommand(await interactiveCmd.init(ctx));
-    this.cmd.addCommand(await fetchCmd.init(ctx));
-    this.cmd.addCommand(await assignCmd.init(ctx));
-    this.cmd.addCommand(await exportCmd.init(ctx));
-    this.cmd.addCommand(await listCmd.init(ctx));
-    this.cmd.addCommand(await cleanCmd.init(ctx));
-
     this.cmd.hook('preAction', async (cmd, _actionCmd) => {
       const opts = cmd.opts<Root.RootOpts>();
       CliApp.configureLogging(ctx, opts);
@@ -73,7 +53,6 @@ export class RootCmd {
       }
       // ctx.log.warn.warn('Offline - some operations may not be available').emit();
 
-      await this.app.setProfile(opts.profile);
       // ctx.testOpts = this.configureTestOpts(ctx, opts);
       // if (ctx.dryRun) {
       //   ctx.log.warn.warn('RUNNING IN TEST MODE');
