@@ -1,0 +1,45 @@
+{
+  "name": "@jpravetz/strava-api",
+  "description": "Strava API",
+  "version": "2.0.0-alpha.3",
+  "author": {
+    "name": "James Pravetz",
+    "email": "jpravetz@epdoc.com"
+  },
+  "license": "MIT",
+  "exports": "./src/mod.ts",
+  "tasks": {
+    "test": "deno test -A",
+    "lint": "deno lint",
+    "check": "deno check src/**/*.ts test/**/*.ts"
+  },
+  "tests": {
+    "include": [
+      "test/**/*.ts",
+      "src/**/*.test.ts"
+    ]
+  },
+  "imports": {
+    "@epdoc/datetime": "jsr:@epdoc/datetime@^2.0.1",
+    "@epdoc/duration": "jsr:@epdoc/duration@^0.2.3",
+    "@epdoc/fs": "jsr:@epdoc/fs@^1.0.2",
+    "@epdoc/logger": "jsr:@epdoc/logger@^1003.0.0",
+    "@epdoc/msgbuilder": "jsr:@epdoc/msgbuilder@^0.0.1",
+    "@epdoc/type": "jsr:@epdoc/type@^1.1.17",
+    "@oak/oak": "jsr:@oak/oak@^17.1.6",
+    "@opensrc/deno-open": "jsr:@opensrc/deno-open@^1.0.0",
+    "@std/assert": "jsr:@std/assert@^1.0.15",
+    "@std/testing/bdd": "jsr:@std/testing@^0.212.0/bdd",
+    "@std/expect": "jsr:@std/expect@^0.212.0/expect"
+  },
+  "lint": {
+    "include": [
+      "src",
+      "test"
+    ],
+    "exclude": [
+      "test/tmp",
+      "test/readonly"
+    ]
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "author": {
+    "name": "James Pravetz",
+    "email": "jpravetz@epdoc.com"
+  },
+  "license": "MIT",
+  "tasks": {
+    "test": "deno test -A --unstable-kv",
+    "lint": "deno lint packages/** deno.json",
+    "check": "deno check packages/**"
+  },
+  "workspace": ["./packages/*"],
+  "fmt": {
+    "singleQuote": true,
+    "lineWidth": 110
+  },
+  "lint": {
+    "include": [
+      "packages/strava/src",
+      "packages/strava/test",
+      "packages/strava-api/src",
+      "packages/strava-api/test",
+      "launch.config.json",
+      "deno.json"
+    ],
+    "exclude": [
+      ".vscode"
+    ]
+  }
+}
