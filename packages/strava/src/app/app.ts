@@ -1,20 +1,20 @@
 import * as FS from '@epdoc/fs/fs';
 import { _, type Dict } from '@epdoc/type';
 import { assert } from '@std/assert/assert';
-import { Bikelog, BikelogOutputOpts } from '../bikelog/bikelog.ts';
+import { Bikelog, type BikelogOutputOpts } from '../bikelog/bikelog.ts';
 import rawConfig from '../config.json' with { type: 'json' };
 import type * as Ctx from '../context.ts';
 import { Api } from '../dep.ts';
 import * as Kml from '../kml/mod.ts';
-import { Activity, ActivityFilter } from '../models/activity.ts';
-import { SegmentData } from '../segment/data.ts';
+import { Activity, type ActivityFilter } from '../models/activity.ts';
+import type { SegmentData } from '../segment/data.ts';
 import { SegmentFile } from '../segment/file.ts';
-import { SummarySegment } from '../segment/summary.ts';
+import type { SummarySegment } from '../segment/summary.ts';
 import { Server } from '../server.ts';
-import { StravaActivityOpts, StravaStreamSource } from '../strava-api.ts';
-import { StravaCreds } from '../strava-creds.ts';
-import * as App from './types.ts';
-import { DateRanges } from '@epdoc/daterange';
+import { type StravaActivityOpts, StravaStreamSource } from '../strava-api.ts';
+import type { StravaCreds } from '../strava-creds.ts';
+import type * as App from './types.ts';
+import type { DateRanges } from '@epdoc/daterange';
 
 const home = Deno.env.get('HOME');
 assert(home, 'Environment variable HOME is missing');

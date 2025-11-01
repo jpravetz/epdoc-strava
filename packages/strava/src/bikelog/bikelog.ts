@@ -4,10 +4,10 @@ import type * as BikeLog from './types.ts'
 
 import fs from 'fs';
 import * as builder from 'xmlbuilder';
-import { DateRange } from './main';
-import { Activity } from './models/activity';
-import {, formatHMS, formatMS, julianDate } from './util';
-import { Seconds } from '@epdoc/duration';
+import type { DateRange } from './main';
+import type { Activity } from './models/activity';
+import { formatHMS, formatMS, julianDate } from './util';
+import type { Seconds } from '@epdoc/duration';
 
 const REGEX = {
   moto: /^moto$/i,

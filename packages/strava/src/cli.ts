@@ -1,8 +1,8 @@
 import { parse } from 'deno-flags';
 import * as path from 'https://deno.land/std@0.224.0/path/mod.ts';
-import { App, AppOpts, StravaConfig } from './app/app.ts';
+import { App, type AppOpts, type StravaConfig } from './app/app.ts';
 import projectConfig from './config/project.settings.json' assert { type: 'json' };
-import { Dict, EpochMilliseconds, readJson } from './fmt.ts';
+import { type Dict, type EpochMilliseconds, readJson } from './fmt.ts';
 import * as CliApp from '@epdoc/cliapp';
 
 const DAY = 24 * 3600 * 1000;

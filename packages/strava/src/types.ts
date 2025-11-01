@@ -1,5 +1,5 @@
-import { Api } from './dep.ts';
-import * as Kml from './kml/mod.ts';
+import type { Api } from './dep.ts';
+import type * as Kml from './kml/mod.ts';
 
 export type StravaConfig = {
   description: string;

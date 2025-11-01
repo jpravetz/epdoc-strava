@@ -1,6 +1,6 @@
 // import { serve } from "@std/http/server";
 import * as Strava from './dep.ts'
-import * as Ctx from '../context.ts'
+import type * as Ctx from '../context.ts'
 
 // This is an old implementation that has been replaced by strava-api. Please delete once we have confirmed that this code is no longer needed because we have a working, newer implementation.
 
@@ -38,7 +38,7 @@ export class Server {
           await this.strava.requestToken(code);
           s += '<p>Tokens retrieved. Please return to command line.</p>';
         } catch (err) {
-          s += `<p>Error retrieving tokens: ${err.message}</p>';
+          s += `<p>Error retrieving tokens: ${err.message}</p>`;
         }
       }
       s += '</body></html>';

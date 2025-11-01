@@ -1,5 +1,5 @@
 import type { Seconds } from '@epdoc/duration';
-import { Integer, pad } from '@epdoc/type';
+import { type Integer, pad } from '@epdoc/type';
 
 export function compare(a: Dict, b: Dict, key: string) {
   if (a[key] < b[key]) {

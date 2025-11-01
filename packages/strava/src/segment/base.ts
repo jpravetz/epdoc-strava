@@ -1,4 +1,4 @@
-import * as Schema from '../schema/mod.ts';
+import type * as Schema from '../schema/mod.ts';
 import type { Metres, Seconds } from './dep.ts';
 import type { SegmentSummary } from './summary.ts';
 import type * as Segment from './types.ts';

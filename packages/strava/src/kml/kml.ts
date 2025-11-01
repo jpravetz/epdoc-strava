@@ -1,11 +1,11 @@
-import { type Dict } from '@epdoc/ActivityType';
+import type { Dict } from '@epdoc/ActivityType';
 import * as FS from '@epdoc/fs/fs';
 import { isValidActivityType, isValidLineStyle } from './guards.ts';
 import { defaultLineStyles } from './linestyles.ts';
-import { Main } from './main';
-import { Activity } from './models/activity';
-import { SegmentData } from './models/segment-data';
-import * as Kml from './types.ts';
+import type { Main } from './main';
+import type { Activity } from './models/activity';
+import type { SegmentData } from './models/segment-data';
+import type * as Kml from './types.ts';
 
 const REGEX = {
   color: /^[a-zA-Z0-9]{8}$/,

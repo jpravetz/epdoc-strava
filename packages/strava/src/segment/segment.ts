@@ -1,4 +1,4 @@
-import { StravaCoord, StravaObjId } from './../strava-api';
+import type { StravaCoord, StravaObjId } from './../strava-api';
 import { SegmentBase } from './segment-base';
 
 export type SegmentId = StravaObjId;
