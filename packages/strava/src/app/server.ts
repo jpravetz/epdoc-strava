@@ -22,7 +22,7 @@ export class Server {
 
     ctx.log.info.h2('Server running on port 3000').emit()
     ctx.log.info.h2('Opening browser for authentication...').emit()
-    Deno.run({ cmd: ['open', authUrl] });
+    new Deno.Command('open', { args: [authUrl] }).spawn();
 
     for await (const req of serve({ port: 3000 })) {
       const url = new URL(req.url, `http://${req.headers.get('host')}`);

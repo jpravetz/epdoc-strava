@@ -7,8 +7,8 @@
 // Deno does not support process.env, require, or __dirname.
 // This file is rewritten for Deno/TypeScript.
 
-import { parse } from 'https://deno.land/std@0.224.0/flags/mod.ts';
-import { resolve } from 'https://deno.land/std@0.224.0/path/mod.ts';
+import { parse } from '@std/flags';
+import { resolve } from '@std/path';
 
 // Replace with actual implementations or Deno-compatible libraries as needed
 // import _ from "https://deno.land/x/lodash@4.17.15/lodash.js";

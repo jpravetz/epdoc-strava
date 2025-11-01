@@ -49,7 +49,7 @@ export class KmlCmd extends Options.BaseSubCmd {
    */
   init(ctx: Ctx.Context): Promise<Cmd.Command> {
     this.cmd.init(ctx)
-      .action(async (args: string[], kmlOpts: KmlOpts) => {
+      .action(async (args: string[], _kmlOpts: KmlOpts) => {
         const msgs: Msg.Messages = await this.getMessages(ctx, args, assignOpts);
         await ctx.app.init(ctx, { db: true, config: true, services: true });
 
