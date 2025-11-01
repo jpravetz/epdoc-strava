@@ -356,8 +356,12 @@
           "jsr:@epdoc/msgbuilder@^0.0.1",
           "jsr:@epdoc/type@^1.1.18",
           "jsr:@std/assert@^1.0.15",
+          "jsr:@std/expect@^1.0.8",
+          "jsr:@std/flags@^1.0.8",
           "jsr:@std/fmt@^1.0.8",
           "jsr:@std/http@^1.0.21",
+          "jsr:@std/path@^1.0.8",
+          "jsr:@std/testing@^1.0.8",
           "npm:commander@^14.0.2"
         ]
       },
