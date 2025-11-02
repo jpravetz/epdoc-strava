@@ -145,11 +145,10 @@ export class AuthService<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
       src = this.clientCredSrc.shift();
     }
     if (!isClientCreds(this.client)) {
-      ctx.log.error.error('Missing Strava API credentials').emit();
       const s: string[] = [
-        'Missing Strava API credentials. Please set:',
+        'Please set:',
         '  export STRAVA_CLIENT_ID="your_client_id"',
-        '  export STRAVA_CLIENT_SECRET="your_client_secret"\n',
+        '  export STRAVA_CLIENT_SECRET="your_client_secret"',
         'Or create ~/.strava/clientapp.secrets.json with:',
         '{',
         '  "description": "Strava API credentials",',
@@ -160,7 +159,7 @@ export class AuthService<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
         '}',
         'Get credentials at: https://www.strava.com/settings/api',
       ];
-      ctx.log.info.h2(s.join('\n')).emit();
+      ctx.log.error.error('Missing Strava API credentials.').warn(s.join('\n')).emit();
       throw new Error('Missing Strava API Credentials');
     }
   }

@@ -7,7 +7,10 @@ import type * as App from './types.ts';
 
 const home = Deno.env.get('HOME');
 assert(home, 'Environment variable HOME is missing');
-assert(_.isDict(rawConfig) && 'settings' in rawConfig);
+assert(
+  _.isDict(rawConfig) && 'paths' in rawConfig && _.isDict(rawConfig.paths),
+  'Invalid application configuration',
+);
 const lessRaw = _.deepCopy(rawConfig, { replace: { 'HOME': home }, pre: '${', post: '}' }) as App.ConfigFile;
 const configPaths = lessRaw.paths;
 
