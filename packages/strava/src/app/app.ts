@@ -1,4 +1,3 @@
-import * as FS from '@epdoc/fs/fs';
 import { _ } from '@epdoc/type';
 import { assert } from '@std/assert/assert';
 import rawConfig from '../config.json' with { type: 'json' };
@@ -10,19 +9,20 @@ const home = Deno.env.get('HOME');
 assert(home, 'Environment variable HOME is missing');
 assert(_.isDict(rawConfig) && 'settings' in rawConfig);
 const lessRaw = _.deepCopy(rawConfig, { replace: { 'HOME': home }, pre: '${', post: '}' }) as App.ConfigFile;
-const configFiles = lessRaw.settings;
+const configPaths = lessRaw.paths;
 
 /**
  * Main application class that handles Strava API interactions and business logic.
  * This class is designed to be reusable across different interfaces (CLI, web, etc.).
  */
 export class Main {
-  #api?: Api.Api<Ctx.MsgBuilder, Ctx.Logger>;
+  #api: Api.Api<Ctx.MsgBuilder, Ctx.Logger>;
   athlete?: Api.Schema.DetailedAthlete;
   notifyOffline = false;
 
   constructor() {
     // Initialize with defaults
+    this.#api = new Api.Api(configPaths.userCreds, { path: configPaths.clientCreds, env: true });
   }
 
   /**
@@ -47,50 +47,8 @@ export class Main {
     }
 
     if (opts.strava) {
-      await this.initClient();
+      await this.#api.init(ctx);
     }
-  }
-
-  /**
-   * Initialize the Strava API client.
-   */
-  async initClient(): Promise<void> {
-    let clientId = _.asInt(Deno.env.get('STRAVA_CLIENT_ID'));
-    let clientSecret = Deno.env.get('STRAVA_CLIENT_SECRET');
-
-    // Try loading from config file if env vars not set
-    if (!clientId || !clientSecret) {
-      try {
-        // Load config to get the correct clientAppFile path
-        const clientApp = await new FS.File(configFiles.clientAppFile).readJson<App.ClientApp>();
-        clientId = clientId || clientApp.client?.id;
-        clientSecret = clientSecret || clientApp.client?.secret;
-      } catch {
-        // Config file doesn't exist or is invalid
-      }
-    }
-
-    if (!clientId || !clientSecret) {
-      throw new Error(
-        'Missing Strava API credentials. Please set:\n' +
-          '  export STRAVA_CLIENT_ID="your_client_id"\n' +
-          '  export STRAVA_CLIENT_SECRET="your_client_secret"\n\n' +
-          'Or create ~/.strava/clientapp.secrets.json with:\n' +
-          '{\n' +
-          '  "description": "Strava API credentials",\n' +
-          '  "client": {\n' +
-          '    "id": "your_client_id",\n' +
-          '    "secret": "your_client_secret"\n' +
-          '  }\n' +
-          '}\n\n' +
-          'Get credentials at: https://www.strava.com/settings/api',
-      );
-    }
-
-    const clientConfig = { id: clientId, secret: clientSecret };
-    const credsFile = new FS.File(home, '.strava', 'credentials.json');
-
-    this.#api = new Api.Api(clientConfig, credsFile);
   }
 
   /**
@@ -98,7 +56,7 @@ export class Main {
    * @param _ctx - Application context (unused for now)
    * @returns Promise resolving to true if online
    */
-  async checkInternetAccess(_ctx: Ctx.Context): Promise<boolean> {
+  checkInternetAccess(_ctx: Ctx.Context): Promise<boolean> {
     // Simple internet check - for now just return true
     // TODO: Implement actual internet connectivity check
     return Promise.resolve(true);
@@ -121,7 +79,7 @@ export class Main {
   async getAthlete(ctx: Ctx.Context, athleteId?: Api.Schema.AthleteId): Promise<void> {
     try {
       this.athlete = await this.api.getAthlete(ctx, athleteId);
-      ctx.log.info.info(`Retrieved athlete: ${this.athlete.firstname} ${this.athlete.lastname}`).emit();
+      ctx.log.info.h2(`Retrieved athlete: ${this.athlete.firstname} ${this.athlete.lastname}`).emit();
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       ctx.log.error.error(`Failed to get athlete: ${errorMsg}`).emit();

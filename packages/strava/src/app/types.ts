@@ -38,22 +38,11 @@ export type UserSettings = {
 
 export type ConfigFile = {
   description: string;
-  settings: {
-    segmentsFile: FS.FilePath;
-    userSettingsFile: FS.FilePath;
-    credentialsFile: FS.FilePath;
-    clientAppFile: FS.FilePath;
-  };
-};
-
-export type ClientAppId = Integer;
-export type ClientAppSecret = string;
-
-export type ClientApp = {
-  description: string;
-  client: {
-    id: ClientAppId;
-    secret: ClientAppSecret;
+  paths: {
+    userSegments: FS.FilePath;
+    userSettings: FS.FilePath;
+    userCreds: FS.FilePath;
+    clientCreds: FS.FilePath;
   };
 };
 

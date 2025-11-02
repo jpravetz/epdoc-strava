@@ -1,9 +1,9 @@
 {
   "description": "Bootstrap configuration",
-  "settings": {
-    "clientAppFile": "${HOME}/.strava/clientapp.secrets.json",
-    "segmentsFile": "${HOME}/.strava/segments.json",
-    "userSettingsFile": "${HOME}/.strava/user.settings.json",
-    "credentialsFile": "${HOME}/.strava/credentials.json"
+  "paths": {
+    "clientCreds": "${HOME}/.strava/client.creds.json",
+    "userSegments": "${HOME}/.strava/user.segments.json",
+    "userSettings": "${HOME}/.strava/user.settings.json",
+    "userCreds": "${HOME}/.strava/user.creds.json"
   }
 }

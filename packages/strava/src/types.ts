@@ -3,7 +3,7 @@ import type * as Kml from './kml/mod.ts';
 
 export type StravaConfig = {
   description: string;
-  client: Api.ClientConfig;
+  clClientAppConfigientConfig;
   athleteId?: number;
   // accessToken: string;
   cachePath?: string;
