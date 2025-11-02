@@ -114,14 +114,15 @@ Following GEMINI_GLOBAL.md standards:
 - **@std/testing**: BDD testing framework
 - **@std/expect**: Assertion library
 
-## Current Status: Athlete Command Working ✅
+## Current Status: Athlete Command Infrastructure Complete ✅
 
 ### Recent Achievements (Current Session)
-- **CLI Entry Point**: Created proper main.ts using @epdoc/cliapp framework
-- **Athlete Command**: Successfully working with proper error handling and credential detection
-- **Configuration Loading**: Implemented fallback from environment variables to ~/.strava/clientapp.secrets.json
+- **GEMINI_GLOBAL.md Compliance**: Moved main.ts to workspace root per guidelines
+- **CLI Entry Point**: Created proper main.ts using @epdoc/cliapp framework at correct location
+- **Configuration Loading**: Implemented config.json-based clientAppFile path loading
 - **Monorepo Documentation**: Created clear README.md explaining workspace structure
-- **Authentication Flow**: Command correctly progresses through credential loading and token refresh
+- **Authentication Flow**: Command correctly progresses through credential loading and reaches token refresh
+- **Error Diagnosis**: Identified that clientapp.secrets.json contains placeholder credentials, not real ones
 
 ### Current Implementation Status
 
@@ -132,12 +133,12 @@ Following GEMINI_GLOBAL.md standards:
 - **Athlete Command**: Fully functional with proper credential loading and error messages
 - **Build System**: Proper deno.json configuration with all dependencies
 - **Code Quality**: Significantly reduced lint errors and improved code structure
-- **Main Entry Point**: Proper CLI entry point that works with `deno run -A ./packages/strava/src/main.ts athlete`
+- **Main Entry Point**: Proper CLI entry point at workspace root: `deno run -A ./packages/strava/main.ts athlete`
+- **Configuration System**: Loads clientAppFile path from config.json correctly
 
 #### 🚧 In Progress  
-- **Authentication Flow**: OAuth2 implementation needs real Strava credentials to complete
-- **API Client**: Basic structure exists, successfully attempts token refresh
-- **Configuration**: Config file loading working, needs real credentials for testing
+- **Real Credentials**: Need to find/create real Strava client ID and secret for clientapp.secrets.json
+- **Authentication Flow**: OAuth2 implementation ready, needs valid client credentials to complete
 
 #### ❌ Not Started
 - **Activity Commands**: KML, PDF generation commands need fixing
@@ -145,49 +146,66 @@ Following GEMINI_GLOBAL.md standards:
 - **Testing**: Comprehensive test suite
 - **Documentation**: Updated usage documentation
 
-### Next Immediate Steps
+### Next Immediate Steps (For Next Session)
 
-1. **Add Real Credentials**: User needs to add real Strava client ID/secret to ~/.strava/clientapp.secrets.json
-2. **Complete OAuth Flow**: Test full authentication with real credentials
-3. **Test End-to-End**: Verify athlete information retrieval works completely
-4. **Fix Remaining Commands**: Get KML and PDF commands working
-5. **Add Configuration**: Implement proper user settings loading
+1. **CRITICAL: Find Real Strava Client Credentials**
+   - Search for existing real client ID/secret that were used to create the tokens in ~/.strava/credentials.json
+   - Or create new Strava app at https://www.strava.com/settings/api
+   - Update ~/.strava/clientapp.secrets.json with real values (not placeholders)
+
+2. **Test Complete Authentication Flow**
+   - With real credentials, test if expired tokens refresh properly
+   - If tokens can't refresh, verify web authorization flow launches browser
+   - Confirm athlete command retrieves and displays athlete information
+
+3. **Fix Remaining Commands**
+   - Get KML and PDF commands working
+   - Test all CLI functionality end-to-end
 
 ### Technical Foundation
 
-The athlete command now works end-to-end with:
-- Proper CLI framework integration
-- Configuration file loading (env vars + config files)
+The athlete command infrastructure is complete:
+- Proper CLI framework integration following GEMINI_GLOBAL.md
+- Configuration file loading (config.json → clientAppFile path)
 - Error handling and user-friendly messages
 - Authentication flow that progresses to token refresh
 - Clean separation between CLI and business logic
 
+### Current Issue
+
+The system has valid OAuth tokens (credentials.json) but invalid client app credentials (clientapp.secrets.json has placeholders). The tokens are expired (August 2025) and need refreshing, but this fails because the client credentials are invalid.
+
 ### Command Usage
 
 ```bash
-# From workspace root
-deno run -A ./packages/strava/src/main.ts athlete
+# From workspace root (following GEMINI_GLOBAL.md)
+deno run -A ./packages/strava/main.ts athlete
 
 # Shows help
-deno run -A ./packages/strava/src/main.ts --help
+deno run -A ./packages/strava/main.ts --help
 ```
 
-### Configuration Required
+### Files That Need Real Credentials
 
-Create `~/.strava/clientapp.secrets.json`:
+Update `~/.strava/clientapp.secrets.json`:
 ```json
 {
   "description": "Strava API credentials",
   "client": {
-    "id": "your_actual_client_id",
-    "secret": "your_actual_client_secret"
+    "id": "REAL_CLIENT_ID_HERE",
+    "secret": "REAL_CLIENT_SECRET_HERE"
   }
 }
 ```
 
-Get credentials at: https://www.strava.com/settings/api
+### Key Files Modified This Session
+- `packages/strava/main.ts` - Moved to workspace root, proper CLI entry point
+- `packages/strava/src/app/app.ts` - Fixed to load clientAppFile from config.json
+- `README.md` - Created monorepo documentation
+- `OLD_README.md` - Renamed original README
 
 ---
 
 **Current Branch**: `feature/athlete-implementation`  
-**Status**: Athlete command working, ready for real credentials testing
+**Status**: Infrastructure complete, needs real Strava client credentials to function
+**Next Session Goal**: Find/create real client credentials and test complete authentication flow

@@ -22,10 +22,10 @@ CLI application built on `@epdoc/cliapp` providing:
 
 ```bash
 # Run from workspace root
-deno run -A ./packages/strava/src/main.ts --help
+deno run -A ./packages/strava/main.ts --help
 
 # Or use the athlete command
-deno run -A ./packages/strava/src/main.ts athlete
+deno run -A ./packages/strava/main.ts athlete
 ```
 
 ## Development

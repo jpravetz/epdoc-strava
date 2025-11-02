@@ -1,32 +1,30 @@
-import * as CliApp from '@epdoc/cliapp';
-import * as Strava from './src/mod.ts';
-
+#!/usr/bin/env -S deno run -A
 /**
- * Executes the main functionality of the FinSync application based on the provided context and options.
- *
- * @param ctx - The context object containing necessary configurations and state for the application.
- * @param opts - Command line options that dictate the operations to be performed.
- * @param appOpts - Application-specific options for initializing the FinSync application.
- * @returns A promise that resolves when the execution is complete.
- *
- * The function performs the following operations:
- * - Initializes the FinSync application.
- * - Logs the number of messages in the local cache.
- * - Initializes Gmail if certain options are provided.
- * - Lists various entities (searches, providers, labels, levels) based on the options.
- * - Validates provider URNs and logs any invalid ones.
- * - Updates date ranges from the state.
- * - Cleans or purges data if specified in the options.
- * - Fetches and analyzes new messages or analyzes existing messages based on the options.
- * - Extracts invoices (facturas) if specified in the options.
- * - Lists messages if specified in the options.
- * - Saves the application state at the end of execution.
- *
- * @throws {SilentError} If invalid provider names are found.
+ * Main entry point for the Strava CLI application.
+ * Uses @epdoc/cliapp framework for command structure.
  */
 
-if (import.meta.main) {
-  const ctx = new Strava.Ctx.Context();
-  const cli = new Strava.Cmd.Root.Cmd(ctx);
-  await CliApp.run<Strava.Ctx.MsgBuilder, Strava.Ctx.Logger>(ctx, () => cli.init(ctx));
+import * as CliApp from '@epdoc/cliapp';
+import { Context } from './src/context.ts';
+import * as Root from './src/cmd/root/mod.ts';
+
+/**
+ * Main CLI application class.
+ */
+class Cli {
+  /**
+   * Runs the command line interface.
+   * @param ctx The command line context.
+   */
+  async run(ctx: Context): Promise<void> {
+    const rootCmd = new Root.Cmd(ctx);
+    await rootCmd.init(ctx);
+  }
 }
+
+// Initialize context and run CLI
+const ctx = new Context();
+const app = new Cli();
+
+// Use CliApp utility run method that adds logging and error handling
+CliApp.run(ctx, () => app.run(ctx));

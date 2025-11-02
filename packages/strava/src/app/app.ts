@@ -56,7 +56,12 @@ export class Main {
     // Try loading from config file if env vars not set
     if (!clientId || !clientSecret) {
       try {
-        const clientAppFile = new FS.File(home, '.strava', 'clientapp.secrets.json');
+        // Load config to get the correct clientAppFile path
+        const configFile = new FS.File(Deno.cwd(), 'packages', 'strava', 'src', 'config.json');
+        const config = await configFile.readJson();
+        const clientAppPath = config.settings.clientAppFile.replace('${HOME}', home);
+        
+        const clientAppFile = new FS.File(clientAppPath);
         const clientApp = await clientAppFile.readJson();
         clientId = clientId || clientApp.client?.id;
         clientSecret = clientSecret || clientApp.client?.secret;
