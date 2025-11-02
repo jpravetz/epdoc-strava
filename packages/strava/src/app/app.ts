@@ -1,11 +1,16 @@
 import * as FS from '@epdoc/fs/fs';
-import { _, type Dict } from '@epdoc/type';
+import { _ } from '@epdoc/type';
 import { assert } from '@std/assert/assert';
+import rawConfig from '../config.json' with { type: 'json' };
 import type * as Ctx from '../context.ts';
 import { Api } from '../dep.ts';
+import type * as App from './types.ts';
 
 const home = Deno.env.get('HOME');
 assert(home, 'Environment variable HOME is missing');
+assert(_.isDict(rawConfig) && 'settings' in rawConfig);
+const lessRaw = _.deepCopy(rawConfig, { replace: { 'HOME': home }, pre: '${', post: '}' }) as App.ConfigFile;
+const configFiles = lessRaw.settings;
 
 /**
  * Main application class that handles Strava API interactions and business logic.
@@ -40,7 +45,7 @@ export class Main {
     if (opts.config) {
       // TODO: Load configuration files
     }
-    
+
     if (opts.strava) {
       await this.initClient();
     }
@@ -50,46 +55,41 @@ export class Main {
    * Initialize the Strava API client.
    */
   async initClient(): Promise<void> {
-    let clientId = Deno.env.get('STRAVA_CLIENT_ID');
+    let clientId = _.asInt(Deno.env.get('STRAVA_CLIENT_ID'));
     let clientSecret = Deno.env.get('STRAVA_CLIENT_SECRET');
-    
+
     // Try loading from config file if env vars not set
     if (!clientId || !clientSecret) {
       try {
         // Load config to get the correct clientAppFile path
-        const configFile = new FS.File(Deno.cwd(), 'packages', 'strava', 'src', 'config.json');
-        const config = await configFile.readJson();
-        const clientAppPath = config.settings.clientAppFile.replace('${HOME}', home);
-        
-        const clientAppFile = new FS.File(clientAppPath);
-        const clientApp = await clientAppFile.readJson();
+        const clientApp = await new FS.File(configFiles.clientAppFile).readJson<App.ClientApp>();
         clientId = clientId || clientApp.client?.id;
         clientSecret = clientSecret || clientApp.client?.secret;
       } catch {
         // Config file doesn't exist or is invalid
       }
     }
-    
+
     if (!clientId || !clientSecret) {
       throw new Error(
         'Missing Strava API credentials. Please set:\n' +
-        '  export STRAVA_CLIENT_ID="your_client_id"\n' +
-        '  export STRAVA_CLIENT_SECRET="your_client_secret"\n\n' +
-        'Or create ~/.strava/clientapp.secrets.json with:\n' +
-        '{\n' +
-        '  "description": "Strava API credentials",\n' +
-        '  "client": {\n' +
-        '    "id": "your_client_id",\n' +
-        '    "secret": "your_client_secret"\n' +
-        '  }\n' +
-        '}\n\n' +
-        'Get credentials at: https://www.strava.com/settings/api'
+          '  export STRAVA_CLIENT_ID="your_client_id"\n' +
+          '  export STRAVA_CLIENT_SECRET="your_client_secret"\n\n' +
+          'Or create ~/.strava/clientapp.secrets.json with:\n' +
+          '{\n' +
+          '  "description": "Strava API credentials",\n' +
+          '  "client": {\n' +
+          '    "id": "your_client_id",\n' +
+          '    "secret": "your_client_secret"\n' +
+          '  }\n' +
+          '}\n\n' +
+          'Get credentials at: https://www.strava.com/settings/api',
       );
     }
-    
+
     const clientConfig = { id: clientId, secret: clientSecret };
     const credsFile = new FS.File(home, '.strava', 'credentials.json');
-    
+
     this.#api = new Api.Api(clientConfig, credsFile);
   }
 

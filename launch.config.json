@@ -1,0 +1,15 @@
+{
+  "$schema": "https://raw.githubusercontent.com/epdoc/tools/master/packages/launchgen/schemas/launch.schema.json",
+  "launch": {
+    "groups": [],
+    "port": 9229,
+    "console": "internalConsole",
+    "excludes": [
+      "node_modules/**",
+      ".git/**",
+      "**/.*",
+      "**/.*/**"
+    ],
+    "runtimeExecutable": "/Users/jpravetz/.deno/bin/deno"
+  }
+}

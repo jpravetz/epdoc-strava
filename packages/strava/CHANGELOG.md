@@ -1,0 +1,5 @@
+# Changelog for @jpravetz/strava
+
+All notable changes to this project will be documented in this file.
+
+## [2.0.0-alpha.2] - 2025-11-01,,- Working on loading credentials
