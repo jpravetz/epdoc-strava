@@ -1,8 +1,9 @@
 import { DateEx } from '@epdoc/datetime';
 import type { EpochMilliseconds, EpochSeconds } from '@epdoc/duration';
 import { duration } from '@epdoc/duration';
-import type * as FS from '@epdoc/fs/fs';
+import * as FS from '@epdoc/fs/fs';
 import { _ } from '@epdoc/type';
+import type { ClientCreds } from '@jpravetz/strava-api';
 import type { Context as OakContext } from '@oak/oak';
 import { Application } from '@oak/oak/application';
 import { Router } from '@oak/oak/router';
@@ -37,6 +38,10 @@ type Response = {
 
 type cbFunction = () => void;
 
+function isClientCreds(val: unknown): val is Strava.ClientCreds {
+  return !!(_.isDict(val) && _.isPosInteger(val.id) && _.isString(val.client));
+}
+
 /**
  * Manages the OAuth2 authentication flow by launching a local web server
  * and opening the user's browser to grant permissions.
@@ -50,8 +55,10 @@ type cbFunction = () => void;
  * 6. The local server is shut down, and the flow completes.
  */
 export class AuthService<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
-  id: Strava.ClientId;
-  secret: Strava.Secret;
+  client?: ClientCreds;
+  id?: Strava.ClientId;
+  secret?: Strava.ClientSecret;
+  clientCredSrc: Strava.ClientCredSrc[];
   #creds: StravaCreds;
   /** Controller to gracefully shut down the Oak server. */
   abortController: AbortController | undefined;
@@ -66,9 +73,10 @@ export class AuthService<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
   /**
    * The AuthService now expects the StravaApi instance to be available via `ctx.app`.
    */
-  constructor(clientConfig: Strava.ClientConfig, credsFile: FS.File) {
-    this.id = clientConfig.id || _.asInt(Deno.env.get('STRAVA_CLIENT_ID'), 10);
-    this.secret = clientConfig.secret || Deno.env.get('STRAVA_CLIENT_SECRET') || '';
+  constructor(clientCreds: Strava.ClientCredSrc | Strava.ClientCredSrc[], credsFile: FS.FilePath) {
+    this.clientCredSrc = _.isArray(clientCreds) ? clientCreds : [clientCreds];
+    // this.id = clientConfig.id || _.asInt(Deno.env.get('STRAVA_CLIENT_ID'), 10);
+    // this.secret = clientConfig.secret || Deno.env.get('STRAVA_CLIENT_SECRET') || '';
     this.#creds = new StravaCreds(credsFile);
   }
 
@@ -88,6 +96,50 @@ export class AuthService<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
     const result = await this.runAuthWebPage(ctx as Ctx.IContext<M, L>, m0);
     ctx.log.outdent();
     return result;
+  }
+
+  async initClientCreds(ctx: Ctx.IContext<M, L>) {
+    let src: Strava.ClientCredSrc | undefined = this.clientCredSrc.shift();
+    while (!isClientCreds(this.client) && src) {
+      if ('creds' in src && isClientCreds(src.creds)) {
+        this.client = src.creds;
+      } else if ('path' in src) {
+        const clientConfig = await new FS.File(src.path).readJson<Strava.ClientConfig>();
+        if (clientConfig && isClientCreds(clientConfig.client)) {
+          this.client = clientConfig.client;
+        }
+      } else if ('env' in src) {
+        const sId: string = (src.env === true) ? 'STRAVA_CLIENT_ID' : src.env.id;
+        const sSecret: string = (src.env === true) ? 'STRAVA_CLIENT_SECRET' : src.env.secret;
+        if (_.isString(sId) && _.isString(sSecret)) {
+          const id = _.asInt(Deno.env.get(sId));
+          const secret = Deno.env.get(sSecret);
+          if (_.isString(secret) && _.isPosInteger(id)) {
+            this.client = { id: id, secret: secret };
+          }
+        }
+      }
+      src = this.clientCredSrc.shift();
+    }
+    if (!isClientCreds(this.client)) {
+      ctx.log.error.error('Missing Strava API credentials').emit();
+      const s: string[] = [
+        'Missing Strava API credentials. Please set:',
+        '  export STRAVA_CLIENT_ID="your_client_id"',
+        '  export STRAVA_CLIENT_SECRET="your_client_secret"\n',
+        'Or create ~/.strava/clientapp.secrets.json with:',
+        '{',
+        '  "description": "Strava API credentials",',
+        '  "client": {',
+        '    "id": "your_client_id",',
+        '    "secret": "your_client_secret"',
+        '  }',
+        '}',
+        'Get credentials at: https://www.strava.com/settings/api',
+      ];
+      ctx.log.info.h2(s.join('\n')).emit();
+      throw new Error('Missing Strava API Credentials');
+    }
   }
 
   get creds(): StravaCreds {

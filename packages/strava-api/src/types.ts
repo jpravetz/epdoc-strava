@@ -1,11 +1,10 @@
 import type { EpochSeconds } from '@epdoc/duration';
-import type { Dict } from '@epdoc/type';
+import type * as FS from '@epdoc/fs/fs';
+import type { Dict, Integer } from '@epdoc/type';
 
 export type Code = string;
-export type Secret = string;
 export type AccessToken = string;
 export type RefreshToken = string;
-export type ClientId = number;
 
 export type Kilometres = number;
 export type Metres = number;
@@ -20,12 +19,25 @@ export type CoordData = {
   data: Coord[];
 };
 
-export type ClientConfig = {
+export type ClientId = Integer;
+export type ClientSecret = string;
+
+export type ClientCreds = {
   id: ClientId;
-  secret: Secret;
+  secret: ClientSecret;
 };
 
-export type ApiOpts = ClientConfig & {
+export type ClientConfig = {
+  description: string;
+  client: ClientCreds;
+};
+
+export type ClientCredSrc =
+  | { creds: ClientCreds }
+  | { path: FS.FilePath }
+  | { env: true | { id: string; secret: string } };
+
+export type Opts = ClientCreds & {
   token: AccessToken;
 };
 

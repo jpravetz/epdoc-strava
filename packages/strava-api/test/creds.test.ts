@@ -85,7 +85,7 @@ describe('StravaCreds', () => {
 
   it('should initialize with default token if file does not exist', async () => {
     const mockFile = new MockFile(mockPath, false);
-    const creds = new StravaCreds(mockFile as unknown as FS.File);
+    const creds = new StravaCreds(mockPath as FS.FilePath);
     await creds.read(); // Attempt to read, should not find file
     expect(creds.accessToken).toBeUndefined();
     expect(creds.refreshToken).toBeUndefined();
@@ -102,7 +102,7 @@ describe('StravaCreds', () => {
       athlete: { id: '456' },
     };
     const mockFile = new MockFile(mockPath, true, validData);
-    const creds = new StravaCreds(mockFile as unknown as FS.File);
+    const creds = new StravaCreds(mockPath as FS.FilePath);
     await creds.read();
     expect(creds.accessToken).toBe('access_valid');
     expect(creds.refreshToken).toBe('refresh_valid');
@@ -112,13 +112,13 @@ describe('StravaCreds', () => {
   it('should throw error for invalid credentials file', async () => {
     const invalidData = { some: 'invalid', data: 123 };
     const mockFile = new MockFile(mockPath, true, invalidData);
-    const creds = new StravaCreds(mockFile as unknown as FS.File);
+    const creds = new StravaCreds(mockPath as FS.FilePath);
     await expect(creds.read()).rejects.toThrow('Invalid credentials file');
   });
 
   it('should write valid credentials to file', async () => {
     const mockFile = new MockFile(mockPath, false);
-    const creds = new StravaCreds(mockFile as unknown as FS.File);
+    const creds = new StravaCreds(mockPath as FS.FilePath);
     const newData: StravaCredsData = {
       token_type: 'Bearer',
       expires_at: Date.now() / 1000 + 7200,
@@ -137,7 +137,7 @@ describe('StravaCreds', () => {
 
   it('should throw error for writing invalid credentials', async () => {
     const mockFile = new MockFile(mockPath, false);
-    const creds = new StravaCreds(mockFile as unknown as FS.File);
+    const creds = new StravaCreds(mockPath as FS.FilePath);
     const invalidData = { bad: 'data' };
     await expect(creds.write(invalidData as unknown as StravaCredsData)).rejects.toThrow(
       'Invalid token data',
@@ -157,7 +157,7 @@ describe('StravaCreds', () => {
         athlete: {},
       };
       const mockFile = new MockFile(mockPath, true, validData);
-      const creds = new StravaCreds(mockFile as unknown as FS.File);
+      const creds = new StravaCreds(mockPath as FS.FilePath);
       await creds.read();
       expect(creds.isValid()).toBe(true);
       expect(creds.needsRefresh()).toBe(false);
@@ -173,7 +173,7 @@ describe('StravaCreds', () => {
         athlete: {},
       };
       const mockFile = new MockFile(mockPath, true, expiredData);
-      const creds = new StravaCreds(mockFile as unknown as FS.File);
+      const creds = new StravaCreds(mockPath as FS.FilePath);
       await creds.read();
       expect(creds.isValid()).toBe(false);
       expect(creds.needsRefresh()).toBe(true);
@@ -189,7 +189,7 @@ describe('StravaCreds', () => {
         athlete: {},
       };
       const mockFile = new MockFile(mockPath, true, soonToExpireData);
-      const creds = new StravaCreds(mockFile as unknown as FS.File);
+      const creds = new StravaCreds(mockPath as FS.FilePath);
       await creds.read();
       // Default refresh window is 2 hours (7200 seconds)
       expect(creds.isValid()).toBe(true); // Still valid generally
@@ -208,7 +208,7 @@ describe('StravaCreds', () => {
         athlete: {},
       };
       const mockFile = new MockFile(mockPath, true, wrongTypeData);
-      const creds = new StravaCreds(mockFile as unknown as FS.File);
+      const creds = new StravaCreds(mockPath as FS.FilePath);
       await expect(creds.read()).rejects.toThrow('Invalid credentials file');
     });
   });

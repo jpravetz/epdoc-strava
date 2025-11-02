@@ -17,8 +17,8 @@ export class StravaCreds {
   #data: StravaCredsData = defaultStravaToken;
   #fsCredsFile: FS.File;
 
-  constructor(tokenFile: FS.File) {
-    this.#fsCredsFile = tokenFile;
+  constructor(tokenFile: FS.FilePath) {
+    this.#fsCredsFile = new FS.File(tokenFile);
   }
 
   get expiresAt(): EpochSeconds {
@@ -54,18 +54,17 @@ export class StravaCreds {
     return !this.isValid(t);
   }
 
-  async read(): Promise<boolean> {
+  async read(): Promise<StravaCredsData | undefined> {
     const isFile = await this.#fsCredsFile.isFile();
     if (isFile) {
       const creds = await this.#fsCredsFile.readJson<StravaCredsData>();
       if (isValidCredData(creds)) {
         this.#data = creds;
-        return true;
+        return creds;
       } else {
         throw new FS.Err.InvalidData('Invalid credentials file');
       }
     }
-    return false;
   }
 
   async write(data: StravaCredsData): Promise<void> {

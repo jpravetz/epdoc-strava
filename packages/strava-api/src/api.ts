@@ -27,8 +27,8 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
   // public secret: Strava.Secret;
   // #creds: StravaCreds;
 
-  constructor(clientConfig: Strava.ClientConfig, credsFile: FS.File) {
-    this.#auth = new Auth.Service(clientConfig, credsFile);
+  constructor(clientCreds: Strava.ClientCredSrc | Strava.ClientCredSrc[], userCredsFile: FS.FilePath) {
+    this.#auth = new Auth.Service(clientCreds, userCredsFile);
     // this.id = clientConfig.id || _.asInt(Deno.env.get('STRAVA_CLIENT_ID'), 10);
     // this.secret = clientConfig.secret || Deno.env.get('STRAVA_CLIENT_SECRET') || '';
     // this.token = opts.token || process.env.STRAVA_ACCESS_TOKEN;
