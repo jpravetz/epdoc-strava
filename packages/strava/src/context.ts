@@ -15,7 +15,7 @@ export type Logger = Log.Std.Logger<MsgBuilder>;
 const logMgr: Log.Mgr<MsgBuilder> = new Log.Mgr<MsgBuilder>().init();
 logMgr.threshold = 'info';
 
-export class Context implements CliApp.ICtx<MsgBuilder, Logger>, Api.Ctx.IBare<MsgBuilder, Logger> {
+export class Context implements CliApp.ICtx<MsgBuilder, Logger>, Api.Ctx.IContext<MsgBuilder, Logger> {
   log: Logger;
   logMgr: Log.Mgr<MsgBuilder>;
   dryRun = false;

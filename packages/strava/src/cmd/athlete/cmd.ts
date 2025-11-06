@@ -20,7 +20,7 @@ export class AthleteCmd extends Options.BaseSubCmd {
     this.cmd.init(ctx).action(async () => {
       try {
         // Initialize only what we need for this command
-        await ctx.app.init(ctx, { strava: true });
+        await ctx.app.init(ctx, { strava: true, userSettings: true });
 
         // Delegate to app layer for business logic
         await ctx.app.getAthlete(ctx);
@@ -29,18 +29,42 @@ export class AthleteCmd extends Options.BaseSubCmd {
         if (ctx.app.athlete) {
           ctx.log.info.section('Athlete Information').emit();
           ctx.log.indent();
-          ctx.log.info.label('Name:').value(`${ctx.app.athlete.firstname} ${ctx.app.athlete.lastname}`)
-            .emit();
-          ctx.log.info.label('ID:').value(ctx.app.athlete.id).emit();
-          ctx.log.info.label('City:').value(ctx.app.athlete.city || 'Not specified').emit();
-          ctx.log.info.label('State:').value(ctx.app.athlete.state || 'Not specified').emit();
-          ctx.log.info.label('Country:').value(ctx.app.athlete.country || 'Not specified').emit();
+          const athleteInfo = [
+            { label: 'Name:', value: `${ctx.app.athlete.firstname} ${ctx.app.athlete.lastname}` },
+            { label: 'ID:', value: String(ctx.app.athlete.id) },
+            { label: 'City:', value: ctx.app.athlete.city || 'Not specified' },
+            { label: 'State:', value: ctx.app.athlete.state || 'Not specified' },
+            { label: 'Country:', value: ctx.app.athlete.country || 'Not specified' },
+          ];
+
+          const maxLabelLength = athleteInfo.reduce((max, item) => Math.max(max, item.label.length), 0);
+
+          athleteInfo.forEach((item) => {
+            ctx.log.info.label(item.label.padEnd(maxLabelLength)).value(item.value).emit();
+          });
 
           if (ctx.app.athlete.bikes && ctx.app.athlete.bikes.length > 0) {
-            ctx.log.info.h3('Bikes').emit();
+            ctx.log.info.h3('Bikes:').emit();
             ctx.log.indent();
-            ctx.app.athlete.bikes.forEach((bike) => {
-              ctx.log.info.label(bike.name).value(bike.id).emit();
+            const userBikes = ctx.app.userSettings?.bikes;
+            const bikeInfo = ctx.app.athlete.bikes.map((bike) => {
+              const userBike = userBikes?.find((b) => b.pattern === bike.name);
+              return {
+                label: bike.name + ':',
+                id: String(bike.id),
+                userBikeName: userBike?.name || '',
+              };
+            });
+
+            const maxBikeLabelLength = bikeInfo.reduce((max, item) => Math.max(max, item.label.length), 0);
+            const maxBikeIdLength = bikeInfo.reduce((max, item) => Math.max(max, item.id.length), 0);
+
+            bikeInfo.forEach((item) => {
+              ctx.log.info
+                .label(item.label.padEnd(maxBikeLabelLength))
+                .value(item.id.padEnd(maxBikeIdLength))
+                .h3(item.userBikeName)
+                .emit();
             });
             ctx.log.outdent();
           }

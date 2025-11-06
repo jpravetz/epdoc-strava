@@ -18,6 +18,12 @@ export type CliOpts =
     athleteId: string;
   }>;
 
+export type Opts = Partial<{
+  strava: boolean;
+  userSettings: boolean;
+  config: boolean;
+}>;
+
 export type BikeId = string;
 
 export type BikeDef = {

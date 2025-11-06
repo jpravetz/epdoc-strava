@@ -1,3 +1,4 @@
+import * as FS from '@epdoc/fs/fs';
 import { _ } from '@epdoc/type';
 import { assert } from '@std/assert/assert';
 import rawConfig from '../config.json' with { type: 'json' };
@@ -21,6 +22,7 @@ const configPaths = lessRaw.paths;
 export class Main {
   #api: Api.Api<Ctx.MsgBuilder, Ctx.Logger>;
   athlete?: Api.Schema.DetailedAthlete;
+  userSettings?: App.UserSettings;
   notifyOffline = false;
 
   constructor() {
@@ -44,13 +46,17 @@ export class Main {
    * @param ctx - Application context
    * @param opts - Initialization options specifying what to initialize
    */
-  async init(ctx: Ctx.Context, opts: { strava?: boolean; config?: boolean } = {}): Promise<void> {
+  async init(ctx: Ctx.Context, opts: App.Opts = {}): Promise<void> {
     if (opts.config) {
       // TODO: Load configuration files
     }
 
     if (opts.strava) {
       await this.#api.init(ctx);
+    }
+
+    if (opts.userSettings) {
+      this.userSettings = await new FS.File(configPaths.userSettings).readJson();
     }
   }
 
