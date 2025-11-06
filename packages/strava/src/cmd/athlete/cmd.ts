@@ -21,25 +21,31 @@ export class AthleteCmd extends Options.BaseSubCmd {
       try {
         // Initialize only what we need for this command
         await ctx.app.init(ctx, { strava: true });
-        
+
         // Delegate to app layer for business logic
         await ctx.app.getAthlete(ctx);
-        
+
         // Display athlete information
         if (ctx.app.athlete) {
-          ctx.log.info.h2('Athlete Information').emit();
-          ctx.log.info.info(`Name: ${ctx.app.athlete.firstname} ${ctx.app.athlete.lastname}`).emit();
-          ctx.log.info.info(`ID: ${ctx.app.athlete.id}`).emit();
-          ctx.log.info.info(`City: ${ctx.app.athlete.city || 'Not specified'}`).emit();
-          ctx.log.info.info(`State: ${ctx.app.athlete.state || 'Not specified'}`).emit();
-          ctx.log.info.info(`Country: ${ctx.app.athlete.country || 'Not specified'}`).emit();
-          
+          ctx.log.info.section('Athlete Information').emit();
+          ctx.log.indent();
+          ctx.log.info.label('Name:').value(`${ctx.app.athlete.firstname} ${ctx.app.athlete.lastname}`)
+            .emit();
+          ctx.log.info.label('ID:').value(ctx.app.athlete.id).emit();
+          ctx.log.info.label('City:').value(ctx.app.athlete.city || 'Not specified').emit();
+          ctx.log.info.label('State:').value(ctx.app.athlete.state || 'Not specified').emit();
+          ctx.log.info.label('Country:').value(ctx.app.athlete.country || 'Not specified').emit();
+
           if (ctx.app.athlete.bikes && ctx.app.athlete.bikes.length > 0) {
             ctx.log.info.h3('Bikes').emit();
+            ctx.log.indent();
             ctx.app.athlete.bikes.forEach((bike) => {
-              ctx.log.info.info(`${bike.name}: ${bike.id}`).emit();
+              ctx.log.info.label(bike.name).value(bike.id).emit();
             });
+            ctx.log.outdent();
           }
+          ctx.log.outdent();
+          ctx.log.info.section().emit();
         } else {
           ctx.log.warn.warn('No athlete information retrieved').emit();
         }

@@ -1,6 +1,5 @@
 import { DateEx } from '@epdoc/datetime';
-import type { EpochMilliseconds, EpochSeconds } from '@epdoc/duration';
-import { duration } from '@epdoc/duration';
+import { type EpochMilliseconds, type EpochSeconds, humanize } from '@epdoc/duration';
 import * as FS from '@epdoc/fs/fs';
 import { _ } from '@epdoc/type';
 import type { ClientCreds } from '@jpravetz/strava-api';
@@ -39,7 +38,7 @@ type Response = {
 type cbFunction = () => void;
 
 function isClientCreds(val: unknown): val is Strava.ClientCreds {
-  return !!(_.isDict(val) && _.isPosInteger(val.id) && _.isString(val.client));
+  return (_.isDict(val) && _.isPosInteger(val.id) && _.isString(val.secret)) ? true : false;
 }
 
 /**
@@ -50,9 +49,7 @@ function isClientCreds(val: unknown): val is Strava.ClientCreds {
  * opening the user's browser to the Strava authorization page.
  */
 export class AuthService<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
-  client?: ClientCreds;
-  id?: Strava.ClientId;
-  secret?: Strava.ClientSecret;
+  #client?: ClientCreds;
   clientCredSrc: Strava.ClientCredSrc[];
   #creds: StravaCreds;
   /** Controller to gracefully shut down the Oak server. */
@@ -123,13 +120,13 @@ export class AuthService<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
    */
   async #initClientCreds(ctx: Ctx.IContext<M, L>) {
     let src: Strava.ClientCredSrc | undefined = this.clientCredSrc.shift();
-    while (!isClientCreds(this.client) && src) {
+    while (!isClientCreds(this.#client) && src) {
       if ('creds' in src && isClientCreds(src.creds)) {
-        this.client = src.creds;
+        this.#client = src.creds;
       } else if ('path' in src) {
         const clientConfig = await new FS.File(src.path).readJson<Strava.ClientConfig>();
         if (clientConfig && isClientCreds(clientConfig.client)) {
-          this.client = clientConfig.client;
+          this.#client = clientConfig.client;
         }
       } else if ('env' in src) {
         const sId: string = (src.env === true) ? 'STRAVA_CLIENT_ID' : src.env.id;
@@ -138,13 +135,13 @@ export class AuthService<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
           const id = _.asInt(Deno.env.get(sId));
           const secret = Deno.env.get(sSecret);
           if (_.isString(secret) && _.isPosInteger(id)) {
-            this.client = { id: id, secret: secret };
+            this.#client = { id: id, secret: secret };
           }
         }
       }
       src = this.clientCredSrc.shift();
     }
-    if (!isClientCreds(this.client)) {
+    if (!isClientCreds(this.#client)) {
       const s: string[] = [
         'Please set:',
         '  export STRAVA_CLIENT_ID="your_client_id"',
@@ -173,6 +170,14 @@ export class AuthService<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
     return this.#creds;
   }
 
+  get client(): ClientCreds {
+    assert(
+      this.#client && this.#client.id && this.#client.secret,
+      'Attempting to access client ID when client ID has not yet been set',
+    );
+    return this.#client;
+  }
+
   /**
    * Generates the Strava authorization URL.
    *
@@ -182,12 +187,10 @@ export class AuthService<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
    * @returns The authorization URL.
    */
   public getAuthUrl(options: Strava.AuthUrlOpts = {}): string {
-    assert(this.id, 'A client ID is required.');
-
     const opts: Strava.AuthUrlOpts = Object.assign(defaultAuthOpts, options);
 
     return (
-      `${STRAVA_URL.authorize}?client_id=${this.id}` +
+      `${STRAVA_URL.authorize}?client_id=${this.client!.id}` +
       `&redirect_uri=${encodeURIComponent(opts.redirectUri as string)}` +
       `&scope=${opts.scope}` +
       `&state=${opts.state}` +
@@ -201,9 +204,9 @@ export class AuthService<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
    * @private
    */
   #logAuthStatus(ctx: Ctx.IContext<M, L>, mark: string): Promise<boolean> {
-    const formatter = duration().narrow.fractionalDigits(3);
     const delta = this.#creds.expiresAt - new Date().getTime();
-    ctx.log.debug.h2(`Authorization is still valid, expires in ${formatter.format(delta)}`).ewt(mark);
+    ctx.log.debug.h2('Authorization is still valid, expires in').value(humanize(delta))
+      .ewt(mark);
     return Promise.resolve(true);
   }
 
@@ -222,8 +225,8 @@ export class AuthService<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
       method: 'POST',
       body: JSON.stringify({
         code: code,
-        client_id: this.id,
-        client_secret: this.secret,
+        client_id: this.client.id,
+        client_secret: this.client.secret,
         grant_type: 'authorization_code',
       }),
       headers: {
@@ -256,8 +259,8 @@ export class AuthService<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
   async refreshToken(ctx: Ctx.IContext<M, L>, force = false): Promise<void> {
     if (this.#creds.needsRefresh() || force) {
       const payload = {
-        client_id: this.id,
-        client_secret: this.secret,
+        client_id: this.client.id,
+        client_secret: this.client.secret,
         grant_type: 'refresh_token',
         refresh_token: this.creds.refreshToken,
       };

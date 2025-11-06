@@ -25,7 +25,7 @@ export class Main {
 
   constructor() {
     // Initialize with defaults
-    this.#api = new Api.Api(configPaths.userCreds, { path: configPaths.clientCreds, env: true });
+    this.#api = new Api.Api(configPaths.userCreds, [{ path: configPaths.clientCreds }, { env: true }]);
   }
 
   /**
