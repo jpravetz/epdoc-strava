@@ -2,9 +2,13 @@ import { _ } from '@epdoc/type';
 import { Api } from '../dep.ts';
 import type { LineStyle } from './types.ts';
 
-export function isValidActivityType(name: string): name is Api.ActivityType {
-  // Define what constitutes a valid ActivityType, for example:
-  return name in Api.ActivityName || name === 'Default';
+export function isValidActivityType(name: string): boolean {
+  // Allow standard activity types, plus custom style names (Default, Commute, Moto, Segment, etc.)
+  return (Api.Schema.ActivityName && name in Api.Schema.ActivityName) ||
+    name === 'Default' ||
+    name === 'Commute' ||
+    name === 'Moto' ||
+    name === 'Segment';
 }
 
 export function isValidLineStyle(val: LineStyle): val is LineStyle {

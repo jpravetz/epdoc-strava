@@ -1,13 +1,13 @@
-import { _ , type Dict} from '@epdoc/type';
-import type { DateRanges } from '@epdoc/daterange';
-import type * as BikeLog from './types.ts'
-
-import fs from 'fs';
-import * as builder from 'xmlbuilder';
-import type { DateRange } from './main';
-import type { Activity } from './models/activity';
-import { formatHMS, formatMS, julianDate } from './util';
+import { DateEx } from '@epdoc/datetime';
 import type { Seconds } from '@epdoc/duration';
+import * as FS from '@epdoc/fs/fs';
+import { _ } from '@epdoc/type';
+import * as builder from 'xmlbuilder';
+import type { Api } from '../dep.ts';
+import { Fmt } from '../fmt.ts';
+import type * as BikeLog from './types.ts';
+
+type Activity = Api.Activity.Base;
 
 const REGEX = {
   moto: /^moto$/i,
@@ -17,9 +17,24 @@ const REGEX = {
  * Interface to bikelog XML data that can be read/written from PDF files using
  * Acrobat.
  */
+type BikelogEntry = {
+  jd: number;
+  date: Date;
+  events: Array<{
+    distance?: number;
+    bike?: string;
+    el?: number;
+    t?: number;
+    wh?: number;
+  }>;
+  note0?: string;
+  note1?: string;
+  wt?: number;
+};
+
 export class Bikelog {
   private opts: BikeLog.OutputOpts = {};
-  private stream: fs.WriteStream;
+  private writer?: FS.Writer;
   private buffer: string = '';
   private verbose: number = 9;
 
@@ -35,18 +50,26 @@ export class Bikelog {
    * @param activities Array of strava activities.
    * @returns {{}} Dictionary of bikelog data, with keys set to julian day.
    */
-  private combineActivities(activities: Activity[]) {
-    const result: Dict = {};
+  private combineActivities(activities: Activity[]): Record<string, BikelogEntry> {
+    const result: Record<string, BikelogEntry> = {};
     activities.forEach((activity) => {
-      const d: Date = new Date(activity.startDateLocal);
-      const jd = julianDate(d);
-      const entry = result[jd] || { jd: jd, date: new Date(activity.startDateLocal), events: [] };
-      if (activity.data.wt) {
-        entry.wt = activity.data.wt;
-      }
+      const d: DateEx = new DateEx(activity.startDateLocal);
+      const jd = d.julianDate();
+      const entry: BikelogEntry = result[jd] || {
+        jd: jd,
+        date: new Date(activity.startDateLocal),
+        events: [],
+      };
+      // Note: wt (weight) is not in the standard Strava schema
+      // if (activity.data.wt) {
+      //   entry.wt = activity.data.wt;
+      // }
       if (activity.isRide()) {
-        const bike: Dict = activity.gearId ? this.opts.bikes[activity.gearId] : undefined;
-        const isMoto: boolean = bike ? REGEX.moto.test(bike.name) : false;
+        const bike = activity.gearId && this.opts.bikes ? this.opts.bikes[activity.gearId] : undefined;
+        const isMoto: boolean =
+          bike && typeof bike === 'object' && 'name' in bike && typeof bike.name === 'string'
+            ? REGEX.moto.test(bike.name)
+            : false;
         let note = '';
         // note += 'Ascend ' + Math.round(activity.total_elevation_gain) + 'm, time ';
         // note += this.formatHMS(activity.moving_time, { seconds: false });
@@ -71,61 +94,55 @@ export class Bikelog {
           note += 'Bike: ' + activity.name;
         }
         note += times.length ? '\n' + times.join(', ') : '';
-        if (!isMoto && activity.type === 'EBikeRide') {
-          if (activity.data.kilojoules) {
-            note += '\nBiker Energy: ' + Math.round(activity.data.kilojoules / 3.6) + ' Wh';
-            if (activity.data.max_watts) {
-              note += '; Max: ' + activity.data.max_watts + ' W';
-            }
-          }
-        }
-        if (activity.description) {
-          note += '\n' + activity.description;
-        }
-        if (Array.isArray(activity.segments)) {
-          const segs = [];
-          let up = 'Up ';
-          activity.segments.forEach((segment) => {
-            segs.push(up + segment.name + ' [' + formatMS(segment.movingTime) + ']');
-            up = 'up ';
-          });
-          note += '\n' + segs.join(', ') + '\n';
-        }
+
+        // TODO: Add EBike energy data from detailed activity
+        // TODO: Add custom description from getCustomProperties()
+        // TODO: Add segments list from activity.segments
 
         if (entry.note0) {
-          entry.note0 += note;
+          entry.note0 += '\n' + note;
         } else {
           entry.note0 = note;
         }
-        let dobj: Dict;
-        if (bike && !isMoto) {
-          dobj = {
+
+        // Only track non-moto bike rides in events
+        if (bike && !isMoto && typeof bike === 'object' && 'name' in bike) {
+          const dobj = {
             distance: activity.distanceRoundedKm(),
-            bike: this.bikeMap(bike.name),
+            bike: this.bikeMap(bike.name as string),
             el: Math.round(activity.totalElevationGain),
             t: Math.round(activity.movingTime / 36) / 100,
-            wh: Math.round(activity.data.kilojoules / 3.6),
+            wh: 0, // TODO: Add kilojoules support from detailed activity data
           };
-        }
-        if (entry.events.length < 2) {
-          entry.events.push(dobj);
-        } else {
-          let bDone = false;
-          for (let idx = 1; idx >= 0 && !bDone; --idx) {
-            if (entry.events[idx].bike === dobj.bike) {
-              entry.events[idx].distance += dobj.distance;
-              bDone = true;
+
+          if (entry.events.length < 2) {
+            entry.events.push(dobj);
+          } else {
+            let bDone = false;
+            for (let idx = 1; idx >= 0 && !bDone; --idx) {
+              const event = entry.events[idx];
+              if (event && event.bike === dobj.bike) {
+                event.distance = (event.distance || 0) + dobj.distance;
+                bDone = true;
+              }
+            }
+            if (!bDone) {
+              // Could not combine, just add as new event if there's room
+              if (entry.events.length < 2) {
+                entry.events.push(dobj);
+              }
             }
           }
         }
       } else {
+        // Non-ride activities (Run, Swim, etc.)
         const distance = Math.round(activity.distance / 10) / 100;
         let note = activity.type + ': ' + activity.name + '\n';
         note += 'Distance: ' + distance + ' km; Duration: ' +
-          formatHMS(activity.movingTime, { seconds: false });
-        if (activity.description) {
-          note += '\n' + activity.description;
-        }
+          Fmt.hms(activity.movingTime, { seconds: false });
+
+        // TODO: Add support for custom description from getCustomProperties()
+
         if (entry.note0) {
           entry.note0 += '\n' + note;
         } else {
@@ -137,127 +154,13 @@ export class Bikelog {
     return result;
   }
 
-  public static secondsToString(seconds: Seconds) {
-    return dateutil.formatMS(seconds * 1000, { seconds: false, ms: false, hours: true });
+  public static secondsToString(seconds: Seconds): string {
+    return Fmt.hms(seconds, { seconds: false });
   }
 
-  public outputData(filepath: string, stravaActivities: Activity[]): Promise<void> {
-    const self = this;
-    filepath = filepath ? filepath : 'bikelog.xml';
-    let dateString: string;
-    if (Array.isArray(this.opts.dates)) {
-      const ad: string[] = [];
-      this.opts.dates.forEach((range) => {
-        ad.push(range.after + ' to ' + range.before);
-      });
-      dateString = ad.join(', ');
-    }
-
-    this.buffer = ''; // new Buffer(8*1024);
-
-    const activities = this.combineActivities(stravaActivities);
-
-    return new Promise((resolve, reject) => {
-      // @ts-ignore
-      self.stream = fs.createWriteStream(filepath);
-      // self.stream = fs.createWriteStream('xxx.xml');
-      self.stream.once('open', (fd) => {
-        console.log('Open ' + filepath);
-        const doc = builder
-          .create('fields', { version: '1.0', encoding: 'UTF-8' })
-          .att('xmlns:xfdf', 'http://ns.adobe.com/xfdf-transition/')
-          .ele('day');
-        Object.keys(activities).forEach((key) => {
-          const activity = activities[key];
-          const item = doc.ele('group').att('xfdf:original', activity.jd);
-          for (let idx = 0; idx < Math.min(activity.events.length, 2); ++idx) {
-            const event = activity.events[idx];
-            if (event) {
-              const group = item.ele('group').att('xfdf:original', idx);
-              group.ele('bike', event.bike);
-              group.ele('dist', event.distance);
-              group.ele('el', event.el);
-              group.ele('t', event.t);
-              group.ele('wh', event.wh);
-            }
-          }
-          if (activity.note0) {
-            item.ele('note0', activity.note0);
-          }
-          if (activity.note1) {
-            item.ele('note1', activity.note1);
-          }
-          if (activity.wt) {
-            item.ele('wt', activity.wt.replace(/[^\d\.]/g, ''));
-          }
-        });
-        const s = doc.doc().end({ pretty: true });
-        self.stream.write(s);
-        self.stream.end();
-        console.log(`Wrote ${s.length} bytes to ${filepath}`);
-      });
-
-      self.stream.once('error', (err) => {
-        self.stream.end();
-        err.message = 'Stream error ' + err.message;
-        reject(err);
-      });
-      self.stream.once('close', () => {
-        console.log('Close ' + filepath);
-        resolve();
-      });
-      self.stream.on('finish', () => {
-        console.log('Finish ' + filepath);
-      });
-    });
-  }
-
-  public write(indent, s): void {
-    if (typeof indent === 'string') {
-      this.buffer += s;
-    } else {
-      const indent2 = new Array(indent + 1).join('  ');
-      this.buffer += indent2 + s;
-    }
-    // this.buffer.write( indent + s, 'utf8' );
-  }
-
-  public writeln(indent, s): void {
-    if (typeof indent === 'string') {
-      this.buffer += s + '\n';
-    } else {
-      const indent2 = new Array(indent + 1).join('  ');
-      this.buffer += indent2 + s + '\n';
-    }
-    // this.buffer.write( indent + s + "\n", 'utf8' );
-  }
-
-  public flush(): Promise<void> {
-    if (this.verbose) {
-      console.log('  Flushing %d bytes', this.buffer.length);
-    }
-    return this._flush();
-  }
-
-  private _flush(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const bOk = this.stream.write(this.buffer);
-      this.buffer = '';
-      if (bOk) {
-        resolve();
-      } else {
-        if (this.verbose) {
-          console.log('  Waiting on drain event');
-        }
-        this.stream.once('drain', () => {
-          return this.flush();
-        });
-      }
-    });
-  }
-
-  public bikeMap(stravaBikeName: string): string {
-    if (Array.isArray(this.opts.selectedBikes)) {
+  private bikeMap(stravaBikeName: string): string {
+    // Map Strava bike names to bikelog names based on selectedBikes patterns
+    if (_.isArray(this.opts.selectedBikes)) {
       for (let idx = 0; idx < this.opts.selectedBikes.length; ++idx) {
         const item = this.opts.selectedBikes[idx];
         if (item.pattern.toLowerCase() === stravaBikeName.toLowerCase()) {
@@ -266,5 +169,66 @@ export class Bikelog {
       }
     }
     return stravaBikeName;
+  }
+
+  public async outputData(filepath: string, stravaActivities: Activity[]): Promise<void> {
+    filepath = filepath || 'bikelog.xml';
+
+    // Combine activities by day
+    const activities = this.combineActivities(stravaActivities);
+
+    // Create the FileSpec and writer
+    const fsFile: FS.File = new FS.File(FS.Folder.cwd(), filepath);
+    this.writer = await fsFile.writer();
+
+    try {
+      console.log('Generating XML for ' + filepath);
+
+      // Build XML document
+      const doc = builder
+        .create('fields', { version: '1.0', encoding: 'UTF-8' })
+        .att('xmlns:xfdf', 'http://ns.adobe.com/xfdf-transition/')
+        .ele('day');
+
+      Object.keys(activities).forEach((key) => {
+        const activity = activities[key];
+        const item = doc.ele('group').att('xfdf:original', activity.jd);
+
+        for (let idx = 0; idx < Math.min(activity.events.length, 2); ++idx) {
+          const event = activity.events[idx];
+          if (event) {
+            const group = item.ele('group').att('xfdf:original', idx);
+            if (event.bike !== undefined) group.ele('bike', event.bike);
+            if (event.distance !== undefined) group.ele('dist', event.distance);
+            if (event.el !== undefined) group.ele('el', event.el);
+            if (event.t !== undefined) group.ele('t', event.t);
+            if (event.wh !== undefined) group.ele('wh', event.wh);
+          }
+        }
+
+        if (activity.note0) {
+          item.ele('note0', activity.note0);
+        }
+        if (activity.note1) {
+          item.ele('note1', activity.note1);
+        }
+        if (activity.wt) {
+          const wtStr = typeof activity.wt === 'string' ? activity.wt : String(activity.wt);
+          item.ele('wt', wtStr.replace(/[^\d\.]/g, ''));
+        }
+      });
+
+      // Generate XML string and write to file
+      const xmlContent = doc.doc().end({ pretty: true });
+      await this.writer.write(xmlContent);
+      await this.writer.close();
+
+      console.log(`Wrote ${xmlContent.length} bytes to ${filepath}`);
+    } catch (err) {
+      if (this.writer) {
+        await this.writer.close();
+      }
+      throw err;
+    }
   }
 }

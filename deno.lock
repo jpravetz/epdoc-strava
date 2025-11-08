@@ -1,15 +1,16 @@
 {
   "version": "5",
   "specifiers": {
-    "jsr:@epdoc/cliapp@^1.0.1": "1.0.1",
+    "jsr:@epdoc/cliapp@^1.0.1": "1.0.2",
     "jsr:@epdoc/daterange@~0.2.15": "0.2.15",
     "jsr:@epdoc/datetime@^2.0.1": "2.0.1",
     "jsr:@epdoc/duration@0.3": "0.3.0",
-    "jsr:@epdoc/duration@~0.2.3": "0.2.3",
-    "jsr:@epdoc/fs@^1.0.3": "1.0.3",
-    "jsr:@epdoc/logger@^1003.0.1": "1003.0.1",
+    "jsr:@epdoc/fs@^1.1.2": "1.1.2",
+    "jsr:@epdoc/logger@^1003.0.1": "1003.0.2",
+    "jsr:@epdoc/logger@^1003.0.2": "1003.0.2",
     "jsr:@epdoc/loglevels@^0.0.2": "0.0.2",
     "jsr:@epdoc/msgbuilder@^0.0.2": "0.0.2",
+    "jsr:@epdoc/msgbuilder@^0.0.3": "0.0.3",
     "jsr:@epdoc/string@~0.1.6": "0.1.6",
     "jsr:@epdoc/type@^1.1.17": "1.1.18",
     "jsr:@epdoc/type@^1.1.18": "1.1.18",
@@ -46,13 +47,14 @@
     "jsr:@std/testing@^1.0.16": "1.0.16",
     "npm:@types/node@*": "24.2.0",
     "npm:commander@^14.0.2": "14.0.2",
-    "npm:path-to-regexp@^6.3.0": "6.3.0"
+    "npm:path-to-regexp@^6.3.0": "6.3.0",
+    "npm:xmlbuilder@^15.1.1": "15.1.1"
   },
   "jsr": {
-    "@epdoc/cliapp@1.0.1": {
-      "integrity": "40463e2b6e282bd16a59169d7d1ccd9b8b0825bacc5cb19f1b6ba0e1274c3d76",
+    "@epdoc/cliapp@1.0.2": {
+      "integrity": "2e8438aea5879e4bcb27f89d0c1376b14d9bb9c4030dd82f9f5954ebbee0fffd",
       "dependencies": [
-        "jsr:@epdoc/logger",
+        "jsr:@epdoc/logger@^1003.0.2",
         "jsr:@epdoc/type@^1.1.18",
         "jsr:@std/fmt",
         "npm:commander"
@@ -71,20 +73,14 @@
         "jsr:@epdoc/type@^1.1.17"
       ]
     },
-    "@epdoc/duration@0.2.3": {
-      "integrity": "e8c05070df55466a33938d950f81b26fb7f803e5a9b491cda60607016cf0dcab",
-      "dependencies": [
-        "jsr:@epdoc/type@^1.1.17"
-      ]
-    },
     "@epdoc/duration@0.3.0": {
       "integrity": "3ec5bd1dadec3c9f109da3247dfb041ca2819d2d4ebae0f62a2c63e86abba50a",
       "dependencies": [
         "jsr:@epdoc/type@^1.1.18"
       ]
     },
-    "@epdoc/fs@1.0.3": {
-      "integrity": "b626b2042708af610e6f963e7672044f30866b5cc9073433e9f467d3ee392515",
+    "@epdoc/fs@1.1.2": {
+      "integrity": "43b33ed425f582ab114e5f3f94a8873bf5ee9b856a64cf341145d5d44e4bc9d8",
       "dependencies": [
         "jsr:@epdoc/datetime",
         "jsr:@epdoc/type@^1.1.17",
@@ -94,13 +90,13 @@
         "jsr:@std/path@^1.1.2"
       ]
     },
-    "@epdoc/logger@1003.0.1": {
-      "integrity": "4e0d95ed2b916c79055ab1e8f426463566831e928915305db4f8dc409b443659",
+    "@epdoc/logger@1003.0.2": {
+      "integrity": "caa8648b801a442638aa78607f88dada6f234bedbe1b4e0865b7b2fa60e61303",
       "dependencies": [
         "jsr:@epdoc/datetime",
-        "jsr:@epdoc/duration@~0.2.3",
+        "jsr:@epdoc/duration",
         "jsr:@epdoc/loglevels",
-        "jsr:@epdoc/msgbuilder",
+        "jsr:@epdoc/msgbuilder@^0.0.3",
         "jsr:@epdoc/string",
         "jsr:@epdoc/type@^1.1.18",
         "jsr:@std/assert@^1.0.15",
@@ -112,6 +108,14 @@
     },
     "@epdoc/msgbuilder@0.0.2": {
       "integrity": "75c9c14644599b5391b25ea9b960d01ce778b603db7f56b6bbc062bfe472d5a1",
+      "dependencies": [
+        "jsr:@epdoc/string",
+        "jsr:@epdoc/type@^1.1.18",
+        "jsr:@std/fmt"
+      ]
+    },
+    "@epdoc/msgbuilder@0.0.3": {
+      "integrity": "5f78acdf6a0b1ef27b2d9f616793d58f13e42b3da017f97aa127ec9709fd4f73",
       "dependencies": [
         "jsr:@epdoc/string",
         "jsr:@epdoc/type@^1.1.18",
@@ -267,6 +271,9 @@
     },
     "undici-types@7.10.0": {
       "integrity": "sha512-t5Fy/nfn+14LuOc2KNYg75vZqClpAiqscVvMygNnlsHBFpSXdJaYtXMcdNLpl/Qvc3P2cB3s6lOV51nqsFq4ag=="
+    },
+    "xmlbuilder@15.1.1": {
+      "integrity": "sha512-yMqGBqtXyeN1e3TGYvgNgDVZ3j84W4cwkOXQswghol6APgZWaff9lnbvN7MHYJOiXsvGPXtjTYJEiC9J2wv9Eg=="
     }
   },
   "remote": {
@@ -360,7 +367,7 @@
           "jsr:@epdoc/daterange@~0.2.15",
           "jsr:@epdoc/datetime@^2.0.1",
           "jsr:@epdoc/duration@0.3",
-          "jsr:@epdoc/fs@^1.0.3",
+          "jsr:@epdoc/fs@^1.1.2",
           "jsr:@epdoc/logger@^1003.0.1",
           "jsr:@epdoc/msgbuilder@^0.0.2",
           "jsr:@epdoc/type@^1.1.18",
@@ -370,14 +377,15 @@
           "jsr:@std/http@^1.0.21",
           "jsr:@std/path@^1.1.2",
           "jsr:@std/testing@^1.0.16",
-          "npm:commander@^14.0.2"
+          "npm:commander@^14.0.2",
+          "npm:xmlbuilder@^15.1.1"
         ]
       },
       "packages/strava-api": {
         "dependencies": [
           "jsr:@epdoc/datetime@^2.0.1",
           "jsr:@epdoc/duration@0.3",
-          "jsr:@epdoc/fs@^1.0.3",
+          "jsr:@epdoc/fs@^1.1.2",
           "jsr:@epdoc/logger@^1003.0.1",
           "jsr:@epdoc/msgbuilder@^0.0.2",
           "jsr:@epdoc/type@^1.1.18",

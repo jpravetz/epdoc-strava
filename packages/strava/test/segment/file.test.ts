@@ -122,7 +122,13 @@ describe('SegmentFile', () => {
   describe('get', () => {
     it('should refresh segments from server when opts.refresh is true', async () => {
       const apiSegments: Strava.Schema.SegmentSummary[] = [
-        { id: 10, name: 'API Segment 1', distance: 500, elevation: 20, asCacheEntry: () => ({ id: 10, name: 'API Segment 1', distance: 500, elevation: 20 }) },
+        {
+          id: 10,
+          name: 'API Segment 1',
+          distance: 500,
+          elevation: 20,
+          asCacheEntry: () => ({ id: 10, name: 'API Segment 1', distance: 500, elevation: 20 }),
+        },
       ];
       mockStravaApi.segments = apiSegments;
 
@@ -148,7 +154,13 @@ describe('SegmentFile', () => {
     it('should fetch from server and write if opts.refresh is false and file read fails', async () => {
       mockFsFile.exists = false; // Simulate file read failure
       const apiSegments: Strava.Schema.SegmentSummary[] = [
-        { id: 12, name: 'API Segment 2', distance: 700, elevation: 40, asCacheEntry: () => ({ id: 12, name: 'API Segment 2', distance: 700, elevation: 40 }) },
+        {
+          id: 12,
+          name: 'API Segment 2',
+          distance: 700,
+          elevation: 40,
+          asCacheEntry: () => ({ id: 12, name: 'API Segment 2', distance: 700, elevation: 40 }),
+        },
       ];
       mockStravaApi.segments = apiSegments;
 
@@ -162,7 +174,13 @@ describe('SegmentFile', () => {
   describe('#getFromServer', () => {
     it('should fetch segments from Strava API', async () => {
       const apiSegments: Strava.Schema.SegmentSummary[] = [
-        { id: 20, name: 'API Segment X', distance: 800, elevation: 50, asCacheEntry: () => ({ id: 20, name: 'API Segment X', distance: 800, elevation: 50 }) },
+        {
+          id: 20,
+          name: 'API Segment X',
+          distance: 800,
+          elevation: 50,
+          asCacheEntry: () => ({ id: 20, name: 'API Segment X', distance: 800, elevation: 50 }),
+        },
       ];
       mockStravaApi.segments = apiSegments;
 
@@ -173,11 +191,22 @@ describe('SegmentFile', () => {
     });
 
     it('should overwrite existing segments with new data from API', async () => {
-      const initialSegment: Segment.CacheEntry = { id: 21, name: 'Overwrite Me', distance: 100, elevation: 10 };
+      const initialSegment: Segment.CacheEntry = {
+        id: 21,
+        name: 'Overwrite Me',
+        distance: 100,
+        elevation: 10,
+      };
       (segmentFile as any).#segments.set('Overwrite Me', initialSegment);
 
       const apiSegments: Strava.Schema.SegmentSummary[] = [
-        { id: 21, name: 'Overwrite Me', distance: 900, elevation: 60, asCacheEntry: () => ({ id: 21, name: 'Overwrite Me', distance: 900, elevation: 60 }) },
+        {
+          id: 21,
+          name: 'Overwrite Me',
+          distance: 900,
+          elevation: 60,
+          asCacheEntry: () => ({ id: 21, name: 'Overwrite Me', distance: 900, elevation: 60 }),
+        },
       ];
       mockStravaApi.segments = apiSegments;
 

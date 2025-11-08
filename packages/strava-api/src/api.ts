@@ -152,7 +152,7 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
   public async getActivities(ctx: Ctx.IContext<M, L>, options: Strava.ActivityOpts): Promise<Dict[]> {
     await this.#refreshToken(ctx);
     let url = new URL(STRAVA_URL.activities);
-    if (_.isNumber(options.athleteId)) {
+    if (_.isPosInteger(options.athleteId)) {
       url = new URL(url.toString() + '/' + options.athleteId);
     }
 

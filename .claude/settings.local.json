@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(deno check:*)",
+      "Bash(deno info:*)",
+      "Bash(deno lint:*)",
+      "WebFetch(domain:code.claude.com)",
+      "Bash(npm search:*)",
+      "WebSearch"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

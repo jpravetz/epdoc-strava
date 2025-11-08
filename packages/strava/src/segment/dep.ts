@@ -1,4 +1,4 @@
 export type { Seconds } from '@epdoc/duration';
 export * as Ctx from '../context.ts';
-export type * as Strava from '../strava/mod.ts';
+export type { Coord } from '../../../strava-api/src/types.ts';
 export type { Metres } from '../types.ts';
