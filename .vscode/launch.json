@@ -107,6 +107,33 @@
       "presentation": {
         "group": "strava"
       }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "strava: main kml -d 20251001- -o /Users/jpravetz/dev/@epdoc/strava/tmp/Activities.kml",
+      "program": "${workspaceFolder}/packages/strava/./main.ts",
+      "cwd": "${workspaceFolder}",
+      "attachSimplePort": 9229,
+      "runtimeExecutable": "/Users/jpravetz/.deno/bin/deno",
+      "runtimeArgs": [
+        "run",
+        "-A",
+        "--inspect-brk"
+      ],
+      "args": [
+        "kml",
+        "-d",
+        "20251001-",
+        "-o",
+        "/Users/jpravetz/dev/@epdoc/strava/tmp/Activities.kml"
+      ],
+      "env": {
+        "LAUNCHGEN": "true"
+      },
+      "presentation": {
+        "group": "strava"
+      }
     }
   ]
 }

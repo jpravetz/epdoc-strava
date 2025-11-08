@@ -178,7 +178,7 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
       }
 
       const data = await resp.json();
-      if (!Array.isArray(data)) {
+      if (!_.isArray(data)) {
         throw new Error('Invalid activities return value: Expected an array.');
       }
       return data;
@@ -263,10 +263,11 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
     };
     const m0 = ctx.log.mark();
     try {
-      const resp = await this.getStreams(ctx, source, objId, query);
-      if (Array.isArray(resp.latlng)) {
-        ctx.log.info.h2('Get').value(name).h2('Found').count(resp.latlng.length).h2('coordinates').ewt(m0);
-        return resp.latlng;
+      const resp: Partial<Schema.StreamSet> = await this.getStreams(ctx, source, objId, query);
+      if (_.isDict(resp.latlng) && _.isArray(resp.latlng.data)) {
+        ctx.log.info.h2('Get').value(name).h2('Found').count(resp.latlng.data.length)
+          .h2('coordinate').ewt(m0);
+        return resp.latlng.data as Strava.Coord[];
       }
       ctx.log.info.h2('Get').value(name).h2('did not contain unknown coordinates').ewt(m0);
       return [];
@@ -337,7 +338,7 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
     source: Schema.StreamKeyType,
     objId: Strava.SegmentId,
     options: Strava.Query,
-  ): Promise<Dict> {
+  ): Promise<Partial<Schema.StreamSet>> {
     await this.#refreshToken(ctx);
     const url = new URL(`${STRAVA_API_PREFIX}/${source}/${objId}/streams`);
 
@@ -361,15 +362,9 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
       throw new Error(`Failed to get streams: ${resp.status} ${resp.statusText} - ${errorText}`);
     }
 
-    const data = await resp.json();
-    if (Array.isArray(data)) {
-      const result: Dict = {};
-      data.forEach((item: unknown) => {
-        if (_.isDict(item) && _.isArray(item.data) && _.isString(item.type)) {
-          result[item.type] = item.data;
-        }
-      });
-      return result;
+    const data = await resp.json() as Partial<Schema.StreamSet>;
+    if (_.isDict(data)) {
+      return data;
     }
     throw new Error(`Invalid data returned for ${source}`);
   }

@@ -6,6 +6,7 @@ import { Kml } from '../cmd/dep.ts';
 import rawConfig from '../config.json' with { type: 'json' };
 import type * as Ctx from '../context.ts';
 import { Api } from '../dep.ts';
+import { SegmentData } from '../segment/data.ts';
 import type * as App from './types.ts';
 
 const home = Deno.env.get('HOME');
@@ -111,11 +112,11 @@ export class Main {
     }
 
     let activities: Api.Activity.Base[] = [];
-    const segments: any[] = []; // TODO: Implement segment fetching
+    const segments: SegmentData[] = []; // TODO: Implement segment fetching
 
     // Fetch activities if requested
     if (kmlOpts.activities && kmlOpts.date) {
-      ctx.log.info.text('Fetching activities for date ranges').emit();
+      ctx.log.info.text('Fetching activities for date ranges').dateRange(kmlOpts.date).emit();
 
       // Get athlete ID (default to authenticated user)
       const athleteId = this.athlete?.id || 0;
@@ -126,8 +127,10 @@ export class Main {
           athleteId,
           query: {
             per_page: 200,
-            after: dateRange.after ? Math.floor(dateRange.after.getTime() / 1000) : 0,
-            before: dateRange.before ? Math.floor(dateRange.before.getTime() / 1000) : 0,
+            after: Math.floor(
+              (dateRange.after ? dateRange.after.getTime() : new Date(1975, 0, 1).getTime()) / 1000,
+            ),
+            before: Math.floor((dateRange.before ? dateRange.before.getTime() : new Date().getTime()) / 1000),
           },
         };
 
@@ -140,30 +143,33 @@ export class Main {
         }
       }
 
-      ctx.log.info.text(`Found ${activities.length} activities`).emit();
+      if (activities.length) {
+        ctx.log.info.text('Found').count(activities.length).text('activity', 'activities').emit();
 
-      // Filter activities based on commute option
-      if (kmlOpts.commute === 'yes') {
-        activities = activities.filter((a) => a.data.commute);
-      } else if (kmlOpts.commute === 'no') {
-        activities = activities.filter((a) => !a.data.commute);
-      }
+        // Filter activities based on commute option
+        if (kmlOpts.commute === 'yes') {
+          activities = activities.filter((a) => a.data.commute);
+        } else if (kmlOpts.commute === 'no') {
+          activities = activities.filter((a) => !a.data.commute);
+        }
 
-      // Fetch coordinates for activities
-      ctx.log.info.text('Fetching coordinates for activities').emit();
-      for (const activity of activities) {
-        try {
-          const coords = await this.api.getStreamCoords(
-            ctx,
-            'activities' as Api.Schema.StreamKeyType,
-            activity.id,
-            activity.name,
-          );
-          if (coords && coords.length > 0) {
-            activity.coordinates = coords;
+        // Fetch coordinates for activities
+        ctx.log.info.text('Fetching coordinates for activities').emit();
+        for (const activity of activities) {
+          try {
+            const coords = await this.api.getStreamCoords(
+              ctx,
+              'activities' as Api.Schema.StreamKeyType,
+              activity.id,
+              activity.name,
+            );
+            if (coords && coords.length > 0) {
+              activity.coordinates = coords;
+            }
+          } catch (e) {
+            // const err = _.asError(e);
+            ctx.log.warn.text('Failed to fetch coordinates for activity').activity(activity).emit();
           }
-        } catch (err) {
-          ctx.log.warn.text(`Failed to fetch coordinates for activity ${activity.id}`).emit();
         }
       }
     }
@@ -174,32 +180,37 @@ export class Main {
     //   // Implementation needed
     // }
 
-    // Generate KML file
-    const outputPath = typeof kmlOpts.output === 'string'
-      ? kmlOpts.output
-      : kmlOpts.output?.path
-      ? kmlOpts.output.path
-      : 'Activities.kml';
+    if (activities.length) { // Generate KML file
+      const outputPath = typeof kmlOpts.output === 'string'
+        ? kmlOpts.output
+        : kmlOpts.output?.path
+        ? kmlOpts.output.path
+        : 'Activities.kml';
 
-    ctx.log.info.text(`Generating KML file: ${outputPath}`).emit();
-    await kml.outputData(outputPath, activities, segments);
-    ctx.log.info.h2(`KML file generated successfully`).emit();
+      ctx.log.info.text('Generating KML file').fs(outputPath).emit();
+      ctx.log.indent();
+      await kml.outputData(ctx, outputPath, activities, segments);
+      ctx.log.outdent();
+      ctx.log.info.h2('KML file generated successfully').fs(outputPath).emit();
+    } else {
+      ctx.log.info.warn('No activities found for the specified date ranges').emit();
+    }
   }
 
   async getPdf(ctx: Ctx.Context, pdfOpts: BikeLog.Opts): Promise<void> {
     ctx.log.info.text('Generating PDF/XML for Adobe Acrobat Forms').emit();
 
-    let activities: Api.Activity.Base[] = [];
+    const activities: Api.Activity.Base[] = [];
 
     // Fetch activities if we have date ranges
-    if (pdfOpts.dates && pdfOpts.dates.hasRanges()) {
-      ctx.log.info.text('Fetching activities for date ranges').emit();
+    if (pdfOpts.date && pdfOpts.date.hasRanges()) {
+      ctx.log.info.text('Fetching activities for date ranges').dateRange(pdfOpts.date).emit();
 
       // Get athlete ID (default to authenticated user)
       const athleteId = this.athlete?.id || 0;
 
       // Get activities for each date range
-      for (const dateRange of pdfOpts.dates.ranges) {
+      for (const dateRange of pdfOpts.date.ranges) {
         const opts: Api.ActivityOpts = {
           athleteId,
           query: {
@@ -242,7 +253,7 @@ export class Main {
     // Create Bikelog instance with options
     const bikelogOpts: BikeLog.OutputOpts = {
       more: pdfOpts.more,
-      dates: pdfOpts.dates,
+      dates: pdfOpts.date,
       bikes,
     };
 

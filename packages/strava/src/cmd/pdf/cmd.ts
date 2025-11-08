@@ -43,7 +43,7 @@ export class PdfCmd extends Options.BaseSubCmd {
         // Build PDF options from command opts
         const pdfOpts: BikeLog.Opts = {
           output: opts.output,
-          dates: opts.date,
+          date: opts.date,
           more: opts.more,
           dryRun: opts.dryRun,
         };

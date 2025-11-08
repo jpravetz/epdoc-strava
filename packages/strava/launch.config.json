@@ -28,7 +28,8 @@
         "scripts": [
           "",
           "--help",
-          "athlete"
+          "athlete",
+          "kml -d 20251001- -o /Users/jpravetz/dev/@epdoc/strava/tmp/Activities.kml"
         ]
       }
     ]

@@ -51,7 +51,13 @@ export class KmlMain {
     });
   }
 
-  async outputData(filepath: string, activities: Activity[], segments: SegmentData[]): Promise<void> {
+  async outputData(
+    ctx: Ctx.Context,
+    filepath: string,
+    activities: Activity[],
+    segments: SegmentData[],
+  ): Promise<void> {
+    const m0 = ctx.log.mark();
     const file = filepath || 'Activities.kml';
     const fsFile: FS.File = new FS.File(FS.Folder.cwd(), filepath);
     this.writer = await fsFile.writer();
@@ -69,7 +75,8 @@ export class KmlMain {
 
       await this.footer();
       await this.writer.close();
-      console.log('Wrote ' + file);
+
+      ctx.log.verbose.text('Wrote').fs(file).ewt(m0);
     } catch (err) {
       if (this.writer) {
         await this.writer.close();
@@ -192,7 +199,7 @@ export class KmlMain {
 
     const params: PlacemarkParams = {
       placemarkId: 'StravaTrack' + ++this.trackIndex,
-      name: t0 + ' - ' + escape(activity.name),
+      name: t0 + ' - ' + escapeHtml(activity.name),
       description: this._buildActivityDescription(activity),
       styleName: styleName,
       coordinates: activity.coordinates,

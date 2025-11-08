@@ -19,7 +19,7 @@ export type OutputOpts = {
 
 export type Opts = {
   output?: string | FileSpec; // output filename
-  dates?: DateRanges; // date range for which to output data
+  date?: DateRanges; // date range for which to output data
   more?: boolean; // include additional description for each activity
   dryRun?: boolean; // do not modify any data
   selectedBikes?: BikeDef[]; // bike filter definitions

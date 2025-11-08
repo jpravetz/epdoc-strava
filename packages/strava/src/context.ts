@@ -1,30 +1,26 @@
-import * as Log from '@epdoc/logger';
+import type * as Log from '@epdoc/logger';
 // Import both CliApp and the Commander object
 import type * as CliApp from '@epdoc/cliapp';
-import type { Console } from '@epdoc/msgbuilder';
 import { _ } from '@epdoc/type';
 import pkg from '../deno.json' with { type: 'json' };
 import * as App from './app/mod.ts';
 import type { Api } from './dep.ts';
+import { logMgr, type StravaMsgBuilder } from './log.ts';
 
 // deno run -A examples/basic.ts -D
 
-export type MsgBuilder = Console.Builder;
+export type MsgBuilder = StravaMsgBuilder;
 export type Logger = Log.Std.Logger<MsgBuilder>;
-
-const logMgr: Log.Mgr<MsgBuilder> = new Log.Mgr<MsgBuilder>().init();
-logMgr.threshold = 'info';
 
 export class Context implements CliApp.ICtx<MsgBuilder, Logger>, Api.Ctx.IContext<MsgBuilder, Logger> {
   log: Logger;
-  logMgr: Log.Mgr<MsgBuilder>;
+  logMgr: Log.Mgr<MsgBuilder> = logMgr;
   dryRun = false;
   online = true;
   app: App.Main = new App.Main();
   pkg: CliApp.DenoPkg = _.pick<CliApp.DenoPkg>(pkg, 'name', 'description', 'version');
 
   constructor() {
-    this.logMgr = logMgr;
     this.log = logMgr.getLogger<Logger>();
   }
 
