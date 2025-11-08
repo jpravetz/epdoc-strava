@@ -205,6 +205,11 @@ export class KmlMain {
       coordinates: activity.coordinates,
     };
     this.placemark(indent, params);
+
+    // Output lap markers if laps are enabled and available
+    if (this.opts.laps && 'laps' in activity.data && _.isArray(activity.data.laps)) {
+      this._outputLapMarkers(indent, activity);
+    }
   }
 
   private _buildActivityDescription(activity: Activity): string | undefined {
@@ -257,6 +262,60 @@ export class KmlMain {
     this.write(2, '</Style>\n');
   }
 
+  private _addLapMarkerStyle(): void {
+    this.write(2, '<Style id="LapMarker">\n');
+    this.write(3, '<IconStyle>\n');
+    this.write(4, '<scale>0.6</scale>\n');
+    this.write(4, '<Icon>\n');
+    this.write(5, '<href>http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png</href>\n');
+    this.write(4, '</Icon>\n');
+    this.write(3, '</IconStyle>\n');
+    this.write(3, '<LabelStyle>\n');
+    this.write(4, '<scale>0</scale>\n'); // Hide label by default
+    this.write(3, '</LabelStyle>\n');
+    this.write(2, '</Style>\n');
+  }
+
+  /**
+   * Output lap marker placemarks for an activity.
+   * Each lap's start position is marked with a point placemark.
+   */
+  private _outputLapMarkers(indent: number, activity: Activity): void {
+    if (!('laps' in activity.data) || !_.isArray(activity.data.laps)) {
+      return;
+    }
+
+    const laps = activity.data.laps as Api.Schema.Lap[];
+    const coords = activity.coordinates;
+
+    if (!coords || coords.length === 0) {
+      return;
+    }
+
+    laps.forEach((lap, index) => {
+      // Get the coordinate at the lap's start index
+      const startIndex = lap.start_index;
+      if (startIndex >= 0 && startIndex < coords.length) {
+        const coord = coords[startIndex];
+        this._outputLapPoint(indent, index + 1, coord);
+      }
+    });
+  }
+
+  /**
+   * Output a single lap marker point placemark.
+   */
+  private _outputLapPoint(indent: number, lapNumber: number, coord: Kml.Coord): void {
+    this.writeln(indent, '<Placemark id="LapMarker' + ++this.trackIndex + '">');
+    this.writeln(indent + 1, '<name>Lap ' + lapNumber + '</name>');
+    this.writeln(indent + 1, '<visibility>1</visibility>');
+    this.writeln(indent + 1, '<styleUrl>#LapMarker</styleUrl>');
+    this.writeln(indent + 1, '<Point>');
+    this.writeln(indent + 2, '<coordinates>' + coord[1] + ',' + coord[0] + ',0</coordinates>');
+    this.writeln(indent + 1, '</Point>');
+    this.writeln(indent, '</Placemark>');
+  }
+
   private placemark(indent: number, params: PlacemarkParams): void {
     this.writeln(indent, '<Placemark id="' + params.placemarkId + '">');
     this.writeln(indent + 1, '<name>' + params.name + '</name>');
@@ -291,6 +350,10 @@ export class KmlMain {
     Object.keys(this.lineStyles).forEach((name) => {
       this._addLineStyle(name, this.lineStyles[name]);
     });
+    // Add lap marker style if laps are enabled
+    if (this.opts.laps) {
+      this._addLapMarkerStyle();
+    }
     await this.flush();
   }
 

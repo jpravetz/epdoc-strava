@@ -171,6 +171,23 @@ export class Main {
             ctx.log.warn.text('Failed to fetch coordinates for activity').activity(activity).emit();
           }
         }
+
+        // Fetch detailed activity data for lap information if --laps is enabled
+        if (kmlOpts.laps) {
+          ctx.log.info.text('Fetching detailed activity data for lap markers').emit();
+          for (let i = 0; i < activities.length; i++) {
+            // Only fetch if we don't already have lap data (DetailedActivity has laps array)
+            if (!('laps' in activities[i].data)) {
+              try {
+                const detailedActivity = await this.api.getDetailedActivity(ctx, activities[i].data);
+                // Replace summary activity with detailed activity data (includes laps)
+                activities[i] = new Api.Activity.Base(detailedActivity);
+              } catch (_e) {
+                ctx.log.warn.text('Failed to fetch detailed data for').activity(activities[i]).emit();
+              }
+            }
+          }
+        }
       }
     }
 

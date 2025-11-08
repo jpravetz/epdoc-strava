@@ -12,6 +12,7 @@ export const cmdConfig: Options.Config = {
     activities: true,
     segments: true,
     more: true,
+    laps: true,
     commute: true,
     // Note: imperial and dryRun are global options defined in root command
   },

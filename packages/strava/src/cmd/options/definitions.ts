@@ -57,6 +57,11 @@ export const mapDef: Record<string, Options.Def> = {
     name: 'more',
     description: 'Include detailed descriptions',
   },
+  laps: {
+    short: 'l',
+    name: 'laps',
+    description: 'Include lap markers in KML output',
+  },
   commute: {
     name: 'commute',
     params: '<choice>',

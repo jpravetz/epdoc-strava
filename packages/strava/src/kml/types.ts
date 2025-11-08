@@ -14,6 +14,7 @@ export type Opts = {
   output?: string | FileSpec; // output filename
   date?: DateRanges; // date range for which to output data
   more?: boolean; // include additional description for each activity
+  laps?: boolean; // include lap markers in KML output
   commute?: 'yes' | 'no' | 'all'; // filter by commute status
   activities?: boolean | string[]; // output activities (true=all, string[]=filtered by types)
   segments?: boolean | 'only' | 'flat'; // output segments (true=included, 'only'=segments only no activities, 'flat'=flat folder structure)
