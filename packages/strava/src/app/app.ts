@@ -6,7 +6,7 @@ import { Kml } from '../cmd/dep.ts';
 import rawConfig from '../config.json' with { type: 'json' };
 import type * as Ctx from '../context.ts';
 import { Api } from '../dep.ts';
-import { SegmentData } from '../segment/data.ts';
+import type { SegmentData } from '../segment/data.ts';
 import type * as App from './types.ts';
 
 const home = Deno.env.get('HOME');
@@ -166,8 +166,8 @@ export class Main {
             if (coords && coords.length > 0) {
               activity.coordinates = coords;
             }
-          } catch (e) {
-            // const err = _.asError(e);
+          } catch (_e) {
+            // const err = _.asError(_e);
             ctx.log.warn.text('Failed to fetch coordinates for activity').activity(activity).emit();
           }
         }
@@ -238,8 +238,19 @@ export class Main {
 
     ctx.log.info.text('Found').count(activities.length).text('activity', 'activities').ewt(m0);
 
-    // We don't need coordinates for XML generation, but we do need detailed activity data
-    // TODO: Optionally fetch detailed activity data if more info is needed
+    // Fetch detailed activity data to get description and private_note fields
+    if (activities.length > 0) {
+      ctx.log.info.text('Fetching detailed activity data').emit();
+      for (let i = 0; i < activities.length; i++) {
+        try {
+          const detailedActivity = await this.api.getDetailedActivity(ctx, activities[i].data);
+          // Replace summary activity with detailed activity data
+          activities[i] = new Api.Activity.Base(detailedActivity);
+        } catch (_e) {
+          ctx.log.warn.text('Failed to fetch detailed data for').activity(activities[i]).emit();
+        }
+      }
+    }
 
     // Prepare bikes dict from athlete data
     const bikes: Record<string, Api.Schema.SummaryGear> = {};

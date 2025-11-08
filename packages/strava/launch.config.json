@@ -30,7 +30,7 @@
           "--help",
           "athlete",
           "kml -d 20251001- -o /Users/jpravetz/dev/@epdoc/strava/tmp/Activities.kml",
-          "pdf -d 20251001- -o /Users/jpravetz/dev/@epdoc/strava/tmp/Activities.xml"
+          "pdf -d 20251104- -o /Users/jpravetz/dev/@epdoc/strava/tmp/Activities.xml"
         ]
       }
     ]

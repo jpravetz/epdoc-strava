@@ -138,7 +138,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "strava: main pdf -d 20251001- -o /Users/jpravetz/dev/@epdoc/strava/tmp/Activities.xml",
+      "name": "strava: main pdf -d 20251104- -o /Users/jpravetz/dev/@epdoc/strava/tmp/Activities.xml",
       "program": "${workspaceFolder}/packages/strava/./main.ts",
       "cwd": "${workspaceFolder}",
       "attachSimplePort": 9229,
@@ -151,7 +151,7 @@
       "args": [
         "pdf",
         "-d",
-        "20251001-",
+        "20251104-",
         "-o",
         "/Users/jpravetz/dev/@epdoc/strava/tmp/Activities.xml"
       ],

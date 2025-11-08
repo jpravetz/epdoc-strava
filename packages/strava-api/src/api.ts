@@ -14,6 +14,7 @@ const STRAVA_URL = {
   athlete: STRAVA_API_PREFIX + '/athlete',
   picture: STRAVA_API_PREFIX + '/athlete/picture',
   activities: STRAVA_API_PREFIX + '/athlete/activities',
+  detailedActivity: STRAVA_API_PREFIX + '/activities',
   starred: STRAVA_API_PREFIX + '/segments/starred',
 };
 
@@ -295,7 +296,7 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
     activity: Schema.SummaryActivity,
   ): Promise<Schema.DetailedActivity> {
     await this.#refreshToken(ctx);
-    const url = STRAVA_URL.activities + '/' + activity.id;
+    const url = STRAVA_URL.detailedActivity + '/' + activity.id;
 
     const reqOpts: RequestInit = {
       method: 'GET',
@@ -312,7 +313,7 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
         throw new Error(`Failed to get detailed activity: ${resp.status} ${resp.statusText} - ${errorText}`);
       }
 
-      const data = await resp.json();
+      const data = await resp.json() as Schema.DetailedActivity;
       if (data) {
         return data as Schema.DetailedActivity;
       }

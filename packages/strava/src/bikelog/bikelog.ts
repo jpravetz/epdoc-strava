@@ -43,6 +43,82 @@ export class Bikelog {
   }
 
   /**
+   * Merges description and private_note fields, then parses for custom properties.
+   * @param activity Activity to extract properties from
+   * @returns Dictionary with parsed custom properties and description
+   */
+  private parseActivityText(activity: Activity): { description?: string; [key: string]: unknown } {
+    const result: { description?: string; [key: string]: unknown } = {};
+
+    // Merge description and private_note
+    const parts: string[] = [];
+    if ('description' in activity.data && _.isNonEmptyString(activity.data.description)) {
+      parts.push(activity.data.description);
+    }
+    if ('private_note' in activity.data && _.isNonEmptyString(activity.data.private_note)) {
+      parts.push(activity.data.private_note);
+    }
+
+    if (parts.length === 0) {
+      return result;
+    }
+
+    // Parse merged text for key=value pairs
+    const mergedText = parts.join('\n');
+    const lines: string[] = mergedText.split(/\r?\n/);
+    const descLines: string[] = [];
+
+    lines.forEach((line) => {
+      const match = line.match(/^([^\s=]+)\s*=\s*(.*)$/);
+      if (match) {
+        const [, key, value] = match;
+        result[key] = value;
+      } else {
+        descLines.push(line);
+      }
+    });
+
+    if (descLines.length) {
+      // Filter out blank lines
+      const nonBlankLines = descLines.filter((line) => line.trim().length > 0);
+      if (nonBlankLines.length) {
+        result.description = nonBlankLines.join('\n');
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Converts a key to title case (first letter capitalized).
+   * @param key The key to convert
+   * @returns Title-cased key
+   */
+  private toTitleCase(key: string): string {
+    if (!key || key.length === 0) return key;
+    return key.charAt(0).toUpperCase() + key.slice(1).toLowerCase();
+  }
+
+  /**
+   * Extracts weight value from custom properties (case-insensitive).
+   * Handles formats like "165", "165 kg", "165kg".
+   * @param customProps Custom properties dictionary
+   * @returns Weight value as number, or undefined
+   */
+  private extractWeight(customProps: Record<string, unknown>): number | undefined {
+    for (const [key, value] of Object.entries(customProps)) {
+      if (key.toLowerCase() === 'weight' && value !== undefined) {
+        const strValue = String(value).trim();
+        // Remove " kg" or "kg" suffix if present
+        const numStr = strValue.replace(/\s*kg$/i, '');
+        const num = parseFloat(numStr);
+        return isNaN(num) ? undefined : num;
+      }
+    }
+    return undefined;
+  }
+
+  /**
    * Combine strava activities into per-day information that is suitable for Acroform bikelog.
    * @param activities Array of strava activities.
    * @returns {{}} Dictionary of bikelog data, with keys set to julian day.
@@ -57,10 +133,6 @@ export class Bikelog {
         date: new Date(activity.startDateLocal),
         events: [],
       };
-      // Note: wt (weight) is not in the standard Strava schema
-      // if (activity.data.wt) {
-      //   entry.wt = activity.data.wt;
-      // }
       if (activity.isRide()) {
         const bike = activity.gearId && this.#opts.bikes ? this.#opts.bikes[activity.gearId] : undefined;
         const isMoto: boolean =
@@ -71,13 +143,8 @@ export class Bikelog {
         // note += 'Ascend ' + Math.round(activity.total_elevation_gain) + 'm, time ';
         // note += this.formatHMS(activity.moving_time, { seconds: false });
         // note += ' (' + this.formatHMS(activity.elapsed_time, { seconds: false }) + ')';
-        const times: string[] = [];
-        if (activity.movingTime) {
-          times.push('Moving: ' + Bikelog.secondsToString(activity.movingTime));
-        }
-        if (activity.elapsedTime) {
-          times.push('Elapsed: ' + Bikelog.secondsToString(activity.elapsedTime));
-        }
+
+        // Build activity name line
         if (isMoto) {
           note += 'Moto: ' + activity.name;
           note += `\nDistance: ${activity.distanceRoundedKm()}, Elevation: ${
@@ -90,14 +157,45 @@ export class Bikelog {
         } else {
           note += 'Bike: ' + activity.name;
         }
-        note += times.length ? '\n' + times.join(', ') : '';
+
+        // Add timing metadata first (before description)
+        const times: string[] = [];
+        if (activity.movingTime) {
+          times.push('Moving: ' + Bikelog.secondsToString(activity.movingTime));
+        }
+        if (activity.elapsedTime) {
+          times.push('Elapsed: ' + Bikelog.secondsToString(activity.elapsedTime));
+        }
+        if (times.length) {
+          note += '\n' + times.join(', ');
+        }
 
         // TODO: Add EBike energy data from detailed activity
-        // TODO: Add custom description from getCustomProperties()
         // TODO: Add segments list from activity.segments
 
+        // Add custom description and private note from activity (if available)
+        const customProps = this.parseActivityText(activity);
+
+        // Extract weight if present and set entry.wt
+        const weight = this.extractWeight(customProps);
+        if (weight !== undefined) {
+          entry.wt = weight;
+        }
+
+        // Add description text first
+        if (customProps.description && _.isString(customProps.description)) {
+          note += '\n' + customProps.description;
+        }
+
+        // Add all other key/value pairs (excluding description and weight)
+        for (const [key, value] of Object.entries(customProps)) {
+          if (key !== 'description' && key.toLowerCase() !== 'weight' && value !== undefined) {
+            note += '\n' + this.toTitleCase(key) + ': ' + String(value);
+          }
+        }
+
         if (entry.note0) {
-          entry.note0 += '\n' + note;
+          entry.note0 += '\n\n' + note;
         } else {
           entry.note0 = note;
         }
@@ -138,10 +236,29 @@ export class Bikelog {
         note += 'Distance: ' + distance + ' km; Duration: ' +
           Fmt.hms(activity.movingTime, { seconds: false });
 
-        // TODO: Add support for custom description from getCustomProperties()
+        // Add custom description and private note from activity (if available)
+        const customProps = this.parseActivityText(activity);
+
+        // Extract weight if present and set entry.wt
+        const weight = this.extractWeight(customProps);
+        if (weight !== undefined) {
+          entry.wt = weight;
+        }
+
+        // Add description text first
+        if (customProps.description && _.isString(customProps.description)) {
+          note += '\n' + customProps.description;
+        }
+
+        // Add all other key/value pairs (excluding description and weight)
+        for (const [key, value] of Object.entries(customProps)) {
+          if (key !== 'description' && key.toLowerCase() !== 'weight' && value !== undefined) {
+            note += '\n' + this.toTitleCase(key) + ': ' + String(value);
+          }
+        }
 
         if (entry.note0) {
-          entry.note0 += '\n' + note;
+          entry.note0 += '\n\n' + note;
         } else {
           entry.note0 = note;
         }
