@@ -9,9 +9,10 @@
   "license": "MIT",
   "exports": "./main.ts",
   "tasks": {
-    "test": "deno test -A --unstable-kv",
+    "test": "deno test -A",
     "lint": "deno lint",
-    "check": "deno check src test/*.test.ts main.ts"
+    "check": "deno check src test/*.test.ts main.ts",
+    "install": "deno cache --lock=deno.lock ./main.ts && deno install -f --global -A --config deno.json --name strava --lock=deno.lock ./main.ts"
   },
   "tests": {
     "include": [
