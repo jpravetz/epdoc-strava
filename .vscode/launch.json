@@ -1,87 +1,166 @@
 {
-  // Use IntelliSense to learn about possible attributes.
-  // Hover to view descriptions of existing attributes.
-  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
   "version": "0.2.0",
   "configurations": [
     {
       "type": "node",
       "request": "launch",
-      "name": "strava -h",
-      "program": "${workspaceFolder}/dist/src/cli.js",
-      "args": ["-h"],
-      "console": "integratedTerminal",
-      "preLaunchTask": "tsc: build - tsconfig.json",
-      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+      "name": "strava-api: test/creds.test.ts",
+      "cwd": "${workspaceFolder}",
+      "attachSimplePort": 9229,
+      "runtimeExecutable": "/Users/jpravetz/.deno/bin/deno",
+      "env": {
+        "LAUNCHGEN": "true"
+      },
+      "runtimeArgs": [
+        "test",
+        "-A",
+        "--inspect-brk",
+        "${workspaceFolder}/packages/strava-api/test/creds.test.ts"
+      ],
+      "presentation": {
+        "group": "strava-api"
+      }
     },
     {
       "type": "node",
       "request": "launch",
-      "name": "strava",
-      "program": "${workspaceFolder}/dist/src/cli.js",
-      "console": "integratedTerminal",
-      "preLaunchTask": "tsc: build - tsconfig.json",
-      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+      "name": "strava: test/segment/file.test.ts",
+      "cwd": "${workspaceFolder}",
+      "attachSimplePort": 9229,
+      "runtimeExecutable": "/Users/jpravetz/.deno/bin/deno",
+      "env": {
+        "LAUNCHGEN": "true"
+      },
+      "runtimeArgs": [
+        "test",
+        "-A",
+        "--inspect-brk",
+        "${workspaceFolder}/packages/strava/test/segment/file.test.ts"
+      ],
+      "presentation": {
+        "group": "strava"
+      }
     },
     {
       "type": "node",
       "request": "launch",
-      "name": "strava -u",
-      "program": "${workspaceFolder}/dist/src/cli.js",
-      "args": ["-u"],
-      "console": "integratedTerminal",
-      "preLaunchTask": "tsc: build - tsconfig.json",
-      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+      "name": "strava: main",
+      "program": "${workspaceFolder}/packages/strava/./main.ts",
+      "cwd": "${workspaceFolder}",
+      "attachSimplePort": 9229,
+      "runtimeExecutable": "/Users/jpravetz/.deno/bin/deno",
+      "runtimeArgs": [
+        "run",
+        "-A",
+        "--inspect-brk"
+      ],
+      "args": [],
+      "env": {
+        "LAUNCHGEN": "true"
+      },
+      "presentation": {
+        "group": "strava"
+      }
     },
     {
       "type": "node",
       "request": "launch",
-      "name": "strava -a -d 20191001",
-      "program": "${workspaceFolder}/dist/src/cli.js",
-      "args": ["-a", "-d", "20191001"],
-      "console": "integratedTerminal",
-      "preLaunchTask": "tsc: build - tsconfig.json",
-      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+      "name": "strava: main --help",
+      "program": "${workspaceFolder}/packages/strava/./main.ts",
+      "cwd": "${workspaceFolder}",
+      "attachSimplePort": 9229,
+      "runtimeExecutable": "/Users/jpravetz/.deno/bin/deno",
+      "runtimeArgs": [
+        "run",
+        "-A",
+        "--inspect-brk"
+      ],
+      "args": [
+        "--help"
+      ],
+      "env": {
+        "LAUNCHGEN": "true"
+      },
+      "presentation": {
+        "group": "strava"
+      }
     },
     {
       "type": "node",
       "request": "launch",
-      "name": "strava --auth",
-      "program": "${workspaceFolder}/dist/src/cli.js",
-      "args": ["--auth"],
-      "console": "integratedTerminal",
-      "preLaunchTask": "tsc: build - tsconfig.json",
-      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+      "name": "strava: main athlete",
+      "program": "${workspaceFolder}/packages/strava/./main.ts",
+      "cwd": "${workspaceFolder}",
+      "attachSimplePort": 9229,
+      "runtimeExecutable": "/Users/jpravetz/.deno/bin/deno",
+      "runtimeArgs": [
+        "run",
+        "-A",
+        "--inspect-brk"
+      ],
+      "args": [
+        "athlete"
+      ],
+      "env": {
+        "LAUNCHGEN": "true"
+      },
+      "presentation": {
+        "group": "strava"
+      }
     },
     {
       "type": "node",
       "request": "launch",
-      "name": "strava -a -d 20221201-x ~/Downloads/Activities.xml",
-      "program": "${workspaceFolder}/dist/src/cli.js",
-      "args": ["-a", "-d", "20221201", "-x", "~/Downloads/Activities.xml"],
-      "console": "integratedTerminal",
-      "preLaunchTask": "tsc: build - tsconfig.json",
-      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+      "name": "strava: main kml -d 20251001- -o /Users/jpravetz/dev/@epdoc/strava/tmp/Activities.kml",
+      "program": "${workspaceFolder}/packages/strava/./main.ts",
+      "cwd": "${workspaceFolder}",
+      "attachSimplePort": 9229,
+      "runtimeExecutable": "/Users/jpravetz/.deno/bin/deno",
+      "runtimeArgs": [
+        "run",
+        "-A",
+        "--inspect-brk"
+      ],
+      "args": [
+        "kml",
+        "-d",
+        "20251001-",
+        "-o",
+        "/Users/jpravetz/dev/@epdoc/strava/tmp/Activities.kml"
+      ],
+      "env": {
+        "LAUNCHGEN": "true"
+      },
+      "presentation": {
+        "group": "strava"
+      }
     },
     {
       "type": "node",
       "request": "launch",
-      "name": "strava -a -d 20221201 -k ~/Downloads/Activities.kml -m",
-      "program": "${workspaceFolder}/dist/src/cli.js",
-      "args": ["-a", "-d", "20221201", "-k", "~/Downloads/Activities.kml", "-m"],
-      "console": "integratedTerminal",
-      "preLaunchTask": "tsc: build - tsconfig.json",
-      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "strava -a -d 20191001 -k ~/Downloads/Activities.kml",
-      "program": "${workspaceFolder}/dist/src/cli.js",
-      "args": ["-a", "-d", "20191001", "-k", "~/Downloads/Activities.kml"],
-      "console": "integratedTerminal",
-      "preLaunchTask": "tsc: build - tsconfig.json",
-      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+      "name": "strava: main pdf -d 20251104- -o /Users/jpravetz/dev/@epdoc/strava/tmp/Activities.xml",
+      "program": "${workspaceFolder}/packages/strava/./main.ts",
+      "cwd": "${workspaceFolder}",
+      "attachSimplePort": 9229,
+      "runtimeExecutable": "/Users/jpravetz/.deno/bin/deno",
+      "runtimeArgs": [
+        "run",
+        "-A",
+        "--inspect-brk"
+      ],
+      "args": [
+        "pdf",
+        "-d",
+        "20251104-",
+        "-o",
+        "/Users/jpravetz/dev/@epdoc/strava/tmp/Activities.xml"
+      ],
+      "env": {
+        "LAUNCHGEN": "true"
+      },
+      "presentation": {
+        "group": "strava"
+      }
     }
   ]
 }

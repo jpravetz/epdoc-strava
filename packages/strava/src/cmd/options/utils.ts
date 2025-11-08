@@ -28,7 +28,7 @@ export function isSubs(val: unknown): val is Options.Subs {
   }
 
   if ('choices' in obj) {
-    if (!Array.isArray(obj.choices)) return false;
+    if (!_.isArray(obj.choices)) return false;
   }
 
   return true;
@@ -68,7 +68,7 @@ export function isConfig(val: unknown): val is Options.Config {
   }
 
   if ('arguments' in val) {
-    if (!Array.isArray(val.arguments)) return false;
+    if (!_.isArray(val.arguments)) return false;
     for (const arg of val.arguments) {
       if (!_.isDict(arg)) return false;
       for (const value of Object.values(arg)) {

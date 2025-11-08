@@ -3,6 +3,7 @@ import type { Ctx } from '../dep.ts';
 import * as Athlete from '../athlete/mod.ts';
 import * as Kml from '../kml/mod.ts';
 import * as Pdf from '../pdf/mod.ts';
+import * as Segments from '../segments/mod.ts';
 import * as Cmd from '../types.ts';
 import type * as Root from './types.ts';
 
@@ -33,21 +34,30 @@ export class RootCmd {
     //   }
     // });
     await this.cmd.init(ctx);
-    await ctx.app.initClient();
+    // Individual commands will call ctx.app.init() with what they need
+    // await ctx.app.initClient(); // Removed - let commands initialize what they need
     // await ctx.app.initOpts();
     // await this.app.init(ctx, { config: true });
 
     const pdfCmd = new Pdf.Cmd();
     const kmlCmd = new Kml.Cmd();
+    const segmentsCmd = new Segments.Cmd();
     const athleteCmd = new Athlete.Cmd();
 
     this.cmd.addCommand(await pdfCmd.init(ctx));
     this.cmd.addCommand(await kmlCmd.init(ctx));
+    this.cmd.addCommand(await segmentsCmd.init(ctx));
     this.cmd.addCommand(await athleteCmd.init(ctx));
 
     this.cmd.hook('preAction', async (cmd, _actionCmd) => {
       const opts = cmd.opts<Root.RootOpts>();
       CliApp.configureLogging(ctx, opts);
+
+      // Set dry-run mode
+      if (opts.dryRun) {
+        ctx.dryRun = true;
+      }
+
       if (opts.offline) {
         ctx.online = false;
         ctx.app.notifyOffline;
@@ -86,6 +96,7 @@ export class RootCmd {
       new CliApp.Commander.Option('-i, --id <athleteId>', 'Athlete ID. Defaults to your login.'),
       new CliApp.Commander.Option('--imperial', 'Use imperial units'),
       new CliApp.Commander.Option('--offline', 'Offline mode'),
+      new CliApp.Commander.Option('-n, --dry-run', 'Do not modify any data (database, files or server).'),
     ];
 
     options.forEach((option) => this.cmd.addOption(option));

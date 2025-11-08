@@ -1,11 +1,16 @@
-import { type Dict } from '@epdoc/ActivityType';
 import * as FS from '@epdoc/fs/fs';
+import { _ } from '@epdoc/type';
+import type * as Ctx from '../context.ts';
+import type { Api } from '../dep.ts';
+import { escapeHtml, Fmt } from '../fmt.ts';
+import type * as Segment from '../segment/mod.ts';
 import { isValidActivityType, isValidLineStyle } from './guards.ts';
 import { defaultLineStyles } from './linestyles.ts';
-import { Main } from './main';
-import { Activity } from './models/activity';
-import { SegmentData } from './models/segment-data';
-import * as Kml from './types.ts';
+import type * as Kml from './types.ts';
+
+type Activity = Api.Activity.Base;
+type SegmentData = Segment.Data;
+type PlacemarkParams = Kml.PlacemarkParams;
 
 const REGEX = {
   color: /^[a-zA-Z0-9]{8}$/,
@@ -13,11 +18,10 @@ const REGEX = {
 };
 
 export class KmlMain {
-  private main: Main;
   private opts: Kml.Opts = {};
   private lineStyles: Kml.LineStyleDefs = defaultLineStyles;
   private buffer: string = '';
-  private stream: fs.WriteStream;
+  private writer?: FS.Writer;
   private trackIndex: number = 0;
 
   constructor(opts: Kml.Opts = {}) {
@@ -36,63 +40,49 @@ export class KmlMain {
     return this.opts && this.opts.more === true;
   }
 
-  public setLineStyles(styles: Kml.LineStyleDefs) {
+  public setLineStyles(ctx: Ctx.Context, styles: Kml.LineStyleDefs) {
     Object.entries(styles).forEach(([name, style]) => {
       if (isValidActivityType(name) && isValidLineStyle(style)) {
         this.lineStyles[name] = style;
       } else {
-        console.log(
-          'Warning: ignoring line style error for %s. Style must be in form \'{ "color": "C03030C0", "width": 2 }\'',
-          name,
-        );
+        ctx.log.warn.warn('Warning: ignoring line style error')
+          .value(name).text('Style must be in form \'{ "color": "C03030C0", "width": 2 }\'').emit();
       }
     });
   }
 
-  public outputData(filepath: string, activities: Activity[], segments: SegmentData[]): Promise<void> {
+  async outputData(
+    ctx: Ctx.Context,
+    filepath: string,
+    activities: Activity[],
+    segments: SegmentData[],
+  ): Promise<void> {
+    const m0 = ctx.log.mark();
     const file = filepath || 'Activities.kml';
     const fsFile: FS.File = new FS.File(FS.Folder.cwd(), filepath);
+    this.writer = await fsFile.writer();
 
-    return new Promise((resolve, reject) => {
-      this.stream = fs.createWriteStream(file);
+    try {
+      await this.header();
 
-      this.stream.once('open', (fd) => {
-        this.header()
-          .then((resp) => {
-            if (this.opts.activities) {
-              return this.addActivities(activities);
-            }
-          })
-          .then((resp) => {
-            if (this.opts.segments) {
-              return this.addSegments(segments);
-            }
-          })
-          .then((resp) => {
-            return this.footer();
-          })
-          .then((resp) => {
-            this.stream.end();
-            console.log('Wrote ' + file);
-          });
-      });
+      if (this.opts.activities) {
+        await this.addActivities(activities);
+      }
 
-      this.stream.once('error', (err) => {
-        this.stream.end();
-        err.message = 'Stream error ' + err.message;
-        reject(err);
-      });
-      this.stream.once('close', () => {
-        console.log('Close ' + file);
-        resolve();
-      });
-      this.stream.on('finish', () => {
-        console.log('Finish ' + file);
-      });
-      this.stream.on('drain', () => {
-        this._flush();
-      });
-    });
+      if (this.opts.segments) {
+        await this.addSegments(segments);
+      }
+
+      await this.footer();
+      await this.writer.close();
+
+      ctx.log.verbose.text('Wrote').fs(file).ewt(m0);
+    } catch (err) {
+      if (this.writer) {
+        await this.writer.close();
+      }
+      throw err;
+    }
   }
 
   private async addActivities(activities: Activity[]): Promise<void> {
@@ -105,56 +95,55 @@ export class KmlMain {
         '<Folder><name>Activities' + (dateString ? ' ' + dateString : '') + '</name><open>1</open>',
       );
 
-      return activities
-        .reduce((promiseChain, activity: Activity) => {
-          return promiseChain.then(() => {
-            const job = Promise.resolve().then(() => {
-              if (activity.hasKmlData()) {
-                this.outputActivity(indent + 1, activity);
-              }
-              return this.flush();
-            });
-            return job;
-          });
-        }, Promise.resolve())
-        .then((resp) => {
-          this.writeln(indent, '</Folder>');
-          return this.flush();
-        });
+      for (const activity of activities) {
+        if (activity.hasKmlData()) {
+          this.outputActivity(indent + 1, activity);
+        }
+        await this.flush();
+      }
+
+      this.writeln(indent, '</Folder>');
+      await this.flush();
     }
-    return Promise.resolve();
   }
 
-  private _dateString() {
-    if (Array.isArray(this.opts.dates)) {
-      const ad = [];
-      this.opts.dates.forEach((range) => {
-        ad.push(range.after + ' to ' + range.before);
+  private _dateString(): string {
+    if (this.opts.date && this.opts.date.hasRanges()) {
+      const ad: string[] = [];
+      this.opts.date.ranges.forEach((range) => {
+        const after = range.after ? range.after.toISOString().slice(0, 10) : '';
+        const before = range.before ? range.before.toISOString().slice(0, 10) : '';
+        if (after && before) {
+          ad.push(`${after} to ${before}`);
+        } else if (after) {
+          ad.push(`from ${after}`);
+        } else if (before) {
+          ad.push(`until ${before}`);
+        }
       });
       return ad.join(', ');
     }
     return '';
   }
 
-  public addSegments(segments: SegmentData[]): Promise<void> {
+  public async addSegments(segments: SegmentData[]): Promise<void> {
     if (segments && segments.length) {
       const indent = 2;
       const sortedSegments: SegmentData[] = segments.sort((a, b) => {
-        return compare(a, b, 'name');
+        return a.name.localeCompare(b.name);
       });
-      if (this.opts.segmentsFlatFolder === true) {
+      if (_.isString(this.opts.segments) && this.opts.segments === 'flat') {
         this.outputSegments(indent, sortedSegments);
       } else {
         const regions = this.getSegmentRegionList(segments);
-        Object.keys(regions).forEach((country) => {
-          Object.keys(regions[country]).forEach((state) => {
+        for (const country of Object.keys(regions)) {
+          for (const state of Object.keys(regions[country])) {
             this.outputSegments(indent, sortedSegments, country, state);
-          });
-        });
-        return this.flush();
+          }
+        }
+        await this.flush();
       }
     }
-    return Promise.resolve();
   }
 
   public outputSegments(indent: number, segments: SegmentData[], country?: string, state?: string): void {
@@ -178,8 +167,8 @@ export class KmlMain {
     this.writeln(indent, '</Folder>');
   }
 
-  private getSegmentRegionList(segments) {
-    const regions = {};
+  private getSegmentRegionList(segments: SegmentData[]): Record<string, Record<string, boolean>> {
+    const regions: Record<string, Record<string, boolean>> = {};
     segments.forEach((segment) => {
       regions[segment.country] = regions[segment.country] || {};
       if (segment.state) {
@@ -191,12 +180,14 @@ export class KmlMain {
   }
 
   public outputActivity(indent: number, activity: Activity): void {
-    const t0 = activity.startDateLocal.substr(0, 10);
+    const t0 = activity.startDateLocal.slice(0, 10);
     let styleName = 'Default';
-    // tslint:disable-next-line: no-string-literal
 
-    const bike: Dict = activity.gearId ? this.opts.bikes[activity.gearId] : undefined;
-    const isMoto: boolean = bike ? REGEX.moto.test(bike.name) : false;
+    const bike = activity.gearId && this.opts.bikes ? this.opts.bikes[activity.gearId] : undefined;
+    const isMoto: boolean =
+      bike && typeof bike === 'object' && 'name' in bike && typeof bike.name === 'string'
+        ? REGEX.moto.test(bike.name)
+        : false;
 
     if (isMoto) {
       styleName = 'Moto';
@@ -216,50 +207,24 @@ export class KmlMain {
     this.placemark(indent, params);
   }
 
-  private _buildActivityDescription(activity: Activity): string {
-    // console.log(this.opts)
-    // console.log(activity.keys)
-    if (this.more) {
-      const arr = [];
-      Object.keys(activity.keyDict).forEach((field) => {
-        // console.log(field + ' = ' + activity[field]);
-        if (activity[field]) {
-          let key = field;
-          let value = activity[field];
-          if (field === 'distance') {
-            value = getDistanceString(value, this.imperial);
-          } else if (field === 'movingTime' || field === 'elapsedTime') {
-            value = dateutil.formatMS(activity[field] * 1000, { ms: false, hours: true });
-          } else if (field === 'totalElevationGain') {
-            key = 'elevation_gain';
-            value = getElevationString(value, this.imperial);
-          } else if (field === 'averageTemp' && isNumber(value)) {
-            value = getTemperatureString(value, this.imperial); //  escapeHtml("˚C");
-          } else if (field === '_segments' && activity[field].length) {
-            const segs = [];
-            segs.push('<b>Segments:</b><br><ul>');
-            activity[field].forEach((segment) => {
-              const s = '<li><b>' +
-                segment.name +
-                ':</b> ' +
-                dateutil.formatMS(segment.elapsedTime * 1000, { ms: false, hours: true }) +
-                '</li>';
-              segs.push(s);
-            });
-            segs.push('</ul>');
-            arr.push(segs.join('\n'));
-            value = undefined;
-          } else if (field === 'description') {
-            value = value.replace('\n', '<br>');
-          }
-          if (value) {
-            arr.push('<b>' + fieldCapitalize(key) + ':</b> ' + value);
-          }
-        }
-      });
-      // console.log(arr);
-      return '<![CDATA[' + arr.join('<br>\n') + ']]>';
+  private _buildActivityDescription(activity: Activity): string | undefined {
+    if (!this.more) {
+      return undefined;
     }
+
+    // TODO: Implement full activity description with:
+    // - distance (using Fmt.getDistanceString)
+    // - moving time / elapsed time (using @epdoc/duration formatting)
+    // - elevation gain (using Fmt.getElevationString)
+    // - average temp (using Fmt.getTemperatureString)
+    // - segments list
+    // - custom description from activity.getCustomProperties()
+
+    const arr: string[] = [];
+    arr.push(`<b>Distance:</b> ${Fmt.getDistanceString(activity.distance, this.imperial)}`);
+    arr.push(`<b>Elevation Gain:</b> ${Fmt.getElevationString(activity.totalElevationGain, this.imperial)}`);
+
+    return '<![CDATA[' + arr.join('<br>\n') + ']]>';
   }
 
   /**
@@ -278,11 +243,11 @@ export class KmlMain {
     this.placemark(indent, params);
   }
 
-  private buildSegmentDescription(segment: SegmentData) {
+  private buildSegmentDescription(_segment: SegmentData) {
     return '';
   }
 
-  private _addLineStyle(name, style) {
+  private _addLineStyle(name: string, style: Kml.LineStyle): void {
     this.write(2, '<Style id="StravaLineStyle' + name + '">\n');
     this.write(
       3,
@@ -314,28 +279,28 @@ export class KmlMain {
     this.writeln(indent, '</Placemark>');
   }
 
-  private header(): Promise<void> {
+  private async header(): Promise<void> {
     this.write(0, '<?xml version="1.0" encoding="UTF-8"?>\n');
-    this.write(
-      1,
+    this.writeln(
+      0,
       '<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">',
     );
-    this.write(1, '<Document>\n');
-    this.write(2, '<name>Strava Activities</name>\n');
-    this.write(2, '<open>1</open>\n');
+    this.writeln(1, '<Document>');
+    this.writeln(2, '<name>Strava Activities</name>');
+    this.writeln(2, '<open>1</open>');
     Object.keys(this.lineStyles).forEach((name) => {
       this._addLineStyle(name, this.lineStyles[name]);
     });
-    return this.flush();
+    await this.flush();
   }
 
-  private footer(): Promise<void> {
+  private async footer(): Promise<void> {
     this.write(1, '</Document>\n</kml>\n');
-    return this.flush();
+    await this.flush();
   }
 
   private write(indent: string | number, s: string): void {
-    if (isString(indent)) {
+    if (_.isString(indent)) {
       this.buffer += s;
     } else {
       const indent2 = new Array(indent + 1).join('  ');
@@ -344,7 +309,7 @@ export class KmlMain {
   }
 
   private writeln(indent: string | number, s: string): void {
-    if (isString(indent)) {
+    if (_.isString(indent)) {
       this.buffer += s + '\n';
     } else {
       const indent2 = new Array(indent + 1).join('  ');
@@ -353,20 +318,15 @@ export class KmlMain {
     // this.buffer.write( indent + s + "\n", 'utf8' );
   }
 
-  public flush(): Promise<void> {
-    if (this.verbose) {
-      console.log('  Flushing %d bytes', this.buffer.length);
-    }
-    return this._flush();
+  public async flush(): Promise<void> {
+    await this._flush();
   }
 
-  private _flush(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const tbuf = this.buffer;
+  private async _flush(): Promise<void> {
+    if (this.writer && this.buffer) {
+      const content = this.buffer;
       this.buffer = '';
-      const bOk = this.stream.write(tbuf, () => {
-        resolve();
-      });
-    });
+      await this.writer.write(content);
+    }
   }
 }

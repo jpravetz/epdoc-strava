@@ -1,16 +1,16 @@
 import { SegmentBase } from './base.ts';
-import type { Metres, Seconds, Strava } from './dep.ts';
+import type { Coord, Metres, Seconds } from './dep.ts';
 import type * as Segment from './types.ts';
 
 export class SegmentData {
-  id: Segment.Id;
-  name: Segment.Name;
-  elapsedTime: Seconds;
-  movingTime: Seconds;
-  distance: Metres;
-  coordinates: Strava.Coord[] = [];
-  country: string;
-  state: string;
+  id: Segment.Id = 0;
+  name: Segment.Name = '';
+  elapsedTime: Seconds = 0;
+  movingTime: Seconds = 0;
+  distance: Metres = 0;
+  coordinates: Coord[] = [];
+  country: string = '';
+  state: string = '';
 
   constructor(data: SegmentBase) {
     if (data instanceof SegmentBase) {

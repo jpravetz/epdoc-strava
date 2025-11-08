@@ -1,20 +1,24 @@
+export type StreamType =
+  | 'time'
+  | 'distance'
+  | 'latlng'
+  | 'altitude'
+  | 'velocity_smooth'
+  | 'heartrate'
+  | 'cadence'
+  | 'watts'
+  | 'temp'
+  | 'moving'
+  | 'grade_smooth';
+export type StreamResolution = 'low' | 'medium' | 'high';
+export type StreamSeriesType = 'distance' | 'time';
+
 export interface Stream {
-  type:
-    | 'time'
-    | 'distance'
-    | 'latlng'
-    | 'altitude'
-    | 'velocity_smooth'
-    | 'heartrate'
-    | 'cadence'
-    | 'watts'
-    | 'temp'
-    | 'moving'
-    | 'grade_smooth';
+  type: StreamType;
   original_size: number;
-  resolution: 'low' | 'medium' | 'high';
-  series_type: 'distance' | 'time';
-  data: number[];
+  resolution: StreamResolution;
+  series_type: StreamSeriesType;
+  data: (number | [number, number])[];
 }
 
 export interface StreamSet {

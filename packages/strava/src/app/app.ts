@@ -1,374 +1,294 @@
 import * as FS from '@epdoc/fs/fs';
-import { _, type Dict } from '@epdoc/type';
+import { _ } from '@epdoc/type';
 import { assert } from '@std/assert/assert';
-import { Bikelog, BikelogOutputOpts } from '../bikelog/bikelog.ts';
+import * as BikeLog from '../bikelog/mod.ts';
+import { Kml } from '../cmd/dep.ts';
 import rawConfig from '../config.json' with { type: 'json' };
 import type * as Ctx from '../context.ts';
 import { Api } from '../dep.ts';
-import * as Kml from '../kml/mod.ts';
-import { Activity, ActivityFilter } from '../models/activity.ts';
-import { SegmentData } from '../segment/data.ts';
-import { SegmentFile } from '../segment/file.ts';
-import { SummarySegment } from '../segment/summary.ts';
-import { Server } from '../server.ts';
-import { StravaActivityOpts, StravaStreamSource } from '../strava-api.ts';
-import { StravaCreds } from '../strava-creds.ts';
-import * as App from './types.ts';
-import { DateRanges } from '@epdoc/daterange';
+import type { SegmentData } from '../segment/data.ts';
+import type * as App from './types.ts';
 
 const home = Deno.env.get('HOME');
 assert(home, 'Environment variable HOME is missing');
-const config: App.ConfigFile = _.deepCopy(rawConfig, { replace: { home: home as string } }) as App.ConfigFile;
+assert(
+  _.isDict(rawConfig) && 'paths' in rawConfig && _.isDict(rawConfig.paths),
+  'Invalid application configuration',
+);
+const lessRaw = _.deepCopy(rawConfig, { replace: { 'HOME': home }, pre: '${', post: '}' }) as App.ConfigFile;
+const configPaths = lessRaw.paths;
 
-const REQ_LIMIT = 10;
-
+/**
+ * Main application class that handles Strava API interactions and business logic.
+ * This class is designed to be reusable across different interfaces (CLI, web, etc.).
+ */
 export class Main {
-  #api?: Api.Api<Ctx.MsgBuilder, Ctx.Logger>;
-  #user?: UserSettings;
-  private options: App.Opts;
-  private _config: App.StravaConfig;
-  private strava: unknown;
-  private stravaCreds: StravaCreds;
-  private kml: Kml.Main = new Kml.Main();
-  #athleteId?: string;
+  #api: Api.Api<Ctx.MsgBuilder, Ctx.Logger>;
   athlete?: Api.Schema.DetailedAthlete;
-  private activities: Activity[];
-  private segments: SummarySegment[];
-  private segmentsFileLastModified: Date;
-  private segmentConfig: Record<string, unknown>;
-  private gear: unknown[];
-  private segmentEfforts: Record<string, unknown>;
-  private starredSegments: SegmentData[] = [];
-  public segFile: SegmentFile;
-  public bikes: Dict = {};
+  userSettings?: App.UserSettings;
   notifyOffline = false;
 
   constructor() {
-    // this.options = options;
+    // Initialize with defaults
+    this.#api = new Api.Api(configPaths.userCreds, [{ path: configPaths.clientCreds }, { env: true }]);
   }
 
+  /**
+   * Get the API client instance.
+   * @throws Error if API not initialized
+   */
   get api(): Api.Api<Ctx.MsgBuilder, Ctx.Logger> {
-    return this.#api!;
+    if (!this.#api) {
+      throw new Error('API not initialized. Call initClient() first.');
+    }
+    return this.#api;
   }
 
-  async initClient(): Promise<void> {
-    const clientApp = await new FS.File(config.settings.clientAppFile).readJson<App.ClientApp>();
-    assert(clientApp && clientApp.client, `Invalid app key file ${config.settings.clientAppFile}`);
-    this.#api = new Api.Api(this.options.config.client, new FS.File(config.settings.credentialsFile));
-    this.#user = await new FS.File(config.settings.userSettingsFile).readJson<App.UserSettings>();
+  /**
+   * Initialize the application with specified services.
+   * @param ctx - Application context
+   * @param opts - Initialization options specifying what to initialize
+   */
+  async init(ctx: Ctx.Context, opts: App.Opts = {}): Promise<void> {
+    if (opts.config) {
+      // TODO: Load configuration files
+    }
 
-    return Promise.resolve()
-      .then((resp) => {
-        if (this.options.kml) {
-          // Run this first to validate line styles before pinging strava APIs
-          this.kml = new Kml({ verbose: this.options.verbose });
-          if (this.options.config.lineStyles) {
-            this.kml.setLineStyles(this.options.config.lineStyles);
-          }
-        }
-      })
-      .then((resp) => {
-        return this.strava.initCreds();
-      });
+    if (opts.strava) {
+      await this.#api.init(ctx);
+    }
+
+    if (opts.userSettings) {
+      this.userSettings = await new FS.File(configPaths.userSettings).readJson();
+    }
   }
 
-  setAthleteId(id: string): Promise<void> {
-    this.#athleteId = id;
+  /**
+   * Check if internet access is available.
+   * @param _ctx - Application context (unused for now)
+   * @returns Promise resolving to true if online
+   */
+  checkInternetAccess(_ctx: Ctx.Context): Promise<boolean> {
+    // Simple internet check - for now just return true
+    // TODO: Implement actual internet connectivity check
+    return Promise.resolve(true);
+  }
+
+  /**
+   * Set the athlete ID for API calls.
+   * @param _id - Athlete ID to set
+   */
+  setAthleteId(_id: string): Promise<void> {
+    // TODO: Implement athlete ID storage and usage
     return Promise.resolve();
   }
 
-  async init(): Promise<void> {
-  }
-
-  async initAuth(ctx: Ctx.Context): Promise<void> {
-    const creds = new Api.Creds(new FS.File(config.settings.credentialsFile));
-    await creds.read();
-    if (!creds.isValid()) {
-      ctx.log.info.h2('Authorization required. Opening web authorization page').emit();
-      await this.#api!.auth(ctx);
-      const authServer = new Server(this.strava);
-      await authServer.run();
-      ctx.log.info.h2('Closing server').emit();
-      authServer.close();
-    } else {
-      console.log('Authorization not required');
-    }
-  }
-
-  public async run(): Promise<void> {
-    return this.init()
-      .then((resp) => {
-        if (!this.strava.creds.isValid()) {
-          console.log('Authorization required. Opening web authorization page');
-          const authServer = new Server(this.strava);
-          return authServer.run().then((resp) => {
-            console.log('Closing server');
-            authServer.close();
-          });
-        } else {
-          console.log('Authorization not required');
-        }
-      })
-      .then((resp) => {
-        if (!this.strava.creds.isValid()) {
-          throw new Error('Invalid credentials');
-        }
-      })
-      .then((resp) => {
-        this.segFile = new SegmentFile(this.options.segmentsFile, this.strava);
-        return this.segFile.get({ refresh: this.options.refreshStarredSegments });
-      })
-      .then((resp) => {
-        if (this.options.kml && !this.options.activities && !this.options.segments) {
-          throw new Error('When writing kml select either segments, activities or both');
-        }
-      })
-      .then((resp) => {
-        if (this.options.athlete || this.options.xml || this.options.kml) {
-          return this.getAthlete().then((resp) => {
-            if (!this.options.xml) {
-              this.logAthlete();
-            }
-          });
-        }
-      })
-      .then((resp) => {
-        if (this.options.activities || this.options.xml) {
-          return this.getActivities().then((resp) => {
-            this.activities = resp;
-            console.log(`Found ${resp.length} Activities`);
-            if (!this.options.xml) {
-              resp.forEach((i) => {
-                console.log('  ' + i.toString());
-              });
-            }
-          });
-        }
-      })
-      .then((resp) => {
-        if (this.options.xml) {
-          return this.addActivitiesDetails();
-        }
-      })
-      .then((resp) => {
-        if (this.options.xml) {
-          return this.saveXml();
-        }
-      })
-      .then((resp) => {
-        if (this.options.kml && this.options.activities) {
-          return this.addActivitiesCoordinates();
-        }
-      })
-      .then((resp) => {
-        if (this.options.kml && this.options.segments) {
-          return this.addStarredSegmentsCoordinates();
-        }
-      })
-      .then((resp) => {
-        if (this.options.kml) {
-          let opts = {
-            activities: true,
-            segments: this.options.segments ? true : false,
-          };
-          return this.saveKml(opts);
-        }
-      });
-  }
-
+  /**
+   * Retrieve athlete information from Strava API.
+   * @param ctx - Application context for logging
+   * @param athleteId - Optional specific athlete ID to retrieve
+   */
   async getAthlete(ctx: Ctx.Context, athleteId?: Api.Schema.AthleteId): Promise<void> {
-    this.athlete = await this.api.getAthlete(ctx, athleteId || this.options.athleteId);
-    await this.#registerBikes(this.athlete.bikes);
-  }
-
-  #registerBikes(bikes: StravaBike[]) {
-    if (bikes && bikes.length) {
-      bikes.forEach((bike) => {
-        this.bikes[bike.id] = bike;
-      });
+    try {
+      this.athlete = await this.api.getAthlete(ctx, athleteId);
+      ctx.log.info.h2(`Retrieved athlete: ${this.athlete.firstname} ${this.athlete.lastname}`).emit();
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      ctx.log.error.error(`Failed to get athlete: ${errorMsg}`).emit();
+      throw err;
     }
   }
 
-  public logAthlete() {
-    console.log('Athlete', JSON.stringify(this.athlete, null, '  '));
-  }
+  async getKml(ctx: Ctx.Context, kmlOpts: Kml.Opts): Promise<void> {
+    // Initialize KML generator with options and line styles
+    const kml = new Kml.Main(kmlOpts);
+    if (this.userSettings && this.userSettings.lineStyles) {
+      kml.setLineStyles(ctx, this.userSettings.lineStyles);
+    }
 
-  async getActivities(dateRanges: DateRanges): Promise<Activity[]> {
-    let results: Activity[] = [];
-    const dateRanges: DateRange[] = Array.isArray(this.options.dates) ? this.options.dates : [];
+    // Validate that at least activities or segments is requested
+    if (!kmlOpts.activities && !kmlOpts.segments) {
+      throw new Error('When writing KML, select either segments, activities, or both');
+    }
 
-    return dateRanges
-      .reduce((promiseChain, dateRange) => {
-        return promiseChain.then(() => {
-          let job = this.getActivitiesForDateRange(dateRange).then((resp) => {
-            results = results.concat(resp);
-          });
-          return job;
-        });
-      }, Promise.resolve())
-      .then((resp) => {
-        results = this.filterActivities(results);
-        results = results.sort(Activity.compareStartDate);
-        return Promise.resolve(results);
-      });
-  }
+    let activities: Api.Activity.Base[] = [];
+    const segments: SegmentData[] = []; // TODO: Implement segment fetching
 
-  public async getActivitiesForDateRange(dateRange: DateRange): Promise<Activity[]> {
-    const params: StravaActivityOpts = {
-      athleteId: this.options.athleteId,
-      query: {
-        per_page: 200,
-        after: dateRange.after,
-        before: dateRange.before,
-      },
-    };
-    return this.strava.getActivities(params).then((resp) => {
-      const activities = resp as Dict[];
-      const results: Activity[] = [];
-      activities.forEach((data) => {
-        const activity = Activity.newFromResponseData(data, this);
-        if (activity) {
-          results.push(activity);
+    // Fetch activities if requested
+    if (kmlOpts.activities && kmlOpts.date) {
+      ctx.log.info.text('Fetching activities for date ranges').dateRange(kmlOpts.date).emit();
+
+      // Get athlete ID (default to authenticated user)
+      const athleteId = this.athlete?.id || 0;
+
+      // Get activities for each date range
+      for (const dateRange of kmlOpts.date.ranges) {
+        const opts: Api.ActivityOpts = {
+          athleteId,
+          query: {
+            per_page: 200,
+            after: Math.floor(
+              (dateRange.after ? dateRange.after.getTime() : new Date(1975, 0, 1).getTime()) / 1000,
+            ),
+            before: Math.floor((dateRange.before ? dateRange.before.getTime() : new Date().getTime()) / 1000),
+          },
+        };
+
+        const rangeActivitiesData = await this.api.getActivities(ctx, opts);
+
+        // Convert Dict[] to Activity.Base[]
+        for (const data of rangeActivitiesData) {
+          const activity = new Api.Activity.Base(data as unknown as Api.Schema.SummaryActivity);
+          activities.push(activity);
         }
-      });
-      return results;
-    });
-  }
+      }
 
-  public filterActivities(activities: Activity[]): Activity[] {
-    const filter: ActivityFilter = {
-      commuteOnly: this.options.commuteOnly,
-      nonCommuteOnly: this.options.nonCommuteOnly,
-      include: this.options.activityFilter,
-    };
-    const results: Activity[] = activities.filter((activity) => {
-      return activity.include(filter);
-    });
-    return results;
-  }
+      if (activities.length) {
+        ctx.log.info.text('Found').count(activities.length).text('activity', 'activities').emit();
 
-  /**
-   * Read more information using the DetailedActivity object and add these
-   * details to the Activity object.
-   */
-  public async addActivitiesDetails(): Promise<unknown> {
-    console.log(`Retrieving activity details for ${this.activities.length} Activities`);
+        // Filter activities based on commute option
+        if (kmlOpts.commute === 'yes') {
+          activities = activities.filter((a) => a.data.commute);
+        } else if (kmlOpts.commute === 'no') {
+          activities = activities.filter((a) => !a.data.commute);
+        }
 
-    // Break into chunks to limit to REQ_LIMIT parallel requests.
-    const activitiesChunks = [];
-    for (let idx = 0; idx < this.activities.length; idx += REQ_LIMIT) {
-      const tmpArray = this.activities.slice(idx, idx + REQ_LIMIT);
-      activitiesChunks.push(tmpArray);
-    }
-
-    return activitiesChunks
-      .reduce((promiseChain, activities) => {
-        return promiseChain.then(() => {
-          const jobs = [];
-          activities.forEach((activity) => {
-            const job = this.addActivityDetail(activity);
-            jobs.push(job);
-          });
-          return Promise.all(jobs);
-        });
-      }, Promise.resolve())
-      .then((resp) => {
-        return Promise.resolve();
-      });
-  }
-
-  public async addActivityDetail(activity: Activity): Promise<void> {
-    return this.strava.getDetailedActivity(activity).then((data) => {
-      activity.addFromDetailedActivity(data);
-    });
-  }
-
-  /**
-   * Add coordinates for the activity or segment. Limits to REQ_LIMIT parallel requests.
-   */
-  private addActivitiesCoordinates() {
-    console.log(`Retrieving coordinates for ${this.activities.length} Activities`);
-
-    // Break into chunks to limit to REQ_LIMIT parallel requests.
-    const activitiesChunks = [];
-    for (let idx = 0; idx < this.activities.length; idx += REQ_LIMIT) {
-      const tmpArray = this.activities.slice(idx, idx + REQ_LIMIT);
-      activitiesChunks.push(tmpArray);
-    }
-
-    return activitiesChunks
-      .reduce((promiseChain, items) => {
-        return promiseChain.then(() => {
-          const jobs = [];
-          items.forEach((item) => {
-            const activity: Activity = item as Activity;
-            const name = activity.startDateLocal;
-            const job = this.strava.getStreamCoords(StravaStreamSource.activities, activity.id, name).then(
-              (resp) => {
-                activity.coordinates = resp;
-              },
+        // Fetch coordinates for activities
+        ctx.log.info.text('Fetching coordinates for activities').emit();
+        for (const activity of activities) {
+          try {
+            const coords = await this.api.getStreamCoords(
+              ctx,
+              'activities' as Api.Schema.StreamKeyType,
+              activity.id,
+              activity.name,
             );
-            jobs.push(job);
-          });
-          return Promise.all(jobs);
-        });
-      }, Promise.resolve())
-      .then((resp) => {
-        return Promise.resolve();
-      });
-  }
-
-  /**
-   * Call only when generating KML file with all segments
-   */
-  private async addStarredSegmentsCoordinates() {
-    console.log(`Retrieving coordinates for ${this.starredSegments.length} Starred Segments`);
-
-    return this.starredSegments
-      .reduce((promiseChain, item) => {
-        return promiseChain.then(() => {
-          return this.strava.getStreamCoords(StravaStreamSource.segments, item.id, item.name).then((resp) => {
-            item.coordinates = resp;
-          });
-        });
-      }, Promise.resolve())
-      .then((resp) => {
-        return Promise.resolve();
-      });
-  }
-
-  private saveXml() {
-    const opts: BikelogOutputOpts = {
-      more: this.options.more,
-      dates: this.options.dateRanges,
-      imperial: this.options.imperial,
-      selectedBikes: this.options.config.bikes,
-      bikes: this.bikes,
-    };
-    if (this.options.segments === 'flat') {
-      opts.segmentsFlatFolder = true;
+            if (coords && coords.length > 0) {
+              activity.coordinates = coords;
+            }
+          } catch (_e) {
+            // const err = _.asError(_e);
+            ctx.log.warn.text('Failed to fetch coordinates for activity').activity(activity).emit();
+          }
+        }
+      }
     }
-    const bikelog = new Bikelog(opts);
-    return bikelog.outputData(this.options.xml, this.activities);
-  }
 
-  private saveKml(options: { activities?: boolean; segments?: boolean } = {}) {
-    const opts: KmlOpts = {
-      more: this.options.more,
-      dates: this.options.dateRanges,
-      imperial: this.options.imperial,
-      activities: options.activities,
-      segments: options.segments,
-      bikes: this.bikes,
-    };
-    if (this.options.segments === 'flat') {
-      opts.segmentsFlatFolder = true;
+    // TODO: Fetch segments if requested
+    // if (kmlOpts.segments) {
+    //   ctx.log.info.text('Fetching starred segments').emit();
+    //   // Implementation needed
+    // }
+
+    if (activities.length) { // Generate KML file
+      const outputPath = typeof kmlOpts.output === 'string'
+        ? kmlOpts.output
+        : kmlOpts.output?.path
+        ? kmlOpts.output.path
+        : 'Activities.kml';
+
+      ctx.log.info.text('Generating KML file').fs(outputPath).emit();
+      ctx.log.indent();
+      await kml.outputData(ctx, outputPath, activities, segments);
+      ctx.log.outdent();
+      ctx.log.info.h2('KML file generated successfully').fs(outputPath).emit();
+    } else {
+      ctx.log.info.warn('No activities found for the specified date ranges').emit();
     }
-    const kml = new Kml(opts);
-    return kml.outputData(this.options.kml, this.activities, this.starredSegments);
   }
 
-  checkInternetAccess(_ctx: Ctx.Context): Promise<boolean> {
-    return Promise.resolve(true);
+  async getPdf(ctx: Ctx.Context, pdfOpts: BikeLog.Opts): Promise<void> {
+    ctx.log.info.text('Generating PDF/XML for Adobe Acrobat Forms').emit();
+
+    const activities: Api.Activity.Base[] = [];
+
+    // Fetch activities if we have date ranges
+    if (!(pdfOpts.date && pdfOpts.date.hasRanges())) {
+      ctx.log.warn.text('No date ranges specified').emit();
+      return;
+    }
+
+    const m0 = ctx.log.mark();
+    ctx.log.info.text('Fetching activities for date ranges').dateRange(pdfOpts.date).emit();
+
+    // Get athlete ID (default to authenticated user)
+    const athleteId = this.athlete?.id || 0;
+
+    // Get activities for each date range
+    for (const dateRange of pdfOpts.date.ranges) {
+      const opts: Api.ActivityOpts = {
+        athleteId,
+        query: {
+          per_page: 200,
+          after: Math.floor(
+            (dateRange.after ? dateRange.after.getTime() : new Date(1975, 0, 1).getTime()) / 1000,
+          ),
+          before: Math.floor((dateRange.before ? dateRange.before.getTime() : new Date().getTime()) / 1000),
+        },
+      };
+
+      const rangeActivitiesData = await this.api.getActivities(ctx, opts);
+
+      // Convert Dict[] to Activity.Base[]
+      for (const data of rangeActivitiesData) {
+        const activity = new Api.Activity.Base(data as unknown as Api.Schema.SummaryActivity);
+        activities.push(activity);
+      }
+    }
+
+    ctx.log.info.text('Found').count(activities.length).text('activity', 'activities').ewt(m0);
+
+    // Fetch detailed activity data to get description and private_note fields
+    if (activities.length > 0) {
+      ctx.log.info.text('Fetching detailed activity data').emit();
+      for (let i = 0; i < activities.length; i++) {
+        try {
+          const detailedActivity = await this.api.getDetailedActivity(ctx, activities[i].data);
+          // Replace summary activity with detailed activity data
+          activities[i] = new Api.Activity.Base(detailedActivity);
+        } catch (_e) {
+          ctx.log.warn.text('Failed to fetch detailed data for').activity(activities[i]).emit();
+        }
+      }
+    }
+
+    // Prepare bikes dict from athlete data
+    const bikes: Record<string, Api.Schema.SummaryGear> = {};
+    if (this.athlete && 'bikes' in this.athlete) {
+      const athleteBikes = this.athlete.bikes;
+      if (_.isArray(athleteBikes)) {
+        athleteBikes.forEach((bike: Api.Schema.SummaryGear) => {
+          if (bike && bike.id) {
+            bikes[bike.id] = bike;
+          }
+        });
+      }
+    }
+
+    // Create Bikelog instance with options
+    const bikelogOpts: BikeLog.OutputOpts = {
+      more: true, // pdfOpts.more,
+      dates: pdfOpts.date,
+      bikes,
+    };
+
+    const bikelog = new BikeLog.Bikelog(bikelogOpts);
+
+    // Generate output file path
+    const outputPath = typeof pdfOpts.output === 'string'
+      ? pdfOpts.output
+      : pdfOpts.output?.path
+      ? pdfOpts.output.path
+      : 'bikelog.xml';
+
+    // if (pdfOpts.dryRun) {
+    //   ctx.log.info.text(`Dry run: would generate XML file: ${outputPath}`).emit();
+    //   ctx.log.info.text(`Would process ${activities.length} activities`).emit();
+    //   return;
+    // }
+
+    ctx.log.info.text('Generating XML file').fs(outputPath).emit();
+    await bikelog.outputData(ctx, outputPath, activities);
+    ctx.log.info.h2('PDF/XML file generated successfully').fs(outputPath).emit();
   }
 }

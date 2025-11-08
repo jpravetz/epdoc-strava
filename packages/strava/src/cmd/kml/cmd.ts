@@ -1,80 +1,83 @@
-import type { DateRanges } from '@epdoc/daterange';
-import type * as FS from '@epdoc/fs/fs';
+import { _ } from '@epdoc/type';
+import type * as Kml from '../../kml/mod.ts';
 import type { Ctx } from '../dep.ts';
 import * as Options from '../options/mod.ts';
 import type * as Cmd from '../types.ts';
 
-/**
- * Defines the CLI interface for the `assign` command.
- */
-const cmdConfig: Options.Config = {
+export const cmdConfig: Options.Config = {
+  replace: { cmd: 'KML' },
   options: {
     date: true,
     output: true,
+    activities: true,
+    segments: true,
+    more: true,
+    commute: true,
+    // Note: imperial and dryRun are global options defined in root command
   },
 };
 
-/**
- * Holds the parsed options for the `assign` command.
- */
-type KmlOpts = {
-  date?: DateRanges;
-  output?: FS.FilePath;
-};
+// export type KmlOpts = {
+//   more: boolean;
+//   date: DateRanges;
+//   activities: boolean;
+//   segments: boolean;
+//   commute: boolean;
+// };
 
 /**
- * Implements the `assign` command, which is responsible for analyzing messages
- * and assigning them to providers based on predefined conditions.
+ * Command to generate KML files from Strava data.
+ * Delegates business logic to the app layer for reusability.
  */
 export class KmlCmd extends Options.BaseSubCmd {
   constructor() {
-    super(
-      'kml',
-      'Output messages to KML file.',
-    );
+    super('kml', 'Generate KML files from Strava activities and segments.');
   }
 
   /**
-   * Initializes the `assign` command and its action.
-   *
-   * The command's action performs the following workflow:
-   * 1. Fetches messages to be processed, either from command-line arguments or
-   *    by searching with the provided options.
-   * 2. Analyzes the messages to determine their provider assignments.
-   * 3. Optionally exports associated PDFs.
-   * 4. Optionally lists the results of the analysis.
-   *
-   * @param ctx - The application context.
-   * @returns A promise that resolves to the initialized command object.
+   * Initialize the KML command with its action handler.
+   * @param ctx - Application context
+   * @returns Promise resolving to the configured command
    */
   init(ctx: Ctx.Context): Promise<Cmd.Command> {
-    this.cmd.init(ctx)
-      .action(async (args: string[], kmlOpts: KmlOpts) => {
-        const msgs: Msg.Messages = await this.getMessages(ctx, args, assignOpts);
-        await ctx.app.init(ctx, { db: true, config: true, services: true });
-
-        const analyzerOpts: MsgOp.AnalyzerOpts = {
-          limit: assignOpts.limit,
-          refresh: assignOpts.refresh,
-          refreshLabels: true,
-        };
-        await msgs.analyze(analyzerOpts);
-
-        if (assignOpts.export) {
-          const exportOpts: Msg.ExportPdfOpts = {
-            overwrite: assignOpts.overwrite,
-            validate: false,
-            dryRun: assignOpts.dryRun,
-          };
-          await msgs.exportPdfs(exportOpts);
+    this.cmd.init(ctx).action(async (kmlOpts: Kml.Opts) => {
+      try {
+        // Validate required options - show help and exit on validation failure
+        if (!kmlOpts.date || !kmlOpts.date.hasRanges()) {
+          ctx.log.error.error('--date is required. Specify date range(s) (e.g., 20240101-20241231)').emit();
+          console.error(''); // blank line before help
+          this.cmd.outputHelp();
+          Deno.exit(1);
         }
 
-        if (assignOpts.list && !assignOpts.dryRun) {
-          const listOpts: IOutput = {};
-          if (assignOpts.list instanceof FileSpec) listOpts.output = assignOpts.list;
-          await msgs.list(listOpts);
+        if (!kmlOpts.output) {
+          ctx.log.error.error('--output is required. Specify output filename (e.g., -o output.kml)').emit();
+          console.error(''); // blank line before help
+          this.cmd.outputHelp();
+          Deno.exit(1);
         }
-      });
+
+        // Default to all activities if neither activities nor segments is specified
+        if (!kmlOpts.activities && !kmlOpts.segments) {
+          kmlOpts.activities = true;
+        }
+
+        // Handle segments modes
+        if (kmlOpts.segments === 'only') {
+          // "only" mode: exclude activities, include segments with default folder structure
+          kmlOpts.activities = false;
+        }
+        // Note: 'flat' mode is handled by the KML generator directly based on segments value
+
+        await ctx.app.init(ctx, { strava: true, userSettings: true });
+        await ctx.app.getKml(ctx, kmlOpts);
+        // TODO: Implement KML generation functionality
+      } catch (e) {
+        const err = _.asError(e);
+        ctx.log.error.error(`Failed to generate KML: ${err.message}`).emit();
+        throw err;
+      }
+    });
     this.addOptions(cmdConfig);
     return Promise.resolve(this.cmd);
   }

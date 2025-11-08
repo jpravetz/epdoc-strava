@@ -1,6 +1,6 @@
 // import { serve } from "@std/http/server";
-import * as Strava from './dep.ts'
-import * as Ctx from '../context.ts'
+import * as Strava from './dep.ts';
+import type * as Ctx from '../context.ts';
 
 // This is an old implementation that has been replaced by strava-api. Please delete once we have confirmed that this code is no longer needed because we have a working, newer implementation.
 
@@ -16,13 +16,13 @@ export class Server {
     this.strava = strava;
   }
 
-  public async run(ctx:Ctx.Context) {
+  public async run(ctx: Ctx.Context) {
     const authOpts = { redirectUri: 'http://localhost:3000/token' };
     const authUrl = Strava.getAuthorizationUrl(authOpts);
 
-    ctx.log.info.h2('Server running on port 3000').emit()
-    ctx.log.info.h2('Opening browser for authentication...').emit()
-    Deno.run({ cmd: ['open', authUrl] });
+    ctx.log.info.h2('Server running on port 3000').emit();
+    ctx.log.info.h2('Opening browser for authentication...').emit();
+    new Deno.Command('open', { args: [authUrl] }).spawn();
 
     for await (const req of serve({ port: 3000 })) {
       const url = new URL(req.url, `http://${req.headers.get('host')}`);
@@ -38,7 +38,7 @@ export class Server {
           await this.strava.requestToken(code);
           s += '<p>Tokens retrieved. Please return to command line.</p>';
         } catch (err) {
-          s += `<p>Error retrieving tokens: ${err.message}</p>';
+          s += `<p>Error retrieving tokens: ${err.message}</p>`;
         }
       }
       s += '</body></html>';
@@ -46,6 +46,4 @@ export class Server {
       break;
     }
   }
-
-  
 }

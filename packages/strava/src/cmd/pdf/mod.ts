@@ -1,2 +1,2 @@
-export { RootCmd as Cmd } from './cmd.ts';
+export { PdfCmd as Cmd } from './cmd.ts';
 export type * from './types.ts';

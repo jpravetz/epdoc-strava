@@ -50,8 +50,8 @@ Here’s a complete example of how to initialize the `StravaApi` client, authent
 call to get athlete data.
 
 ```typescript
-import { StravaApi } from '@epdoc/strava-api';
-import { File } from '@epdoc/fs/file';
+import { Api as StravaApi } from '@jpravetz/strava-api';
+import { File } from '@epdoc/fs';
 import { Logger } from '@epdoc/logger';
 import { ConsoleBuilder } from '@epdoc/msgbuilder';
 
@@ -61,16 +61,22 @@ const ctx = { log };
 
 // 2. Configure your Strava application credentials
 // It's recommended to use environment variables for your client ID and secret.
-const clientConfig = {
-  id: Deno.env.get('STRAVA_CLIENT_ID') || 12345,
-  secret: Deno.env.get('STRAVA_CLIENT_SECRET') || 'your_client_secret',
-};
+const clientCreds = [
+  { env: true },
+  { path: '~/.strava/clientapp.secrets.json' },
+  {
+    creds: {
+      id: 12345,
+      secret: 'your_client_secret',
+    },
+  },
+];
 
 // 3. Specify the path for storing authentication tokens
-const credsFile = new File('~/.strava/credentials.json');
+const userCredsFile = new File('~/.strava/credentials.json');
 
 // 4. Instantiate the API client
-const api = new StravaApi(clientConfig, credsFile);
+const api = new StravaApi(userCredsFile, clientCreds);
 
 // 5. Authenticate and make API calls
 try {
@@ -87,7 +93,8 @@ try {
 
     // Get recent activities
     const activities = await api.getActivities(ctx, {
-      query: { per_page: 5 },
+      athleteId: athlete.id,
+      query: { per_page: 5, after: 0, before: 0 },
     });
     console.log('Your 5 most recent activities:', activities);
   } else {
@@ -112,6 +119,49 @@ When you call `api.init(ctx)`, the client checks for existing, valid credentials
 
 This process ensures a seamless authentication experience, whether it's the first time you're running the
 application or you're re-authenticating after a token has expired.
+
+## Project Structure
+
+The project is organized as follows:
+
+- `src/`: Contains the source code for the Strava API client.
+  - `api.ts`: The main API client class.
+  - `auth/`: Authentication-related code.
+  - `schema/`: TypeScript interfaces for the Strava API data structures.
+  - `activity/`: The `Activity` class and related types.
+- `test/`: Contains tests for the API client.
+- `deno.json`: The Deno configuration file, including dependencies and tasks.
+
+## API Documentation
+
+The source code is thoroughly documented using JSDoc. You can refer to the source code for detailed
+information about the API, its methods, and its data structures.
+
+## Contributing
+
+Contributions are welcome! Please follow these steps to contribute:
+
+1. Fork the repository.
+2. Create a new branch for your feature or bug fix.
+3. Make your changes and ensure that the code is properly formatted and linted.
+4. Run the tests to ensure that your changes do not break anything.
+5. Submit a pull request.
+
+### Running Tests
+
+To run the tests, use the following command:
+
+```
+deno test -A
+```
+
+### Linting
+
+To lint the code, use the following command:
+
+```
+deno lint
+```
 
 ## Schema Definitions
 

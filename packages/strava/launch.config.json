@@ -1,0 +1,38 @@
+{
+  "$schema": "https://raw.githubusercontent.com/epdoc/tools/master/packages/launchgen/schemas/launch.schema.json",
+  "launch": {
+    "groups": [
+      {
+        "id": "test",
+        "name": "Tests",
+        "console": "internalConsole",
+        "includes": [
+          "**/*.test.ts"
+        ],
+        "runtimeArgs": [
+          "test",
+          "-A",
+          "--inspect-brk"
+        ]
+      },
+      {
+        "id": ".",
+        "name": "main",
+        "console": "internalConsole",
+        "program": "./main.ts",
+        "runtimeArgs": [
+          "run",
+          "-A",
+          "--inspect-brk"
+        ],
+        "scripts": [
+          "",
+          "--help",
+          "athlete",
+          "kml -d 20251001- -o /Users/jpravetz/dev/@epdoc/strava/tmp/Activities.kml",
+          "pdf -d 20251104- -o /Users/jpravetz/dev/@epdoc/strava/tmp/Activities.xml"
+        ]
+      }
+    ]
+  }
+}

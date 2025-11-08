@@ -1,1 +1,1 @@
-export { FetchCmd as Cmd } from './cmd.ts';
+export { KmlCmd as Cmd } from './cmd.ts';

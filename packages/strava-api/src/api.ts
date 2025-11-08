@@ -13,7 +13,8 @@ const STRAVA_URL = {
   token: STRAVA_URL_PREFIX + '/oauth/token',
   athlete: STRAVA_API_PREFIX + '/athlete',
   picture: STRAVA_API_PREFIX + '/athlete/picture',
-  activities: STRAVA_API_PREFIX + '/activities',
+  activities: STRAVA_API_PREFIX + '/athlete/activities',
+  detailedActivity: STRAVA_API_PREFIX + '/activities',
   starred: STRAVA_API_PREFIX + '/segments/starred',
 };
 
@@ -21,28 +22,79 @@ export type TokenUrlOpts = {
   code?: string;
 };
 
+/**
+ * The main class for interacting with the Strava API.
+ *
+ * This class provides a high-level interface for making authenticated requests to the Strava API. It handles the
+ * authentication flow and provides methods for accessing various Strava resources.
+ *
+ * @example
+ * ```typescript
+ * import { Api as StravaApi } from '@jpravetz/strava-api';
+ * import { File } from '@epdoc/fs';
+ * import { Logger } from '@epdoc/logger';
+ * import { ConsoleBuilder } from '@epdoc/msgbuilder';
+ *
+ * // 1. Create a logger and a context for logging
+ * const log = new Logger({ builder: new ConsoleBuilder() });
+ * const ctx = { log };
+ *
+ * // 2. Specify the path for storing authentication tokens
+ * const userCredsFile = new File('~/.strava/credentials.json');
+ *
+ * // 3. Instantiate the API client
+ * const api = new StravaApi(userCredsFile);
+ *
+ * // 4. Authenticate and make API calls
+ * const isAuthenticated = await api.init(ctx);
+ * if (isAuthenticated) {
+ *   const athlete = await api.getAthlete(ctx);
+ *   console.log(`Welcome, ${athlete.firstname} ${athlete.lastname}!`);
+ * }
+ * ```
+ */
 export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
   #auth: Auth.Service<M, L>;
-  // public id: Strava.ClientId;
-  // public secret: Strava.Secret;
-  // #creds: StravaCreds;
 
-  constructor(clientConfig: Strava.ClientConfig, credsFile: FS.File) {
-    this.#auth = new Auth.Service(clientConfig, credsFile);
-    // this.id = clientConfig.id || _.asInt(Deno.env.get('STRAVA_CLIENT_ID'), 10);
-    // this.secret = clientConfig.secret || Deno.env.get('STRAVA_CLIENT_SECRET') || '';
-    // this.token = opts.token || process.env.STRAVA_ACCESS_TOKEN;
-    // this.#creds = new StravaCreds(credsFile);
+  /**
+   * Constructs a new `StravaApi` instance.
+   *
+   * @param userCredsFile The file path or `FS.File` instance for storing user authentication tokens.
+   * @param clientCreds The Strava application credentials. This can be a single `ClientCredSrc` object or an array of them. Defaults to `{ env: true }`.
+   */
+  constructor(
+    userCredsFile: FS.FilePath | FS.File,
+    clientCreds: Strava.ClientCredSrc | Strava.ClientCredSrc[] = { env: true },
+  ) {
+    this.#auth = new Auth.Service(userCredsFile, clientCreds);
   }
 
   public toString(): string {
     return '[Strava]';
   }
 
+  /**
+   * Initializes the Strava API client by authenticating the user.
+   *
+   * This method orchestrates the entire authentication process. It will first attempt to load existing credentials.
+   * If the credentials have expired, it will automatically try to refresh them. If no valid credentials can be
+   * found or refreshed, it will initiate a web-based authentication flow.
+   *
+   * @param ctx The application context, which includes a logger.
+   * @param opts Options for initialization.
+   * @param opts.force If `true`, the web-based authentication flow will be forced, even if a valid token already exists.
+   * @returns A promise that resolves to `true` if authentication is successful, otherwise `false`.
+   */
   async init(ctx: Ctx.IContext<M, L>, opts: { force: boolean } = { force: false }): Promise<boolean> {
     return await this.#auth.init(ctx, opts);
   }
 
+  /**
+   * Provides access to the `StravaCreds` instance, which manages the authentication credentials.
+   *
+   * This can be used to directly access the user's credentials, for example to get the access token or to check
+   * the expiration date.
+   */
   get creds(): StravaCreds {
     return this.#auth.creds;
   }
@@ -51,6 +103,16 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
     await this.#auth.refreshToken(ctx, force);
   }
 
+  /**
+   * Retrieves the profile of the authenticated athlete.
+   *
+   * This method will automatically handle token refreshes if necessary.
+   *
+   * @param ctx The application context for logging.
+   * @param athleteId The ID of the athlete to retrieve. If not provided, the currently authenticated athlete's
+   * profile will be returned.
+   * @returns A promise that resolves to the athlete's detailed profile.
+   */
   public async getAthlete(
     ctx: Ctx.IContext<M, L>,
     athleteId?: Schema.AthleteId,
@@ -80,16 +142,23 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
   }
 
   /**
-   * Returns a DetailedActivity
-   * @param options
-   * @returns
+   * Retrieves a list of activities for the logged in athlete.
+   *
+   * This method will automatically handle token refreshes if necessary.
+   *
+   * @param ctx The application context for logging.
+   * @param options Options for retrieving activities.
+   * @returns A promise that resolves to an array of activities.
    */
-  public async getActivities(ctx: Ctx.IContext<M, L>, options: Strava.ActivityOpts): Promise<Dict[]> {
+  public async getActivities(
+    ctx: Ctx.IContext<M, L>,
+    options: Strava.ActivityOpts,
+  ): Promise<Schema.SummaryActivity[]> {
     await this.#refreshToken(ctx);
-    let url = new URL(STRAVA_URL.activities);
-    if (_.isNumber(options.athleteId)) {
-      url = new URL(url.toString() + '/' + options.athleteId);
-    }
+    const url = new URL(STRAVA_URL.activities);
+    // if (_.isPosInteger(options.athleteId)) {
+    //   url = new URL(url.toString() + '/' + options.athleteId);
+    // }
 
     if (options.query) {
       for (const [key, value] of Object.entries(options.query)) {
@@ -108,12 +177,12 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
     try {
       const resp = await fetch(url.toString(), reqOpts);
       if (!resp.ok) {
-        const errorText = await resp.text();
-        throw new Error(`Failed to get activities: ${resp.status} ${resp.statusText} - ${errorText}`);
+        ctx.log.error.error('Failed to get activities:').error(resp.statusText).path(url.toString()).emit();
+        throw new Error(`Failed to get activities: ${resp.statusText}`);
       }
 
-      const data = await resp.json();
-      if (!Array.isArray(data)) {
+      const data = await resp.json() as Schema.SummaryActivity[];
+      if (!_.isArray(data)) {
         throw new Error('Invalid activities return value: Expected an array.');
       }
       return data;
@@ -124,6 +193,15 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
     }
   }
 
+  /**
+   * Retrieves the authenticated athlete's starred segments.
+   *
+   * This method recursively fetches all pages of starred segments and accumulates them into the provided array.
+   *
+   * @param ctx The application context for logging.
+   * @param accum An array to accumulate the segments into.
+   * @param page The page number to retrieve. Defaults to 1.
+   */
   public async getStarredSegments(
     ctx: Ctx.IContext<M, L>,
     accum: Schema.SummarySegment[],
@@ -166,6 +244,17 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
     throw new Error('Invalid starred segments return value');
   }
 
+  /**
+   * Retrieves the geographical coordinates for a given activity or segment.
+   *
+   * This method is useful for plotting the route of an activity or segment on a map.
+   *
+   * @param ctx The application context for logging.
+   * @param source The type of object to retrieve the stream for (e.g., 'activities', 'segments').
+   * @param objId The ID of the activity or segment.
+   * @param name The name of the object, used for logging purposes.
+   * @returns A promise that resolves to an array of coordinates, where each coordinate is a [latitude, longitude] pair.
+   */
   public async getStreamCoords(
     ctx: Ctx.IContext<M, L>,
     source: Schema.StreamKeyType,
@@ -178,10 +267,11 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
     };
     const m0 = ctx.log.mark();
     try {
-      const resp = await this.getStreams(ctx, source, objId, query);
-      if (Array.isArray(resp.latlng)) {
-        ctx.log.info.h2('Get').value(name).h2('Found').count(resp.latlng.length).h2('coordinates').ewt(m0);
-        return resp.latlng;
+      const resp: Partial<Schema.StreamSet> = await this.getStreams(ctx, source, objId, query);
+      if (_.isDict(resp.latlng) && _.isArray(resp.latlng.data)) {
+        ctx.log.info.h2('Get').value(name).h2('Found').count(resp.latlng.data.length)
+          .h2('coordinate').ewt(m0);
+        return resp.latlng.data as Strava.Coord[];
       }
       ctx.log.info.h2('Get').value(name).h2('did not contain unknown coordinates').ewt(m0);
       return [];
@@ -192,12 +282,21 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
     }
   }
 
+  /**
+   * Retrieves the detailed representation of a specific activity.
+   *
+   * This method is useful for getting more detailed information about an activity than is available in the summary representation.
+   *
+   * @param ctx The application context for logging.
+   * @param activity The summary representation of the activity.
+   * @returns A promise that resolves to the detailed representation of the activity.
+   */
   public async getDetailedActivity(
     ctx: Ctx.IContext<M, L>,
     activity: Schema.SummaryActivity,
   ): Promise<Schema.DetailedActivity> {
     await this.#refreshToken(ctx);
-    const url = STRAVA_URL.activities + '/' + activity.id;
+    const url = STRAVA_URL.detailedActivity + '/' + activity.id;
 
     const reqOpts: RequestInit = {
       method: 'GET',
@@ -214,7 +313,7 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
         throw new Error(`Failed to get detailed activity: ${resp.status} ${resp.statusText} - ${errorText}`);
       }
 
-      const data = await resp.json();
+      const data = await resp.json() as Schema.DetailedActivity;
       if (data) {
         return data as Schema.DetailedActivity;
       }
@@ -227,18 +326,23 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
   }
 
   /**
-   * Retrieve data for the designated type of stream
-   * @param objId The activity or segement ID
-   * @param types An array, usually [ 'latlng' ]
-   * @param options Additional query string parameters, if unknown
-   * @returns {*}
+   * Retrieves the stream data for a given activity or segment.
+   *
+   * Streams are the raw data associated with an activity or segment, such as latitude/longitude, heart rate, or power.
+   *
+   * @param ctx The application context for logging.
+   * @param source The type of object to retrieve the stream for (e.g., 'activities', 'segments').
+   * @param objId The ID of the activity or segment.
+   * @param options Additional query parameters for the request.
+   * @returns A promise that resolves to a dictionary of stream data, where the keys are the stream types and the values
+   * are arrays of the stream data.
    */
   public async getStreams(
     ctx: Ctx.IContext<M, L>,
     source: Schema.StreamKeyType,
     objId: Strava.SegmentId,
     options: Strava.Query,
-  ): Promise<Dict> {
+  ): Promise<Partial<Schema.StreamSet>> {
     await this.#refreshToken(ctx);
     const url = new URL(`${STRAVA_API_PREFIX}/${source}/${objId}/streams`);
 
@@ -262,19 +366,20 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
       throw new Error(`Failed to get streams: ${resp.status} ${resp.statusText} - ${errorText}`);
     }
 
-    const data = await resp.json();
-    if (Array.isArray(data)) {
-      const result: Dict = {};
-      data.forEach((item: unknown) => {
-        if (_.isDict(item) && _.isArray(item.data) && _.isString(item.type)) {
-          result[item.type] = item.data;
-        }
-      });
-      return result;
+    const data = await resp.json() as Partial<Schema.StreamSet>;
+    if (_.isDict(data)) {
+      return data;
     }
     throw new Error(`Invalid data returned for ${source}`);
   }
 
+  /**
+   * Retrieves a specific segment.
+   *
+   * @param ctx The application context for logging.
+   * @param segmentId The ID of the segment to retrieve.
+   * @returns A promise that resolves to the segment data.
+   */
   public async getSegment(ctx: Ctx.IContext<M, L>, segmentId: Strava.SegmentId): Promise<unknown> { // Changed return type to unknown
     await this.#refreshToken(ctx);
     const url = STRAVA_API_PREFIX + '/' + 'segments/' + segmentId;
@@ -296,6 +401,14 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
     return resp.json(); // Return the JSON data
   }
 
+  /**
+   * Retrieves the efforts for a specific segment.
+   *
+   * @param ctx The application context for logging.
+   * @param segmentId The ID of the segment.
+   * @param params Additional query parameters for the request.
+   * @returns A promise that resolves to the segment efforts data.
+   */
   public async getSegmentEfforts(
     ctx: Ctx.IContext<M, L>,
     segmentId: Strava.SegmentId,

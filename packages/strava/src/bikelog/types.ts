@@ -1,17 +1,25 @@
 import type { DateRanges } from '@epdoc/daterange';
+import type { FileSpec } from '@epdoc/fs';
 import type { Dict } from '@epdoc/type';
 
-export type Def = {
+export type BikeDef = {
   name: string;
   pattern: string;
 };
 
 export type OutputOpts = {
   more?: boolean;
-  dates?: DateRanges[];
+  dates?: DateRanges;
   imperial?: boolean;
   segmentsFlatFolder?: boolean;
-  selectedBikes?: Def[];
+  selectedBikes?: BikeDef[];
   verbose?: number;
   bikes?: Dict;
+};
+
+export type Opts = {
+  output?: string | FileSpec; // output filename
+  date?: DateRanges; // date range for which to output data
+  selectedBikes?: BikeDef[]; // bike filter definitions
+  bikes?: Dict; // bike definitions for identifying bikes
 };
