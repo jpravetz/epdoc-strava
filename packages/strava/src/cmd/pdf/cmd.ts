@@ -8,9 +8,7 @@ export const cmdConfig: Options.Config = {
   options: {
     output: true,
     date: true,
-    more: true,
-    dryRun: true,
-    // Note: imperial is a global option defined in root command
+    // Note: imperial and dryRun are global options defined in root command
   },
 };
 
@@ -44,8 +42,6 @@ export class PdfCmd extends Options.BaseSubCmd {
         const pdfOpts: BikeLog.Opts = {
           output: opts.output,
           date: opts.date,
-          more: opts.more,
-          dryRun: opts.dryRun,
         };
 
         // Call app layer to generate PDF/XML

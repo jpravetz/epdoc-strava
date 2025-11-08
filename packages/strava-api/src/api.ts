@@ -13,7 +13,7 @@ const STRAVA_URL = {
   token: STRAVA_URL_PREFIX + '/oauth/token',
   athlete: STRAVA_API_PREFIX + '/athlete',
   picture: STRAVA_API_PREFIX + '/athlete/picture',
-  activities: STRAVA_API_PREFIX + '/activities',
+  activities: STRAVA_API_PREFIX + '/athlete/activities',
   starred: STRAVA_API_PREFIX + '/segments/starred',
 };
 
@@ -141,7 +141,7 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
   }
 
   /**
-   * Retrieves a list of activities for a specific athlete.
+   * Retrieves a list of activities for the logged in athlete.
    *
    * This method will automatically handle token refreshes if necessary.
    *
@@ -149,12 +149,15 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
    * @param options Options for retrieving activities.
    * @returns A promise that resolves to an array of activities.
    */
-  public async getActivities(ctx: Ctx.IContext<M, L>, options: Strava.ActivityOpts): Promise<Dict[]> {
+  public async getActivities(
+    ctx: Ctx.IContext<M, L>,
+    options: Strava.ActivityOpts,
+  ): Promise<Schema.SummaryActivity[]> {
     await this.#refreshToken(ctx);
-    let url = new URL(STRAVA_URL.activities);
-    if (_.isPosInteger(options.athleteId)) {
-      url = new URL(url.toString() + '/' + options.athleteId);
-    }
+    const url = new URL(STRAVA_URL.activities);
+    // if (_.isPosInteger(options.athleteId)) {
+    //   url = new URL(url.toString() + '/' + options.athleteId);
+    // }
 
     if (options.query) {
       for (const [key, value] of Object.entries(options.query)) {
@@ -173,11 +176,11 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
     try {
       const resp = await fetch(url.toString(), reqOpts);
       if (!resp.ok) {
-        const errorText = await resp.text();
-        throw new Error(`Failed to get activities: ${resp.status} ${resp.statusText} - ${errorText}`);
+        ctx.log.error.error('Failed to get activities:').error(resp.statusText).path(url.toString()).emit();
+        throw new Error(`Failed to get activities: ${resp.statusText}`);
       }
 
-      const data = await resp.json();
+      const data = await resp.json() as Schema.SummaryActivity[];
       if (!_.isArray(data)) {
         throw new Error('Invalid activities return value: Expected an array.');
       }

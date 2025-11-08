@@ -8,4 +8,7 @@ import type * as App from '../../app/mod.ts';
 export type RootOpts = CliApp.Opts & {
   profile: App.ProfileUrn;
   offline: boolean;
+  dryRun: boolean;
+  athleteId?: number;
+  imperial?: boolean;
 };

@@ -15,7 +15,6 @@ export type Opts = {
   date?: DateRanges; // date range for which to output data
   more?: boolean; // include additional description for each activity
   commute?: 'yes' | 'no' | 'all'; // filter by commute status
-  dryRun?: boolean; // do not modify any data
   activities?: boolean | string[]; // output activities (true=all, string[]=filtered by types)
   segments?: boolean | 'only' | 'flat'; // output segments (true=included, 'only'=segments only no activities, 'flat'=flat folder structure)
   imperial?: boolean; // use imperial units (miles, feet) instead of metric

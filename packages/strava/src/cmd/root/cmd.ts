@@ -52,6 +52,12 @@ export class RootCmd {
     this.cmd.hook('preAction', async (cmd, _actionCmd) => {
       const opts = cmd.opts<Root.RootOpts>();
       CliApp.configureLogging(ctx, opts);
+
+      // Set dry-run mode
+      if (opts.dryRun) {
+        ctx.dryRun = true;
+      }
+
       if (opts.offline) {
         ctx.online = false;
         ctx.app.notifyOffline;
@@ -90,6 +96,7 @@ export class RootCmd {
       new CliApp.Commander.Option('-i, --id <athleteId>', 'Athlete ID. Defaults to your login.'),
       new CliApp.Commander.Option('--imperial', 'Use imperial units'),
       new CliApp.Commander.Option('--offline', 'Offline mode'),
+      new CliApp.Commander.Option('-n, --dry-run', 'Do not modify any data (database, files or server).'),
     ];
 
     options.forEach((option) => this.cmd.addOption(option));

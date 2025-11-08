@@ -203,46 +203,50 @@ export class Main {
     const activities: Api.Activity.Base[] = [];
 
     // Fetch activities if we have date ranges
-    if (pdfOpts.date && pdfOpts.date.hasRanges()) {
-      ctx.log.info.text('Fetching activities for date ranges').dateRange(pdfOpts.date).emit();
-
-      // Get athlete ID (default to authenticated user)
-      const athleteId = this.athlete?.id || 0;
-
-      // Get activities for each date range
-      for (const dateRange of pdfOpts.date.ranges) {
-        const opts: Api.ActivityOpts = {
-          athleteId,
-          query: {
-            per_page: 200,
-            after: dateRange.after ? Math.floor(dateRange.after.getTime() / 1000) : 0,
-            before: dateRange.before ? Math.floor(dateRange.before.getTime() / 1000) : 0,
-          },
-        };
-
-        const rangeActivitiesData = await this.api.getActivities(ctx, opts);
-
-        // Convert Dict[] to Activity.Base[]
-        for (const data of rangeActivitiesData) {
-          const activity = new Api.Activity.Base(data as unknown as Api.Schema.SummaryActivity);
-          activities.push(activity);
-        }
-      }
-
-      ctx.log.info.text(`Found ${activities.length} activities`).emit();
-
-      // We don't need coordinates for XML generation, but we do need detailed activity data
-      // TODO: Optionally fetch detailed activity data if more info is needed
-    } else {
-      ctx.log.warn.text('No date ranges specified, will generate empty XML').emit();
+    if (!(pdfOpts.date && pdfOpts.date.hasRanges())) {
+      ctx.log.warn.text('No date ranges specified').emit();
+      return;
     }
 
+    const m0 = ctx.log.mark();
+    ctx.log.info.text('Fetching activities for date ranges').dateRange(pdfOpts.date).emit();
+
+    // Get athlete ID (default to authenticated user)
+    const athleteId = this.athlete?.id || 0;
+
+    // Get activities for each date range
+    for (const dateRange of pdfOpts.date.ranges) {
+      const opts: Api.ActivityOpts = {
+        athleteId,
+        query: {
+          per_page: 200,
+          after: Math.floor(
+            (dateRange.after ? dateRange.after.getTime() : new Date(1975, 0, 1).getTime()) / 1000,
+          ),
+          before: Math.floor((dateRange.before ? dateRange.before.getTime() : new Date().getTime()) / 1000),
+        },
+      };
+
+      const rangeActivitiesData = await this.api.getActivities(ctx, opts);
+
+      // Convert Dict[] to Activity.Base[]
+      for (const data of rangeActivitiesData) {
+        const activity = new Api.Activity.Base(data as unknown as Api.Schema.SummaryActivity);
+        activities.push(activity);
+      }
+    }
+
+    ctx.log.info.text('Found').count(activities.length).text('activity', 'activities').ewt(m0);
+
+    // We don't need coordinates for XML generation, but we do need detailed activity data
+    // TODO: Optionally fetch detailed activity data if more info is needed
+
     // Prepare bikes dict from athlete data
-    const bikes: Record<string, any> = {};
+    const bikes: Record<string, Api.Schema.SummaryGear> = {};
     if (this.athlete && 'bikes' in this.athlete) {
-      const athleteBikes = (this.athlete as any).bikes;
+      const athleteBikes = this.athlete.bikes;
       if (_.isArray(athleteBikes)) {
-        athleteBikes.forEach((bike: any) => {
+        athleteBikes.forEach((bike: Api.Schema.SummaryGear) => {
           if (bike && bike.id) {
             bikes[bike.id] = bike;
           }
@@ -252,7 +256,7 @@ export class Main {
 
     // Create Bikelog instance with options
     const bikelogOpts: BikeLog.OutputOpts = {
-      more: pdfOpts.more,
+      more: true, // pdfOpts.more,
       dates: pdfOpts.date,
       bikes,
     };
@@ -266,14 +270,14 @@ export class Main {
       ? pdfOpts.output.path
       : 'bikelog.xml';
 
-    if (pdfOpts.dryRun) {
-      ctx.log.info.text(`Dry run: would generate XML file: ${outputPath}`).emit();
-      ctx.log.info.text(`Would process ${activities.length} activities`).emit();
-      return;
-    }
+    // if (pdfOpts.dryRun) {
+    //   ctx.log.info.text(`Dry run: would generate XML file: ${outputPath}`).emit();
+    //   ctx.log.info.text(`Would process ${activities.length} activities`).emit();
+    //   return;
+    // }
 
-    ctx.log.info.text(`Generating XML file: ${outputPath}`).emit();
-    await bikelog.outputData(outputPath, activities);
-    ctx.log.info.h2(`PDF/XML file generated successfully`).emit();
+    ctx.log.info.text('Generating XML file').fs(outputPath).emit();
+    await bikelog.outputData(ctx, outputPath, activities);
+    ctx.log.info.h2('PDF/XML file generated successfully').fs(outputPath).emit();
   }
 }

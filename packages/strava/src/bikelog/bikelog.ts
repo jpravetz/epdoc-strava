@@ -3,6 +3,7 @@ import type { Seconds } from '@epdoc/duration';
 import * as FS from '@epdoc/fs/fs';
 import { _ } from '@epdoc/type';
 import * as builder from 'xmlbuilder';
+import type * as Ctx from '../context.ts';
 import type { Api } from '../dep.ts';
 import { Fmt } from '../fmt.ts';
 import type * as BikeLog from './types.ts';
@@ -33,16 +34,12 @@ type BikelogEntry = {
 };
 
 export class Bikelog {
-  private opts: BikeLog.OutputOpts = {};
-  private writer?: FS.Writer;
-  private buffer: string = '';
-  private verbose: number = 9;
+  #opts: BikeLog.OutputOpts = {};
+  #writer?: FS.Writer;
+  #buffer: string = '';
 
   constructor(options: BikeLog.OutputOpts) {
-    this.opts = options;
-    if (_.isNumber(options.verbose)) {
-      this.verbose = options.verbose;
-    }
+    this.#opts = options;
   }
 
   /**
@@ -65,7 +62,7 @@ export class Bikelog {
       //   entry.wt = activity.data.wt;
       // }
       if (activity.isRide()) {
-        const bike = activity.gearId && this.opts.bikes ? this.opts.bikes[activity.gearId] : undefined;
+        const bike = activity.gearId && this.#opts.bikes ? this.#opts.bikes[activity.gearId] : undefined;
         const isMoto: boolean =
           bike && typeof bike === 'object' && 'name' in bike && typeof bike.name === 'string'
             ? REGEX.moto.test(bike.name)
@@ -160,9 +157,9 @@ export class Bikelog {
 
   private bikeMap(stravaBikeName: string): string {
     // Map Strava bike names to bikelog names based on selectedBikes patterns
-    if (_.isArray(this.opts.selectedBikes)) {
-      for (let idx = 0; idx < this.opts.selectedBikes.length; ++idx) {
-        const item = this.opts.selectedBikes[idx];
+    if (_.isArray(this.#opts.selectedBikes)) {
+      for (let idx = 0; idx < this.#opts.selectedBikes.length; ++idx) {
+        const item = this.#opts.selectedBikes[idx];
         if (item.pattern.toLowerCase() === stravaBikeName.toLowerCase()) {
           return item.name;
         }
@@ -171,7 +168,7 @@ export class Bikelog {
     return stravaBikeName;
   }
 
-  public async outputData(filepath: string, stravaActivities: Activity[]): Promise<void> {
+  public async outputData(ctx: Ctx.Context, filepath: string, stravaActivities: Activity[]): Promise<void> {
     filepath = filepath || 'bikelog.xml';
 
     // Combine activities by day
@@ -179,10 +176,11 @@ export class Bikelog {
 
     // Create the FileSpec and writer
     const fsFile: FS.File = new FS.File(FS.Folder.cwd(), filepath);
-    this.writer = await fsFile.writer();
+    this.#writer = await fsFile.writer();
 
     try {
-      console.log('Generating XML for ' + filepath);
+      ctx.log.verbose.text('Generating XML file').fs(filepath).emit();
+      const m0 = ctx.log.mark();
 
       // Build XML document
       const doc = builder
@@ -220,13 +218,13 @@ export class Bikelog {
 
       // Generate XML string and write to file
       const xmlContent = doc.doc().end({ pretty: true });
-      await this.writer.write(xmlContent);
-      await this.writer.close();
+      await this.#writer.write(xmlContent);
+      await this.#writer.close();
 
-      console.log(`Wrote ${xmlContent.length} bytes to ${filepath}`);
+      ctx.log.verbose.text('Wrote').count(xmlContent.length).text('byte').text('to').fs(filepath).ewt(m0);
     } catch (err) {
-      if (this.writer) {
-        await this.writer.close();
+      if (this.#writer) {
+        await this.#writer.close();
       }
       throw err;
     }

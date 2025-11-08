@@ -13,8 +13,7 @@ export const cmdConfig: Options.Config = {
     segments: true,
     more: true,
     commute: true,
-    dryRun: true,
-    // Note: imperial is a global option defined in root command
+    // Note: imperial and dryRun are global options defined in root command
   },
 };
 
