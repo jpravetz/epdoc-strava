@@ -22,25 +22,45 @@ The legacy application provided these features:
 
 ## Current Implementation Status
 
-### ✅ Completed
+### ✅ Completed (as of 2025-11-08)
 - **Project Structure**: Deno workspace with `strava-api` and `strava` packages
-- **Git Branches**: Merged feature/deno into master and develop, cleaned up branches
-- **CLI Framework**: Basic command structure using `@epdoc/cliapp` (following finsync pattern)
-- **Commands Scaffolded**: `athlete`, `kml`, `pdf` commands with basic structure
-- **API Package**: Partial `strava-api` package with authentication and schema definitions
+- **Git Branches**: Merged feature/athlete-implementation into develop, working on feature/lapmarker
+- **CLI Framework**: Complete command structure using `@epdoc/cliapp` with logging
+- **Commands Implemented**:
+  - `athlete` - Display athlete information and bike list
+  - `kml` - Generate KML files with activities, segments, and lap markers
+  - `pdf` - Generate Acroforms XML for PDF forms
+  - `segments` - Segment analysis (command structure in place)
+- **API Package**: Complete `strava-api` package with:
+  - OAuth2 authentication flow
+  - Athlete, activity, segment, and stream endpoints
+  - Detailed and summary activity support
+  - Type-safe schema definitions
+- **Authentication Flow**: Complete OAuth2 implementation with token refresh
+- **Activity Fetching**: Full implementation for date range queries with filtering
+- **KML Generation**: Complete with:
+  - Activity routes color-coded by type
+  - Starred segments support (structure ready)
+  - Lap markers with `--laps` flag
+  - Imperial/metric unit support
+  - Commute filtering
+- **PDF/XML Generation**: Complete Acroforms XML generation with:
+  - Description and private_note parsing
+  - Weight extraction
+  - Custom property key=value parsing
+  - Multi-activity per-day support
+- **Configuration Management**: User settings and line styles working
+- **Custom Logging**: StravaMsgBuilder with file path and date range formatting
 
 ### 🚧 In Progress
-- **Authentication Flow**: Strava OAuth2 implementation needs completion
-- **Athlete ID Management**: Need to resolve how athlete ID is stored/retrieved from ~/.strava
-- **API Integration**: Complete the strava-api package for all required endpoints
+- **Lap Marker Testing**: Needs testing with real activities in Google Earth
+- **Segment Operations**: Starred segments retrieval logic (TODO in code)
+- **Documentation**: JSDoc comments being added across codebase
 
 ### ❌ Not Started
-- **Activity Fetching**: Complete implementation for date range queries
-- **Segment Operations**: Starred segments retrieval and effort analysis
-- **KML Generation**: Port legacy KML creation logic
-- **PDF/XML Generation**: Port Acroforms XML generation
-- **Configuration Management**: User settings and line styles
 - **Testing**: Comprehensive test suite
+- **Segment Efforts**: Full segment effort time analysis
+- **Web Interface**: Optional web/API interface (future consideration)
 
 ## Immediate Next Steps
 

@@ -2,6 +2,81 @@
 
 This file tracks significant changes and work sessions on the project.
 
+## 2025-11-08 - Lap Markers and Bikelog Improvements
+
+### Summary
+Implemented lap marker support for KML generation and comprehensive bikelog/PDF improvements including description parsing, weight extraction, and improved formatting.
+
+### Changes Made
+
+#### Lap Marker Feature (`--laps` flag)
+- **Added lap marker support to KML generation**:
+  - New `--laps` command-line flag to enable lap marker output
+  - Fetches detailed activity data to access lap information
+  - Optimization: Only fetches detailed data when `--laps` is enabled and laps array not already present
+  - Creates circular marker placemarks at lap button press locations
+  - Labels show "Lap 1", "Lap 2", etc. when clicked in Google Earth
+  - Labels hidden by default (scale=0) to avoid clutter
+
+- **KML styling for lap markers**:
+  - Added `_addLapMarkerStyle()` method to create lap marker icon style
+  - Uses Google's placemark_circle.png icon (scale 0.6)
+  - Integrated lap marker style into KML header when `--laps` enabled
+
+- **Implementation details**:
+  - `_outputLapMarkers()`: Iterates through laps array and outputs point placemarks
+  - `_outputLapPoint()`: Creates individual KML Point placemark for each lap
+  - Uses `lap.start_index` to find coordinate in activity's coordinate array
+  - Coordinates output as `lng,lat,0` per KML spec
+
+#### Bikelog/PDF Generation Improvements
+- **Weight extraction from descriptions**:
+  - Added `extractWeight()` method with case-insensitive parsing
+  - Supports formats: "165", "165 kg", "165kg", "Weight=165", etc.
+  - Automatically populates `<wt>` field in bikelog XML output
+  - Weight excluded from note text (appears only in dedicated XML field)
+
+- **Description and private_note merging**:
+  - Created `parseActivityText()` method to merge description + private_note
+  - Private note content prefixed with "Private: " before merging
+  - Combined text parsed for key=value pairs
+  - Remaining non-key/value lines become the description
+
+- **Custom properties parsing**:
+  - Extracts key=value pairs from merged description/private_note text
+  - Keys converted to Title Case for consistent output
+  - Blank lines filtered out from final description
+  - Special handling for "weight" key (extracted to XML field)
+
+- **Bikelog formatting improvements**:
+  - Double newline separator between multiple activities on same day
+  - Moving/Elapsed times now appear BEFORE description text
+  - Custom property key/value pairs appear AFTER description
+  - All keys displayed in Title Case (e.g., "Biker:", "Motor:")
+
+- **PDF generation enhancement**:
+  - Now fetches detailed activity data to access description and private_note fields
+  - Consistent with KML lap marker approach for detailed data fetching
+
+#### Type and Configuration Updates
+- **Added types**:
+  - `laps?: boolean` to `Kml.Opts` type
+  - Added to option definitions in `cmd/options/definitions.ts`
+  - Added to KML command configuration
+
+- **Files modified**:
+  - `src/app/app.ts`: Detailed activity fetching for laps and PDF
+  - `src/bikelog/bikelog.ts`: Description parsing, weight extraction, formatting
+  - `src/kml/kml.ts`: Lap marker style and output methods
+  - `src/kml/types.ts`: Added laps option type
+  - `src/cmd/kml/cmd.ts`: Added laps to command config
+  - `src/cmd/options/definitions.ts`: Defined --laps option
+
+### Testing Notes
+- Lap markers ready for testing in Google Earth
+- Weight extraction tested with various formats
+- Description parsing handles edge cases (blank lines, empty fields)
+
 ## 2025-11-07 - KML Generation Implementation
 
 ### Summary

@@ -160,15 +160,25 @@ When updating packages in `@epdoc/std`:
 - Business logic is in the app layer, not in command handlers
 - File operations use `@epdoc/fs` abstractions, not raw Deno APIs
 
-## Current State
+## Current State (as of 2025-11-08)
 
 ### Recently Completed
-- Migrated KML generation to use `FileSpecWriter` with async/await patterns
-- Updated `@epdoc/fs` v1.1.2 to export `Writer` from the `fs` module
+- **Lap Marker Support**: Added `--laps` flag to KML generation for displaying lap button press locations
+- **Bikelog Improvements**: Description/private_note parsing, weight extraction, improved formatting
+- **PDF Generation**: Now fetches detailed activity data for description and private_note fields
+- **KML Generation**: Fully functional with activities, segments structure, and lap markers
+- **Authentication**: Complete OAuth2 flow with token refresh
+- **Custom Logging**: StravaMsgBuilder with file path and date range formatting
+
+### Current Branch
+- Working on: `feature/lapmarker` (merged into develop when testing complete)
+- Main development branch: `develop`
+- Stable branch: `master`
 
 ### Known Issues
-- Various type errors throughout the codebase (see type check output)
-- Some modules reference missing types or have incomplete implementations
+- Segment retrieval logic not yet implemented (TODO in app.ts line 177-181)
+- Type errors in segment module (not blocking current functionality)
+- Lap markers need testing with real activities in Google Earth
 
 ## Questions?
 
