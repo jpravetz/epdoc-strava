@@ -1,15 +1,15 @@
 import type { ISOTzDate } from '@epdoc/datetime';
-import type { Strava } from './dep.ts';
+import type { Metres } from './dep.ts';
 
-export type Id = string;
+export type Id = number;
 export type Name = string;
 export type GpsDegrees = number;
 
 export type CacheEntry = {
   name?: Name;
-  distance?: Strava.Metres;
+  distance?: Metres;
   gradient?: number;
-  elevation?: Strava.Metres;
+  elevation?: Metres;
 };
 
 export type CacheFile = {

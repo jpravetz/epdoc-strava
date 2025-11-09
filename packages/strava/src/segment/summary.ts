@@ -1,20 +1,20 @@
 import { SegmentBase } from './base.ts';
-import type { Metres, Strava } from './dep.ts';
+import type { Coord, Metres } from './dep.ts';
 import type * as Segment from './types.ts';
 
 export class SegmentSummary extends SegmentBase {
-  coordinates: Strava.Coord[] = [];
-  average_grade: number;
-  elevation_high: Metres;
-  elevation_low: Metres;
-  country: string;
-  state: string;
+  coordinates: Coord[] = [];
+  average_grade: number = 0;
+  elevation_high: Metres = 0;
+  elevation_low: Metres = 0;
+  country: string = '';
+  state: string = '';
 
-  constructor(data) {
-    super(data);
+  constructor(data: unknown) {
+    super(data as Segment.CacheEntry);
   }
 
-  static newFromResponseData(data): SegmentSummary {
+  static newFromResponseData(data: unknown): SegmentSummary {
     return new SegmentSummary(data);
   }
 

@@ -1,11 +1,7 @@
 import type { DateRanges } from '@epdoc/daterange';
 import type { FileSpec } from '@epdoc/fs';
 import type { Dict } from '@epdoc/type';
-
-export type BikeDef = {
-  name: string;
-  pattern: string;
-};
+import type { BikeDef } from '../app/types.ts';
 
 export type OutputOpts = {
   more?: boolean;
