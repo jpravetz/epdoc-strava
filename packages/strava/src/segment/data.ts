@@ -2,6 +2,24 @@ import { SegmentBase } from './base.ts';
 import type { Coord, Metres, Seconds } from './dep.ts';
 import type * as Segment from './types.ts';
 
+/**
+ * Extended segment data class with coordinates and location information for KML output.
+ *
+ * This class extends SegmentBase with additional fields needed for generating KML files:
+ * - Coordinates array for drawing segment routes in Google Earth
+ * - Country and state for hierarchical folder organization
+ *
+ * Used primarily by the KML generator to organize segments by region and output
+ * segment routes as LineString placemarks.
+ *
+ * @example
+ * ```ts
+ * const segmentData = new SegmentData(segmentBase);
+ * segmentData.coordinates = [[lat1, lng1], [lat2, lng2]];
+ * segmentData.country = "USA";
+ * segmentData.state = "California";
+ * ```
+ */
 export class SegmentData {
   id: Segment.Id = 0;
   name: Segment.Name = '';
