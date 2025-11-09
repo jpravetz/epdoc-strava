@@ -17,6 +17,28 @@ const REGEX = {
   moto: /^moto$/i,
 };
 
+/**
+ * Generates KML (Keyhole Markup Language) files for visualizing Strava activities in Google Earth.
+ *
+ * This class handles the complete workflow of converting Strava activities and segments into
+ * KML format suitable for viewing in Google Earth. It provides:
+ * - Activity routes as colored line strings (color-coded by activity type)
+ * - Lap markers as clickable point placemarks
+ * - Segment routes with hierarchical folder organization by region
+ * - Custom line styles for different activity types (Ride, Run, Swim, etc.)
+ * - Support for both imperial and metric units
+ * - Detailed activity descriptions when --more flag is enabled
+ *
+ * The generated KML files include proper styling, descriptions, and folder organization
+ * for easy navigation in Google Earth.
+ *
+ * @example
+ * ```ts
+ * const kml = new KmlMain({ activities: true, laps: true, imperial: false });
+ * kml.setLineStyles(ctx, customStyles);
+ * await kml.outputData(ctx, 'output.kml', activities, segments);
+ * ```
+ */
 export class KmlMain {
   private opts: Kml.Opts = {};
   private lineStyles: Kml.LineStyleDefs = defaultLineStyles;
@@ -40,6 +62,26 @@ export class KmlMain {
     return this.opts && this.opts.more === true;
   }
 
+  /**
+   * Sets custom line styles for activity routes in the KML output.
+   *
+   * Allows customization of line colors and widths for different activity types
+   * (e.g., Ride, Run, Swim) and special categories (Default, Commute, Moto, Segment).
+   * Invalid styles are logged as warnings and ignored.
+   *
+   * @param ctx Application context with logging
+   * @param styles Dictionary of line styles keyed by activity type or custom category
+   *
+   * @example
+   * ```ts
+   * const customStyles = {
+   *   Ride: { color: "FF0000FF", width: 3 },      // Red, 3px wide
+   *   Run: { color: "FF00FF00", width: 2 },       // Green, 2px wide
+   *   Commute: { color: "FFFF0000", width: 2 }    // Blue, 2px wide
+   * };
+   * kml.setLineStyles(ctx, customStyles);
+   * ```
+   */
   public setLineStyles(ctx: Ctx.Context, styles: Kml.LineStyleDefs) {
     Object.entries(styles).forEach(([name, style]) => {
       if (isValidActivityType(name) && isValidLineStyle(style)) {
@@ -51,6 +93,31 @@ export class KmlMain {
     });
   }
 
+  /**
+   * Generates a complete KML file from Strava activities and segments.
+   *
+   * This is the main public method that orchestrates the entire KML generation process.
+   * It creates a KML file containing:
+   * - Header with custom line styles and lap marker styles
+   * - Activities folder with route placemarks and optional lap markers
+   * - Segments folder with hierarchical or flat organization
+   * - Footer to close the KML document
+   *
+   * The method uses buffered writing for performance and ensures proper resource cleanup
+   * via try/catch blocks.
+   *
+   * @param ctx Application context with logging
+   * @param filepath Output file path for the KML file
+   * @param activities Array of Strava activities with coordinates
+   * @param segments Array of starred segments with coordinates
+   *
+   * @example
+   * ```ts
+   * const kml = new KmlMain({ activities: true, segments: true, laps: true });
+   * await kml.outputData(ctx, 'strava.kml', activities, segments);
+   * // Creates strava.kml ready for Google Earth
+   * ```
+   */
   async outputData(
     ctx: Ctx.Context,
     filepath: string,
@@ -126,6 +193,18 @@ export class KmlMain {
     return '';
   }
 
+  /**
+   * Adds starred segments to the KML file with hierarchical or flat folder organization.
+   *
+   * Segments can be organized in two ways:
+   * - **Hierarchical**: Groups segments by country and state (e.g., "Segments for California, USA")
+   * - **Flat**: All segments in a single folder
+   *
+   * The organization is controlled by the `segments` option ('flat' for flat, otherwise hierarchical).
+   * Segments are sorted alphabetically by name.
+   *
+   * @param segments Array of starred segments with coordinates and location data
+   */
   public async addSegments(segments: SegmentData[]): Promise<void> {
     if (segments && segments.length) {
       const indent = 2;
@@ -146,6 +225,18 @@ export class KmlMain {
     }
   }
 
+  /**
+   * Outputs a folder of segments with optional country/state filtering.
+   *
+   * Creates a KML folder containing segment placemarks. If country and state are provided,
+   * only segments matching that location are included and the folder name reflects the region.
+   * Otherwise, all segments are included in a general "Segments" folder.
+   *
+   * @param indent Indentation level for KML output
+   * @param segments Array of segments to potentially include
+   * @param [country] Optional country filter (e.g., "USA")
+   * @param [state] Optional state filter (e.g., "California")
+   */
   public outputSegments(indent: number, segments: SegmentData[], country?: string, state?: string): void {
     let title = 'Segments';
     const dateString = this._dateString();
@@ -179,6 +270,22 @@ export class KmlMain {
     return regions;
   }
 
+  /**
+   * Outputs a single activity as a KML LineString placemark with optional lap markers.
+   *
+   * Creates a KML placemark for the activity route with:
+   * - Activity name prefixed with start date
+   * - Line style based on activity type (Ride, Run, etc.) or special categories (Commute, Moto)
+   * - Route coordinates as LineString
+   * - Optional detailed description when --more flag is enabled
+   * - Optional lap marker points when --laps flag is enabled
+   *
+   * The style name is determined by checking: Moto bikes → "Moto", Commute activities → "Commute",
+   * otherwise uses the activity type (e.g., "Ride", "Run").
+   *
+   * @param indent Indentation level for KML output
+   * @param activity Strava activity with coordinates and metadata
+   */
   public outputActivity(indent: number, activity: Activity): void {
     const t0 = activity.startDateLocal.slice(0, 10);
     let styleName = 'Default';
@@ -277,8 +384,18 @@ export class KmlMain {
   }
 
   /**
-   * Output lap marker placemarks for an activity.
-   * Each lap's start position is marked with a point placemark.
+   * Outputs lap marker placemarks for an activity's lap button presses.
+   *
+   * Creates a Point placemark for each lap button press in the activity. Each marker:
+   * - Uses the lap's start_index to find the coordinate in the activity's coordinate array
+   * - Displays as a circular icon in Google Earth
+   * - Shows "Lap 1", "Lap 2", etc. when clicked (labels hidden by default)
+   *
+   * Only outputs markers if the activity has lap data and coordinates. Skips laps with
+   * invalid start indices.
+   *
+   * @param indent Indentation level for KML output
+   * @param activity Strava activity with laps array and coordinates
    */
   private _outputLapMarkers(indent: number, activity: Activity): void {
     if (!('laps' in activity.data) || !_.isArray(activity.data.laps)) {
@@ -303,7 +420,15 @@ export class KmlMain {
   }
 
   /**
-   * Output a single lap marker point placemark.
+   * Outputs a single lap marker as a KML Point placemark.
+   *
+   * Creates a circular marker icon at the specified coordinate with a label showing
+   * the lap number. The label is hidden by default (scale=0) and only appears when
+   * the marker is clicked in Google Earth.
+   *
+   * @param indent Indentation level for KML output
+   * @param lapNumber Lap number for the label (e.g., 1 for "Lap 1")
+   * @param coord Coordinate as [lat, lng] array
    */
   private _outputLapPoint(indent: number, lapNumber: number, coord: Kml.Coord): void {
     this.writeln(indent, '<Placemark id="LapMarker' + ++this.trackIndex + '">');
@@ -338,6 +463,17 @@ export class KmlMain {
     this.writeln(indent, '</Placemark>');
   }
 
+  /**
+   * Writes the KML file header with document structure and style definitions.
+   *
+   * The header includes:
+   * - XML declaration and KML namespace declarations
+   * - Document element with name and open state
+   * - LineStyle definitions for all activity types and categories
+   * - Lap marker style (if --laps flag is enabled)
+   *
+   * All content is buffered and flushed after header generation.
+   */
   private async header(): Promise<void> {
     this.write(0, '<?xml version="1.0" encoding="UTF-8"?>\n');
     this.writeln(
@@ -357,6 +493,12 @@ export class KmlMain {
     await this.flush();
   }
 
+  /**
+   * Writes the KML file footer to close the document structure.
+   *
+   * Closes the Document and kml elements, then flushes the buffer to ensure
+   * all content is written to the file.
+   */
   private async footer(): Promise<void> {
     this.write(1, '</Document>\n</kml>\n');
     await this.flush();
@@ -381,10 +523,23 @@ export class KmlMain {
     // this.buffer.write( indent + s + "\n", 'utf8' );
   }
 
+  /**
+   * Flushes the internal buffer to the file writer.
+   *
+   * This public method delegates to the private _flush() implementation.
+   * Called after generating header, activities, segments, and footer to ensure
+   * all buffered content is written to the output file.
+   */
   public async flush(): Promise<void> {
     await this._flush();
   }
 
+  /**
+   * Internal implementation for flushing buffered content to the file writer.
+   *
+   * Writes the current buffer contents to the FileSpecWriter and clears the buffer.
+   * Uses buffering for better write performance when generating large KML files.
+   */
   private async _flush(): Promise<void> {
     if (this.writer && this.buffer) {
       const content = this.buffer;

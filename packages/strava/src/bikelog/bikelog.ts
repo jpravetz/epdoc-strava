@@ -15,37 +15,79 @@ const REGEX = {
 };
 
 /**
- * Interface to bikelog XML data that can be read/written from PDF files using
- * Acrobat.
+ * Represents a single day's worth of bikelog data for Adobe Acroforms XML output.
+ * This structure maps to the XML schema expected by the bikelog PDF form.
  */
 type BikelogEntry = {
+  /** Julian date number used as the unique identifier for the day */
   jd: number;
+  /** JavaScript Date object for the entry */
   date: Date;
+  /** Array of ride events for the day (maximum 2 tracked) */
   events: Array<{
+    /** Distance in kilometers, rounded to 2 decimal places */
     distance?: number;
+    /** Bike identifier/name */
     bike?: string;
+    /** Elevation gain in meters */
     el?: number;
+    /** Moving time in hours (as decimal) */
     t?: number;
+    /** Energy in watt-hours */
     wh?: number;
   }>;
+  /** Primary note field containing activity descriptions */
   note0?: string;
+  /** Secondary note field (currently unused) */
   note1?: string;
+  /** Weight in kilograms */
   wt?: number;
 };
 
+/**
+ * Generates Adobe Acroforms XML files from Strava activities for bikelog PDF forms.
+ *
+ * This class processes Strava activities and converts them into XML format suitable
+ * for import into Adobe Acrobat PDF forms. It handles merging multiple activities per day,
+ * parsing custom properties from descriptions, and extracting metadata like weight.
+ *
+ * @example
+ * ```ts
+ * const opts = { dates: dateRanges, bikes: athleteBikes };
+ * const bikelog = new Bikelog(opts);
+ * await bikelog.outputData(ctx, 'output.xml', activities);
+ * ```
+ */
 export class Bikelog {
   #opts: BikeLog.OutputOpts = {};
   #writer?: FS.Writer;
   #buffer: string = '';
 
+  /**
+   * Creates a new Bikelog instance.
+   * @param options Output options including date ranges, bikes, and formatting preferences
+   */
   constructor(options: BikeLog.OutputOpts) {
     this.#opts = options;
   }
 
   /**
-   * Merges description and private_note fields, then parses for custom properties.
-   * @param activity Activity to extract properties from
-   * @returns Dictionary with parsed custom properties and description
+   * Merges activity description and private_note fields, then extracts custom properties.
+   *
+   * This method combines the public description and private note into a single text block,
+   * then parses it for key=value pairs. Lines matching the pattern `key=value` are extracted
+   * as custom properties, while remaining lines become the description. Blank lines are
+   * filtered out from the final description.
+   *
+   * @param activity Strava activity containing description and/or private_note fields
+   * @returns Dictionary with extracted custom properties and cleaned description text
+   *
+   * @example
+   * ```ts
+   * // Activity with description="weight=165 kg\nGreat ride!" and private_note="Check tire pressure"
+   * const result = parseActivityText(activity);
+   * // Returns: { weight: "165 kg", description: "Great ride!\nCheck tire pressure" }
+   * ```
    */
   private parseActivityText(activity: Activity): { description?: string; [key: string]: unknown } {
     const result: { description?: string; [key: string]: unknown } = {};
@@ -90,9 +132,20 @@ export class Bikelog {
   }
 
   /**
-   * Converts a key to title case (first letter capitalized).
-   * @param key The key to convert
-   * @returns Title-cased key
+   * Converts a string to title case (first letter capitalized, rest lowercase).
+   *
+   * Used to standardize custom property keys for consistent display in bikelog output.
+   * For example, "BIKE" becomes "Bike", "motor" becomes "Motor".
+   *
+   * @param key The string to convert
+   * @returns Title-cased string, or empty string if input is empty
+   *
+   * @example
+   * ```ts
+   * toTitleCase("motor"); // Returns "Motor"
+   * toTitleCase("BIKE");  // Returns "Bike"
+   * toTitleCase("");      // Returns ""
+   * ```
    */
   private toTitleCase(key: string): string {
     if (!key || key.length === 0) return key;
@@ -100,10 +153,23 @@ export class Bikelog {
   }
 
   /**
-   * Extracts weight value from custom properties (case-insensitive).
-   * Handles formats like "165", "165 kg", "165kg".
-   * @param customProps Custom properties dictionary
-   * @returns Weight value as number, or undefined
+   * Extracts weight value from custom properties dictionary with flexible format handling.
+   *
+   * Searches for a "weight" key (case-insensitive) in the custom properties and
+   * extracts the numeric value. Supports various common formats including bare numbers,
+   * values with units, and values with/without spaces.
+   *
+   * @param customProps Custom properties dictionary extracted from activity description
+   * @returns Weight value as number (in kilograms), or undefined if not found or invalid
+   *
+   * @example
+   * ```ts
+   * extractWeight({ weight: "165" });      // Returns 165
+   * extractWeight({ weight: "165 kg" });   // Returns 165
+   * extractWeight({ weight: "165kg" });    // Returns 165
+   * extractWeight({ Weight: "165.5" });    // Returns 165.5 (case-insensitive)
+   * extractWeight({ other: "value" });     // Returns undefined
+   * ```
    */
   private extractWeight(customProps: Record<string, unknown>): number | undefined {
     for (const [key, value] of Object.entries(customProps)) {
@@ -119,9 +185,27 @@ export class Bikelog {
   }
 
   /**
-   * Combine strava activities into per-day information that is suitable for Acroform bikelog.
-   * @param activities Array of strava activities.
-   * @returns {{}} Dictionary of bikelog data, with keys set to julian day.
+   * Combines multiple Strava activities into daily bikelog entries for PDF form output.
+   *
+   * This method processes an array of Strava activities and groups them by day (using Julian date
+   * as the unique identifier). For each day, it creates a BikelogEntry containing:
+   * - Up to 2 tracked bike ride events (distance, bike name, elevation, time, energy)
+   * - Combined notes from all activities (rides and non-rides)
+   * - Weight data extracted from activity descriptions
+   * - Special handling for moto rides, commutes, and EBike rides
+   *
+   * Multiple activities on the same day are merged, with notes separated by double newlines.
+   * If multiple rides use the same bike, their distances are combined into a single event.
+   *
+   * @param activities Array of Strava activities to process
+   * @returns Dictionary of bikelog entries keyed by Julian date number
+   *
+   * @example
+   * ```ts
+   * const activities = [activity1, activity2]; // Two activities on same day
+   * const entries = combineActivities(activities);
+   * // Returns: { "2460234": { jd: 2460234, date: Date, events: [...], note0: "..." } }
+   * ```
    */
   private combineActivities(activities: Activity[]): Record<string, BikelogEntry> {
     const result: Record<string, BikelogEntry> = {};
@@ -268,10 +352,43 @@ export class Bikelog {
     return result;
   }
 
+  /**
+   * Converts a duration in seconds to a human-readable time string.
+   *
+   * Formats the duration as hours:minutes (e.g., "2:45" for 2 hours 45 minutes).
+   * Seconds are omitted from the output for cleaner display in bikelog forms.
+   *
+   * @param seconds Duration in seconds
+   * @returns Formatted time string in "H:MM" format
+   *
+   * @example
+   * ```ts
+   * Bikelog.secondsToString(9000);  // Returns "2:30" (2 hours 30 minutes)
+   * Bikelog.secondsToString(3661);  // Returns "1:01" (1 hour 1 minute)
+   * Bikelog.secondsToString(45);    // Returns "0:00" (under 1 minute)
+   * ```
+   */
   public static secondsToString(seconds: Seconds): string {
     return Fmt.hms(seconds, { seconds: false });
   }
 
+  /**
+   * Maps Strava bike names to custom bikelog display names based on user configuration.
+   *
+   * Allows users to specify custom short names for their bikes in the PDF output.
+   * For example, mapping "Trek Domane AL 3 Disc" to "Trek" for cleaner display.
+   * Matching is case-insensitive. If no mapping is found, returns the original name.
+   *
+   * @param stravaBikeName The bike name from Strava's gear data
+   * @returns Mapped bike name from selectedBikes configuration, or original name if no match
+   *
+   * @example
+   * ```ts
+   * // With opts.selectedBikes = [{ pattern: "Trek Domane", name: "Trek" }]
+   * bikeMap("Trek Domane AL 3");  // Returns "Trek"
+   * bikeMap("Specialized");       // Returns "Specialized" (no mapping)
+   * ```
+   */
   private bikeMap(stravaBikeName: string): string {
     // Map Strava bike names to bikelog names based on selectedBikes patterns
     if (_.isArray(this.#opts.selectedBikes)) {
@@ -285,6 +402,33 @@ export class Bikelog {
     return stravaBikeName;
   }
 
+  /**
+   * Generates Adobe Acroforms XML file from Strava activities for bikelog PDF import.
+   *
+   * This is the main public method that processes Strava activities and outputs an XML file
+   * formatted for import into Adobe Acrobat PDF forms. The method performs the following steps:
+   * 1. Combines activities by day (using Julian dates as unique identifiers)
+   * 2. Parses activity descriptions and private notes for custom properties
+   * 3. Extracts weight data and other metadata
+   * 4. Builds XML structure with proper Adobe Acroforms formatting
+   * 5. Writes the complete XML document to the specified file
+   *
+   * The generated XML contains daily entries with bike ride events (distance, bike, elevation,
+   * time), activity notes, and optional weight data. Multiple activities on the same day are
+   * merged into a single entry.
+   *
+   * @param ctx Application context with logging
+   * @param filepath Output file path (defaults to 'bikelog.xml')
+   * @param stravaActivities Array of Strava activities to process
+   *
+   * @example
+   * ```ts
+   * const opts = { dates: dateRanges, bikes: athleteBikes };
+   * const bikelog = new Bikelog(opts);
+   * await bikelog.outputData(ctx, 'output/bikelog.xml', activities);
+   * // Creates XML file ready for Adobe Acrobat PDF form import
+   * ```
+   */
   public async outputData(ctx: Ctx.Context, filepath: string, stravaActivities: Activity[]): Promise<void> {
     filepath = filepath || 'bikelog.xml';
 
