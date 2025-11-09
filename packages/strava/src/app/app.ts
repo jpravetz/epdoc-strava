@@ -6,7 +6,7 @@ import { Kml } from '../cmd/dep.ts';
 import rawConfig from '../config.json' with { type: 'json' };
 import type * as Ctx from '../context.ts';
 import { Api } from '../dep.ts';
-import type { SegmentData } from '../segment/data.ts';
+import { SegmentData } from '../segment/data.ts';
 import type * as App from './types.ts';
 
 const home = Deno.env.get('HOME');
@@ -209,7 +209,7 @@ export class Main {
     }
 
     let activities: Api.Activity.Base[] = [];
-    const segments: SegmentData[] = []; // TODO: Implement segment fetching
+    let segments: SegmentData[] = [];
 
     // Fetch activities if requested
     if (kmlOpts.activities && kmlOpts.date) {
@@ -288,13 +288,16 @@ export class Main {
       }
     }
 
-    // TODO: Fetch segments if requested
-    // if (kmlOpts.segments) {
-    //   ctx.log.info.text('Fetching starred segments').emit();
-    //   // Implementation needed
-    // }
+    // Fetch segments if requested
+    if (kmlOpts.segments) {
+      segments = await this.getSegments(ctx, {
+        coordinates: true,
+        efforts: false, // Don't fetch efforts for KML, just coordinates
+        dateRanges: kmlOpts.date,
+      });
+    }
 
-    if (activities.length) { // Generate KML file
+    if (activities.length || segments.length) { // Generate KML file
       const outputPath = typeof kmlOpts.output === 'string'
         ? kmlOpts.output
         : kmlOpts.output?.path
@@ -307,7 +310,7 @@ export class Main {
       ctx.log.outdent();
       ctx.log.info.h2('KML file generated successfully').fs(outputPath).emit();
     } else {
-      ctx.log.info.warn('No activities found for the specified date ranges').emit();
+      ctx.log.info.warn('No activities or segments found for the specified criteria').emit();
     }
   }
 
@@ -434,5 +437,130 @@ export class Main {
     ctx.log.info.text('Generating XML file').fs(outputPath).emit();
     await bikelog.outputData(ctx, outputPath, activities);
     ctx.log.info.h2('PDF/XML file generated successfully').fs(outputPath).emit();
+  }
+
+  /**
+   * Fetches starred segments from Strava API with optional efforts and coordinates.
+   *
+   * This method retrieves the user's starred segments and optionally:
+   * - Fetches segment efforts for specified date ranges
+   * - Fetches coordinates for each segment (for KML output)
+   * - Caches segment data to ~/.strava/user.segments.json
+   *
+   * @param ctx Application context with logging
+   * @param opts Segment fetch options including:
+   * @param [opts.efforts] Fetch segment efforts for date ranges
+   * @param [opts.coordinates] Fetch coordinates for segments
+   * @param [opts.dateRanges] Date ranges for effort filtering
+   * @returns Array of segments with optional efforts and coordinates
+   *
+   * @example
+   * ```ts
+   * const segments = await app.getSegments(ctx, {
+   *   coordinates: true,
+   *   efforts: true,
+   *   dateRanges: dateRanges
+   * });
+   * ```
+   */
+  async getSegments(
+    ctx: Ctx.Context,
+    opts: { efforts?: boolean; coordinates?: boolean; dateRanges?: any } = {},
+  ): Promise<SegmentData[]> {
+    const m0 = ctx.log.mark();
+    ctx.log.info.text('Fetching starred segments from Strava').emit();
+
+    // Fetch starred segments
+    const summarySegments: Api.Schema.SummarySegment[] = [];
+    await this.api.getStarredSegments(ctx, summarySegments);
+
+    ctx.log.info.text('Found').count(summarySegments.length).text('starred segment', 'starred segments').ewt(m0);
+
+    // Convert to SegmentData array
+    const segments: SegmentData[] = [];
+    for (const summary of summarySegments) {
+      const segment = new SegmentData({
+        id: summary.id,
+        name: summary.name,
+        elapsed_time: 0,
+        moving_time: 0,
+        distance: summary.distance || 0,
+        data: summary,
+      } as any);
+
+      // Extract location info
+      if ('country' in summary && typeof summary.country === 'string') {
+        segment.country = summary.country;
+      }
+      if ('state' in summary && typeof summary.state === 'string') {
+        segment.state = summary.state;
+      }
+
+      segments.push(segment);
+    }
+
+    // Fetch coordinates if requested
+    if (opts.coordinates && segments.length > 0) {
+      ctx.log.info.text('Fetching coordinates for segments').emit();
+      for (const segment of segments) {
+        try {
+          const coords = await this.api.getStreamCoords(
+            ctx,
+            'segments' as Api.Schema.StreamKeyType,
+            segment.id,
+            segment.name,
+          );
+          if (coords && coords.length > 0) {
+            segment.coordinates = coords;
+          }
+        } catch (_e) {
+          ctx.log.warn.text('Failed to fetch coordinates for segment').value(segment.name).emit();
+        }
+      }
+    }
+
+    // Fetch efforts if requested
+    if (opts.efforts && opts.dateRanges && segments.length > 0) {
+      ctx.log.info.text('Fetching segment efforts for date ranges').emit();
+      const athleteId = this.athlete?.id || 0;
+
+      for (const segment of segments) {
+        const allEfforts: any[] = [];
+
+        // Get efforts for each date range
+        for (const dateRange of opts.dateRanges.ranges) {
+          try {
+            const params: Api.Query = {
+              athlete_id: athleteId,
+              per_page: 200,
+              start_date_local: (dateRange.after || new Date(1975, 0, 1)).toISOString(),
+              end_date_local: (dateRange.before || new Date()).toISOString(),
+            };
+
+            const efforts = await this.api.getSegmentEfforts(ctx, segment.id, params);
+            if (_.isArray(efforts) && efforts.length > 0) {
+              allEfforts.push(...efforts);
+            }
+          } catch (_e) {
+            ctx.log.warn.text('Failed to fetch efforts for segment').value(segment.name).emit();
+          }
+        }
+
+        if (allEfforts.length > 0) {
+          // Sort by elapsed time
+          allEfforts.sort((a: any, b: any) => {
+            const aTime = a.elapsed_time || 0;
+            const bTime = b.elapsed_time || 0;
+            return aTime - bTime;
+          });
+          ctx.log.info.text('Found').count(allEfforts.length).text('effort', 'efforts').text('for')
+            .value(segment.name).emit();
+          // Store efforts on segment (you may want to add an efforts property to SegmentData)
+          (segment as any).efforts = allEfforts;
+        }
+      }
+    }
+
+    return segments;
   }
 }
