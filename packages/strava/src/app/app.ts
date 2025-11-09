@@ -19,8 +19,30 @@ const lessRaw = _.deepCopy(rawConfig, { replace: { 'HOME': home }, pre: '${', po
 const configPaths = lessRaw.paths;
 
 /**
- * Main application class that handles Strava API interactions and business logic.
- * This class is designed to be reusable across different interfaces (CLI, web, etc.).
+ * Main application class handling Strava API interactions and core business logic.
+ *
+ * This class serves as the central coordinator for all Strava-related operations,
+ * implementing business logic that is independent of the user interface. It can be
+ * used from CLI commands, web interfaces, or any other front-end.
+ *
+ * Key responsibilities:
+ * - Strava API initialization and authentication
+ * - Athlete profile retrieval
+ * - Activity fetching with date range filtering
+ * - KML file generation for Google Earth visualization
+ * - Adobe Acroforms XML generation for bikelog PDF forms
+ * - User settings and configuration management
+ *
+ * The class follows the pattern of delegating presentation concerns to commands while
+ * containing all domain logic here for reusability.
+ *
+ * @example
+ * ```ts
+ * const app = new Main();
+ * await app.init(ctx, { strava: true, userSettings: true });
+ * await app.getAthlete(ctx);
+ * await app.getKml(ctx, { activities: true, date: dateRanges, output: 'output.kml' });
+ * ```
  */
 export class Main {
   #api: Api.Api<Ctx.MsgBuilder, Ctx.Logger>;
@@ -34,8 +56,10 @@ export class Main {
   }
 
   /**
-   * Get the API client instance.
-   * @throws Error if API not initialized
+   * Gets the initialized Strava API client instance.
+   *
+   * @returns The API client configured with user credentials
+   * @throws Error if API not initialized (should not happen in normal usage)
    */
   get api(): Api.Api<Ctx.MsgBuilder, Ctx.Logger> {
     if (!this.#api) {
@@ -45,9 +69,28 @@ export class Main {
   }
 
   /**
-   * Initialize the application with specified services.
-   * @param ctx - Application context
-   * @param opts - Initialization options specifying what to initialize
+   * Initializes application services based on specified options.
+   *
+   * This method selectively initializes only the services needed for a given operation,
+   * avoiding unnecessary initialization overhead. Services are initialized in order:
+   * 1. Configuration files (if opts.config is true)
+   * 2. Strava API with OAuth authentication (if opts.strava is true)
+   * 3. User settings from ~/.strava/user.settings.json (if opts.userSettings is true)
+   *
+   * @param ctx Application context with logging
+   * @param [opts={}] Initialization options specifying which services to initialize
+   * @param [opts.config] Initialize configuration files
+   * @param [opts.strava] Initialize Strava API client with authentication
+   * @param [opts.userSettings] Load user settings (line styles, bikes, etc.)
+   *
+   * @example
+   * ```ts
+   * // Initialize only what's needed for athlete command
+   * await app.init(ctx, { strava: true, userSettings: true });
+   *
+   * // Initialize everything
+   * await app.init(ctx, { config: true, strava: true, userSettings: true });
+   * ```
    */
   async init(ctx: Ctx.Context, opts: App.Opts = {}): Promise<void> {
     if (opts.config) {
@@ -84,9 +127,22 @@ export class Main {
   }
 
   /**
-   * Retrieve athlete information from Strava API.
-   * @param ctx - Application context for logging
-   * @param athleteId - Optional specific athlete ID to retrieve
+   * Retrieves athlete profile information from Strava API.
+   *
+   * Fetches the authenticated athlete's profile (or a specific athlete if ID provided)
+   * and stores it in the `athlete` property. The profile includes:
+   * - Name, location (city, state, country)
+   * - Athlete ID
+   * - List of bikes and shoes
+   *
+   * @param ctx Application context with logging
+   * @param [athleteId] Optional specific athlete ID (defaults to authenticated user)
+   *
+   * @example
+   * ```ts
+   * await app.getAthlete(ctx);
+   * console.log(app.athlete?.firstname, app.athlete?.bikes);
+   * ```
    */
   async getAthlete(ctx: Ctx.Context, athleteId?: Api.Schema.AthleteId): Promise<void> {
     try {
@@ -99,6 +155,47 @@ export class Main {
     }
   }
 
+  /**
+   * Generates a KML file from Strava activities and/or segments for Google Earth visualization.
+   *
+   * This method orchestrates the complete KML generation workflow:
+   * 1. Initializes KML generator with user-configured line styles
+   * 2. Validates that activities or segments are requested
+   * 3. Fetches activities for specified date ranges with filtering
+   * 4. Optionally fetches detailed activity data for lap markers (--laps flag)
+   * 5. Fetches coordinates for each activity from Strava streams
+   * 6. Applies commute filtering if specified
+   * 7. Generates KML file with proper styling and organization
+   *
+   * The generated KML includes:
+   * - Activity routes as color-coded LineStrings
+   * - Optional lap markers as Point placemarks (if --laps enabled)
+   * - Segment routes organized by region (if --segments enabled)
+   *
+   * @param ctx Application context with logging
+   * @param kmlOpts KML generation options including:
+   * @param kmlOpts.activities Include activities in KML output
+   * @param kmlOpts.segments Include starred segments in KML output
+   * @param kmlOpts.date Required date ranges for activity filtering
+   * @param kmlOpts.output Required output file path
+   * @param kmlOpts.laps Enable lap marker output
+   * @param kmlOpts.commute Filter commute activities ('yes' | 'no' | 'all')
+   * @param kmlOpts.more Include detailed descriptions
+   * @param kmlOpts.imperial Use imperial units instead of metric
+   *
+   * @throws Error if neither activities nor segments is requested
+   *
+   * @example
+   * ```ts
+   * await app.getKml(ctx, {
+   *   activities: true,
+   *   laps: true,
+   *   date: dateRanges,
+   *   output: 'rides.kml',
+   *   commute: 'no'
+   * });
+   * ```
+   */
   async getKml(ctx: Ctx.Context, kmlOpts: Kml.Opts): Promise<void> {
     // Initialize KML generator with options and line styles
     const kml = new Kml.Main(kmlOpts);
@@ -214,6 +311,36 @@ export class Main {
     }
   }
 
+  /**
+   * Generates Adobe Acroforms XML file from Strava activities for bikelog PDF forms.
+   *
+   * This method orchestrates the complete XML generation workflow for bikelog PDF forms:
+   * 1. Validates date ranges are specified
+   * 2. Fetches activities for specified date ranges
+   * 3. Fetches detailed activity data to access description and private_note fields
+   * 4. Prepares bike dictionary from athlete profile
+   * 5. Generates XML file with daily activity summaries
+   *
+   * The generated XML includes:
+   * - Up to 2 bike ride events per day (distance, bike, elevation, time)
+   * - Activity notes with parsed description and private_note
+   * - Custom properties extracted from descriptions (key=value format)
+   * - Weight data automatically extracted to dedicated field
+   * - Non-bike activities (Run, Swim, etc.) in notes section
+   *
+   * @param ctx Application context with logging
+   * @param pdfOpts PDF/XML generation options including:
+   * @param pdfOpts.date Required date ranges for activity filtering
+   * @param pdfOpts.output Output file path (defaults to 'bikelog.xml')
+   *
+   * @example
+   * ```ts
+   * await app.getPdf(ctx, {
+   *   date: dateRanges,
+   *   output: 'bikelog2024.xml'
+   * });
+   * ```
+   */
   async getPdf(ctx: Ctx.Context, pdfOpts: BikeLog.Opts): Promise<void> {
     ctx.log.info.text('Generating PDF/XML for Adobe Acrobat Forms').emit();
 
