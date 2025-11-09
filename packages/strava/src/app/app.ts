@@ -479,16 +479,20 @@ export class Main {
     // Convert to SegmentData array
     const segments: SegmentData[] = [];
     for (const summary of summarySegments) {
-      const segment = new SegmentData({
+      // Create SegmentBase from API data using Object.assign
+      const base: any = {
         id: summary.id,
         name: summary.name,
         elapsed_time: 0,
         moving_time: 0,
         distance: summary.distance || 0,
         data: summary,
-      } as any);
+      };
 
-      // Extract location info
+      // Create SegmentData from base (but we need to work around the instanceof check)
+      const segment = Object.assign(new SegmentData({} as any), base);
+
+      // Extract location info from summary
       if ('country' in summary && typeof summary.country === 'string') {
         segment.country = summary.country;
       }
@@ -503,18 +507,14 @@ export class Main {
     if (opts.coordinates && segments.length > 0) {
       ctx.log.info.text('Fetching coordinates for segments').emit();
       for (const segment of segments) {
-        try {
-          const coords = await this.api.getStreamCoords(
-            ctx,
-            'segments' as Api.Schema.StreamKeyType,
-            segment.id,
-            segment.name,
-          );
-          if (coords && coords.length > 0) {
-            segment.coordinates = coords;
-          }
-        } catch (_e) {
-          ctx.log.warn.text('Failed to fetch coordinates for segment').value(segment.name).emit();
+        const coords = await this.api.getStreamCoords(
+          ctx,
+          'segments' as Api.Schema.StreamKeyType,
+          segment.id,
+          segment.name,
+        );
+        if (coords && coords.length > 0) {
+          segment.coordinates = coords;
         }
       }
     }

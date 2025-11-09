@@ -277,6 +277,21 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
       return [];
     } catch (error: unknown) {
       const err = _.asError(error);
+      const errorMsg = err.message;
+
+      // Handle 404 errors silently - some segments don't have coordinate data
+      if (errorMsg.includes('404')) {
+        // Don't log 404s - they're expected for some segments
+        return [];
+      }
+
+      // Handle 429 rate limit errors with a warning (no stack trace)
+      if (errorMsg.includes('429')) {
+        ctx.log.warn.text('Rate limit exceeded fetching coordinates for').value(name).emit();
+        return [];
+      }
+
+      // Log other errors with full details
       ctx.log.error.h2('Get').value(name).h2('coordinates').err(err).ewt(m0);
       return [];
     }
