@@ -1,9 +1,13 @@
 import type { ISODate } from '@epdoc/datetime';
-import type { PolylineMap } from './activity.ts'; // Added import for PolylineMap
-import type { ActivityType } from './types.ts';
+import type { ActivityId, PolylineMap } from './activity.ts'; // Added import for PolylineMap
+import type { AthleteId } from './athlete.ts';
+import type { ActivityType, StravaId } from './types.ts';
 
 export type SegmentName = string;
-export type SegmentId = number;
+/** A unique identifier for a segment. */
+export type SegmentId = StravaId;
+/** A unique identifier for a segment effort. */
+export type EffortId = StravaId;
 
 export interface SummarySegment {
   id: SegmentId;
@@ -33,10 +37,10 @@ export interface SummarySegment {
 }
 
 export interface SummarySegmentEffort {
-  id: number;
-  activity_id?: number;
-  athlete_id?: number;
-  segment_id?: number;
+  id: EffortId;
+  activity_id?: ActivityId;
+  athlete_id?: AthleteId;
+  segment_id?: SegmentId;
   name?: string;
   elapsed_time: number;
   moving_time?: number;

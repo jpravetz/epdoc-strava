@@ -1,4 +1,14 @@
+import type { ActivityId } from './activity.ts';
+import type { AthleteId } from './athlete.ts';
 import type * as Consts from './consts.ts';
+
+/**
+ * A unique identifier for a Strava object.
+ *
+ * Strava IDs are int64 (Long) values that exceed JavaScript's safe integer range.
+ * To avoid precision loss during JSON serialization/deserialization, we store them as strings.
+ */
+export type StravaId = string;
 
 export type ActivityType = typeof Consts.ActivityName[keyof typeof Consts.ActivityName];
 export type FollowerStatusType = typeof Consts.FollowerStatus[keyof typeof Consts.FollowerStatus];
@@ -9,11 +19,11 @@ export type StreamKeyType = typeof Consts.StreamKeys[keyof typeof Consts.StreamK
 export type UnitSystemType = typeof Consts.UnitSystem[keyof typeof Consts.UnitSystem];
 
 export interface MetaAthlete {
-  id: number;
+  id: AthleteId;
   resource_state: ResourceStateType;
 }
 
 export interface MetaActivity {
-  id: number;
+  id: ActivityId;
   resource_state: ResourceStateType;
 }

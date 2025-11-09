@@ -3,6 +3,18 @@ import { _, type Dict } from '@epdoc/type';
 import type { StravaCreds } from './auth/creds.ts';
 import * as Auth from './auth/mod.ts';
 import type * as Ctx from './context.ts';
+import {
+  hasLatLngData,
+  isDetailedActivity,
+  isDetailedAthlete,
+  isSegmentEffortArray,
+  isStravaId,
+  isStreamArray,
+  isStreamSet,
+  isSummaryActivityArray,
+  isSummarySegment,
+  isSummarySegmentArray,
+} from './guards.ts';
 import * as Schema from './schema/mod.ts';
 import type * as Strava from './types.ts';
 
@@ -119,7 +131,7 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
   ): Promise<Schema.DetailedAthlete> {
     await this.#refreshToken(ctx);
     let url = STRAVA_URL.athlete;
-    if (_.isNumber(athleteId)) {
+    if (isStravaId(athleteId)) {
       url = url + '/' + athleteId;
     }
 
@@ -133,12 +145,17 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
 
     const resp = await fetch(url, reqOpts);
     if (!resp.ok) {
-      const errorText = await resp.text();
-      throw new Error(`Failed to get athlete: ${resp.status} ${resp.statusText} - ${errorText}`);
+      ctx.log.error.warn('Failed to get athlete').error(resp.statusText).emit();
+      throw new Error('Failed to retrieve athlete ' + athleteId);
     }
 
-    const data = await resp.json() as Schema.DetailedAthlete;
-    return data;
+    const data: unknown = await resp.json();
+
+    if (isDetailedAthlete(data)) {
+      return data;
+    }
+
+    throw new Error('Invalid athlete data returned');
   }
 
   /**
@@ -181,11 +198,13 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
         throw new Error(`Failed to get activities: ${resp.statusText}`);
       }
 
-      const data = await resp.json() as Schema.SummaryActivity[];
-      if (!_.isArray(data)) {
-        throw new Error('Invalid activities return value: Expected an array.');
+      const data: unknown = await resp.json();
+
+      if (isSummaryActivityArray(data)) {
+        return data;
       }
-      return data;
+
+      throw new Error('Invalid activities return value: Expected an array of SummaryActivity objects.');
     } catch (error: unknown) {
       const err = _.asError(error);
       err.message = 'Activities - ' + err.message;
@@ -224,24 +243,24 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
     const m0 = ctx.log.mark();
     const resp = await fetch(url.toString(), reqOpts);
     if (!resp.ok) {
-      const errorText = await resp.text();
-      throw new Error(`Failed to get starred segments: ${resp.status} ${resp.statusText} - ${errorText}`);
+      ctx.log.error.error('Failed to retrieved starred segments').error(resp.statusText).emit();
+      return;
     }
 
-    const data: Schema.SummarySegment[] = await resp.json() as Schema.SummarySegment[];
-    if (_.isArray(data)) {
+    const data: unknown = await resp.json();
+
+    if (isSummarySegmentArray(data)) {
       ctx.log.info.h2('Retrieved').count(data.length).h2('starred segments for page').value(page).ewt(m0);
-      data.forEach((item: Schema.SummarySegment) => { // Use unknown for now, as Segment.Summary.newFromResponseData expects raw data
+      data.forEach((item) => {
         accum.push(item);
       });
       if (data.length >= perPage) {
         return this.getStarredSegments(ctx, accum, page + 1);
       }
       return Promise.resolve();
-    } else {
-      ctx.log.demark(m0);
     }
-    throw new Error('Invalid starred segments return value');
+
+    throw new Error('Invalid starred segments data returned');
   }
 
   /**
@@ -258,7 +277,7 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
   public async getStreamCoords(
     ctx: Ctx.IContext<M, L>,
     source: Schema.StreamKeyType,
-    objId: Strava.ObjId,
+    objId: Schema.ActivityId | Schema.SegmentId,
     name: string,
   ): Promise<Strava.Coord[]> {
     const query: Dict = {
@@ -268,7 +287,7 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
     const m0 = ctx.log.mark();
     try {
       const resp: Partial<Schema.StreamSet> = await this.getStreams(ctx, source, objId, query);
-      if (_.isDict(resp.latlng) && _.isArray(resp.latlng.data)) {
+      if (hasLatLngData(resp)) {
         ctx.log.info.h2('Get').value(name).h2('Found').count(resp.latlng.data.length)
           .h2('coordinate').ewt(m0);
         return resp.latlng.data as Strava.Coord[];
@@ -328,10 +347,12 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
         throw new Error(`Failed to get detailed activity: ${resp.status} ${resp.statusText} - ${errorText}`);
       }
 
-      const data = await resp.json() as Schema.DetailedActivity;
-      if (data) {
-        return data as Schema.DetailedActivity;
+      const data: unknown = await resp.json();
+
+      if (isDetailedActivity(data)) {
+        return data;
       }
+
       throw new Error('Invalid DetailedActivity return value');
     } catch (error: unknown) {
       const err = _.asError(error);
@@ -355,7 +376,7 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
   public async getStreams(
     ctx: Ctx.IContext<M, L>,
     source: Schema.StreamKeyType,
-    objId: Strava.SegmentId,
+    objId: Schema.ActivityId | Schema.SegmentId,
     options: Strava.Query,
   ): Promise<Partial<Schema.StreamSet>> {
     await this.#refreshToken(ctx);
@@ -381,10 +402,23 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
       throw new Error(`Failed to get streams: ${resp.status} ${resp.statusText} - ${errorText}`);
     }
 
-    const data = await resp.json() as Partial<Schema.StreamSet>;
-    if (_.isDict(data)) {
+    const data: unknown = await resp.json();
+
+    // Strava API returns an array when key_by_type is empty/false,
+    // or an object when key_by_type=true
+    if (isStreamArray(data)) {
+      // Convert array format to object format: [{ type: 'latlng', data: [...] }] -> { latlng: { type: 'latlng', data: [...] } }
+      const result: Record<string, Schema.Stream | Schema.LatLngStream> = {};
+      for (const stream of data) {
+        result[stream.type] = stream;
+      }
+      return result as Partial<Schema.StreamSet>;
+    }
+
+    if (isStreamSet(data)) {
       return data;
     }
+
     throw new Error(`Invalid data returned for ${source}`);
   }
 
@@ -395,7 +429,10 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
    * @param segmentId The ID of the segment to retrieve.
    * @returns A promise that resolves to the segment data.
    */
-  public async getSegment(ctx: Ctx.IContext<M, L>, segmentId: Strava.SegmentId): Promise<unknown> { // Changed return type to unknown
+  public async getSegment(
+    ctx: Ctx.IContext<M, L>,
+    segmentId: Schema.SegmentId,
+  ): Promise<Schema.SummarySegment> {
     await this.#refreshToken(ctx);
     const url = STRAVA_API_PREFIX + '/' + 'segments/' + segmentId;
 
@@ -413,7 +450,13 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
       throw new Error(`Failed to get segment: ${resp.status} ${resp.statusText} - ${errorText}`);
     }
 
-    return resp.json(); // Return the JSON data
+    const data: unknown = await resp.json();
+
+    if (isSummarySegment(data)) {
+      return data;
+    }
+
+    throw new Error('Invalid segment data returned');
   }
 
   /**
@@ -422,13 +465,13 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
    * @param ctx The application context for logging.
    * @param segmentId The ID of the segment.
    * @param params Additional query parameters for the request.
-   * @returns A promise that resolves to the segment efforts data.
+   * @returns A promise that resolves to an array of segment efforts.
    */
   public async getSegmentEfforts(
     ctx: Ctx.IContext<M, L>,
-    segmentId: Strava.SegmentId,
+    segmentId: Schema.SegmentId,
     params: Strava.Query,
-  ): Promise<unknown> { // Changed return type to unknown
+  ): Promise<Schema.DetailedSegmentEffort[]> {
     await this.#refreshToken(ctx);
     const url = new URL(STRAVA_API_PREFIX + '/' + 'segments/' + segmentId + '/' + 'all_efforts');
 
@@ -452,6 +495,12 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
       throw new Error(`Failed to get segment efforts: ${resp.status} ${resp.statusText} - ${errorText}`);
     }
 
-    return resp.json(); // Return the JSON data
+    const data: unknown = await resp.json();
+
+    if (isSegmentEffortArray(data)) {
+      return data;
+    }
+
+    throw new Error('Invalid segment efforts data returned');
   }
 }

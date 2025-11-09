@@ -1,45 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <fields xmlns:xfdf="http://ns.adobe.com/xfdf-transition/">
   <day>
-    <group xfdf:original="2460984">
+    <group xfdf:original="2460964">
       <group xfdf:original="0">
         <bike>Levo17</bike>
-        <dist>22.83</dist>
-        <el>589</el>
-        <t>1.28</t>
+        <dist>23.02</dist>
+        <el>517</el>
+        <t>1.5</t>
         <wh>0</wh>
       </group>
       <note0>EBike: eVuelta de Ojochal y Piñuela Arriba
-Moving: 01:16, Elapsed: 02:09
-Easy ride with lots of turbo, just to get out and spin the legs</note0>
+Moving: 01:30, Elapsed: 02:06
+Piernas buenas, finalmente! Pero tomé dos Gu, entonces es el resultado de los Gu o los dos andar con bici de ruta?
+ECO mode durante casi todos el paseo.
+No dolor de hombro</note0>
     </group>
-    <group xfdf:original="2460986">
+    <group xfdf:original="2460966">
       <group xfdf:original="0">
         <bike>Levo17</bike>
-        <dist>10.65</dist>
-        <el>244</el>
-        <t>0.74</t>
+        <dist>28.1</dist>
+        <el>657</el>
+        <t>1.72</t>
         <wh>0</wh>
       </group>
-      <note0>EBike: eWago Ojochal
-Moving: 00:44, Elapsed: 01:26
-Cansado
-Haz un camino alrededor de la cadena del salón communal </note0>
+      <note0>EBike: eVuelta de Ojochal y Piñuela Arriba
+Moving: 01:43, Elapsed: 02:17
+2 x Gu and great ride</note0>
     </group>
-    <group xfdf:original="2460987">
+    <group xfdf:original="2460967">
       <group xfdf:original="0">
         <bike>Levo17</bike>
-        <dist>27.16</dist>
-        <el>717</el>
-        <t>1.94</t>
+        <dist>28.82</dist>
+        <el>572</el>
+        <t>1.46</t>
         <wh>0</wh>
       </group>
-      <note0>EBike: eVuelta de Ojochal y Piñuela Arriba y Perezoso con John y Paul
-Moving: 01:56, Elapsed: 02:12
-Excellent ride. ECO set to 14%. Tired at end. Paul does San Buenos afterwards
-Biker: avg 128 W, max 447 W, 168 Wh
-Motor: 274 Wh</note0>
-      <wt>105</wt>
+      <note0>EBike: El Pavon con Nancita
+Moving: 01:27, Elapsed: 01:34</note0>
     </group>
   </day>
 </fields>

@@ -225,6 +225,8 @@
           "jsr:@epdoc/logger@^1003.0.2",
           "jsr:@epdoc/msgbuilder@^0.0.3",
           "jsr:@epdoc/type@^1.1.18",
+          "jsr:@oak/oak@^17.1.6",
+          "jsr:@opensrc/deno-open@1",
           "jsr:@std/assert@^1.0.15",
           "jsr:@std/expect@^1.0.17",
           "jsr:@std/fmt@^1.0.8",

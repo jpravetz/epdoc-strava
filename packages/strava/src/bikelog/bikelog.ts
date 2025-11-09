@@ -5,7 +5,7 @@ import { _ } from '@epdoc/type';
 import * as builder from 'xmlbuilder';
 import type * as Ctx from '../context.ts';
 import type { Api } from '../dep.ts';
-import { Fmt } from '../fmt.ts';
+import { Fmt, formatMS } from '../fmt.ts';
 import type * as BikeLog from './types.ts';
 
 type Activity = Api.Activity.Base;
@@ -254,8 +254,23 @@ export class Bikelog {
           note += '\n' + times.join(', ');
         }
 
+        // Add starred segment efforts (if available)
+        if ((activity.data as any).segments && _.isArray((activity.data as any).segments)) {
+          const segments = (activity.data as any).segments;
+          if (segments.length > 0) {
+            const segs: string[] = [];
+            let prefix = 'Up ';
+            for (const segment of segments) {
+              const time = segment.elapsed_time || segment.moving_time || 0;
+              const timeStr = formatMS(time);
+              segs.push(`${prefix}${segment.name} [${timeStr}]`);
+              prefix = 'up ';
+            }
+            note += '\n' + segs.join(', ');
+          }
+        }
+
         // TODO: Add EBike energy data from detailed activity
-        // TODO: Add segments list from activity.segments
 
         // Add custom description and private note from activity (if available)
         const customProps = this.parseActivityText(activity);

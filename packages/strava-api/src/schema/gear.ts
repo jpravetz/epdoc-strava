@@ -1,5 +1,7 @@
 import type { ResourceStateType } from './types.ts';
 
+export type GearId = string;
+
 export interface DetailedGear {
   id: string;
   resource_state: ResourceStateType;
@@ -14,7 +16,7 @@ export interface DetailedGear {
 }
 
 export interface SummaryGear {
-  id: string;
+  id: GearId;
   resource_state: ResourceStateType;
   primary: boolean;
   name: string;

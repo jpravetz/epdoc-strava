@@ -4,9 +4,24 @@ This document provides essential context for Claude Code when working on this pr
 
 ## Project Overview
 
-This is a Deno/TypeScript monorepo for generating KML files from Strava activities and segments. It's a modern rewrite of the legacy Node.js implementation.
+This is a Deno/TypeScript monorepo for generating KML files from Strava activities and segments. It's a modern
+rewrite of the legacy Node.js implementation.
 
 See the top-level [README.md](./README.md) for workspace structure and quick start guide.
+
+## Coding Standards
+
+**IMPORTANT**: All development in this project must follow the universal coding standards and conventions documented in:
+
+- **[GEMINI_GLOBAL.md](/Users/jpravetz/dev/GEMINI_GLOBAL.md)** - Universal guidelines for Deno TypeScript projects
+
+This document covers:
+- Deno project structure and module organization
+- Import conventions and path management
+- TypeScript code generation standards
+- JSDoc commenting guidelines
+- Git commit message standards
+- Testing conventions
 
 ### Repository Structure
 
@@ -23,6 +38,7 @@ See the top-level [README.md](./README.md) for workspace structure and quick sta
 ## Key Dependencies & Their Roles
 
 ### @epdoc/logger (separate monorepo)
+
 - **Location**: `/Users/jpravetz/dev/@epdoc/logger/`
 - **Purpose**: TypeScript logging library with pluggable MessageBuilder formatting
 - **Usage**: All logging throughout the application
@@ -31,12 +47,14 @@ See the top-level [README.md](./README.md) for workspace structure and quick sta
 - **Published**: Available as `jsr:@epdoc/logger`
 
 ### @epdoc/cliapp
+
 - Framework for building CLI applications
 - Provides the main entry point and command structure
 - Handles command parsing and routing
 - **Published**: Available as `jsr:@epdoc/cliapp`
 
 ### @epdoc/std (monorepo)
+
 - **Location**: `/Users/jpravetz/dev/@epdoc/std/`
 - **Purpose**: Collection of shared utility packages
 - **Documentation**: See GEMINI.md in that repo for workspace overview
@@ -52,6 +70,7 @@ See the top-level [README.md](./README.md) for workspace structure and quick sta
 - **Note**: Since you are the author, we can update these packages rather than creating workarounds
 
 ### Legacy Reference
+
 - **Location**: `/Users/jpravetz/dev/epdoc/epdoc-strava/`
 - **Purpose**: Source of truth for:
   - **Output requirements**: Types of output the new implementation must produce
@@ -62,12 +81,16 @@ See the top-level [README.md](./README.md) for workspace structure and quick sta
 ## Architecture Patterns
 
 ### Command Structure
+
 Commands follow a consistent pattern:
+
 1. **Command Definition**: Located in `src/cmd/<command>/cmd.ts`
 2. **Options Configuration**: Shared options defined in `src/cmd/options/definitions.ts`
-3. **Business Logic**: Commands call methods on `ctx.app` (like `ctx.app.getKml()`), where the actual implementation lives in `src/app/app.ts`
+3. **Business Logic**: Commands call methods on `ctx.app` (like `ctx.app.getKml()`), where the actual
+   implementation lives in `src/app/app.ts`
 
 Example command structure:
+
 ```typescript
 export const cmdConfig: Options.Config = {
   replace: { cmd: 'CommandName' },
@@ -93,31 +116,37 @@ export class MyCmd extends Options.BaseSubCmd {
 ### Options System
 
 **Two Types of Options**:
+
 1. **Global Options** - Defined at root level, available to all commands
 2. **Command-Specific Options** - Defined per command
 
 **Global Options** (`src/cmd/root/cmd.ts`):
+
 - `--id <athleteId>` - Athlete ID (defaults to login)
 - `--imperial` - Use imperial units instead of metric
 - `--offline` - Offline mode
 
 **Command-Specific Options** (`src/cmd/options/definitions.ts`):
+
 - **Definitions**: All option definitions are centralized in `definitions.ts`
 - **Reusability**: Options like `date`, `output`, `activities`, `segments` are shared across commands
 - **Configuration**: Each command specifies which options it needs via `cmdConfig.options`
 - **Type Safety**: Options are strongly typed through TypeScript interfaces
 
 **How Options Work**:
+
 - Commander.js automatically merges parent (global) options into child command options
 - Command action handlers receive both global and command-specific options in the single options parameter
 - Example: KML command receives `imperial` (global) + `output`, `dates`, etc. (command-specific)
 
 ### File Writing Pattern
+
 - Use `FileSpecWriter` from `@epdoc/fs` for file operations
 - Prefer async/await over promise chains
 - Always use try/catch with proper cleanup (close writers)
 
 Example:
+
 ```typescript
 const fsFile = new FS.File(FS.Folder.cwd(), filepath);
 const writer = await fsFile.writer();
@@ -135,6 +164,7 @@ try {
 ### Making Changes to @epdoc/std Packages
 
 When updating packages in `@epdoc/std`:
+
 1. Make your changes
 2. Run tests: `cd ~/dev/@epdoc/std/<package> && deno test -A`
 3. Bump version in `deno.json`
@@ -143,18 +173,21 @@ When updating packages in `@epdoc/std`:
 6. Update dependencies in dependent projects: `deno update --latest`
 
 ### Testing
+
 - Run tests from package directory: `deno test -A`
 - Type check: `deno check <file>`
 
 ## Important Notes
 
 ### Code Style
+
 - Use async/await instead of promise chains
 - Use `for...of` loops instead of `.reduce()` for async operations
 - Proper error handling with try/catch blocks
 - Clean up resources (close files, connections) in finally blocks
 
 ### Common Patterns
+
 - Context (`ctx`) is passed throughout the application for dependency injection
 - Options are parsed and validated at the command level
 - Business logic is in the app layer, not in command handlers
@@ -163,6 +196,7 @@ When updating packages in `@epdoc/std`:
 ## Current State (as of 2025-11-08)
 
 ### Recently Completed
+
 - **Lap Marker Support**: Added `--laps` flag to KML generation for displaying lap button press locations
 - **Bikelog Improvements**: Description/private_note parsing, weight extraction, improved formatting
 - **PDF Generation**: Now fetches detailed activity data for description and private_note fields
@@ -171,15 +205,18 @@ When updating packages in `@epdoc/std`:
 - **Custom Logging**: StravaMsgBuilder with file path and date range formatting
 
 ### Current Branch
+
 - Working on: `feature/lapmarker` (merged into develop when testing complete)
 - Main development branch: `develop`
 - Stable branch: `master`
 
 ### Known Issues
+
 - Segment retrieval logic not yet implemented (TODO in app.ts line 177-181)
 - Type errors in segment module (not blocking current functionality)
 - Lap markers need testing with real activities in Google Earth
 
 ## Questions?
 
-If you encounter patterns or structures not documented here, ask the user for clarification and update this document.
+If you encounter patterns or structures not documented here, ask the user for clarification and update this
+document.

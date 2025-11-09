@@ -1,12 +1,13 @@
+import type { DateRanges } from '@epdoc/daterange';
 import * as FS from '@epdoc/fs/fs';
 import { _ } from '@epdoc/type';
 import { assert } from '@std/assert/assert';
 import * as BikeLog from '../bikelog/mod.ts';
-import { Kml } from '../cmd/dep.ts';
 import rawConfig from '../config.json' with { type: 'json' };
 import type * as Ctx from '../context.ts';
 import { Api } from '../dep.ts';
-import { SegmentData } from '../segment/data.ts';
+import * as Kml from '../kml/mod.ts';
+import * as Segment from '../segment/mod.ts';
 import type * as App from './types.ts';
 
 const home = Deno.env.get('HOME');
@@ -209,7 +210,7 @@ export class Main {
     }
 
     let activities: Api.Activity.Base[] = [];
-    let segments: SegmentData[] = [];
+    let segments: Segment.Data[] = [];
 
     // Fetch activities if requested
     if (kmlOpts.activities && kmlOpts.date) {
@@ -345,15 +346,15 @@ export class Main {
    * ```
    */
   async getPdf(ctx: Ctx.Context, pdfOpts: BikeLog.Opts): Promise<void> {
-    ctx.log.info.text('Generating PDF/XML for Adobe Acrobat Forms').emit();
-
     const activities: Api.Activity.Base[] = [];
 
     // Fetch activities if we have date ranges
     if (!(pdfOpts.date && pdfOpts.date.hasRanges())) {
-      ctx.log.warn.text('No date ranges specified').emit();
+      ctx.log.warn.warn('No date ranges specified').emit();
       return;
     }
+
+    ctx.log.info.text('Generating PDF/XML for Adobe Acrobat Forms').emit();
 
     const m0 = ctx.log.mark();
     ctx.log.info.text('Fetching activities for date ranges').dateRange(pdfOpts.date).emit();
@@ -387,16 +388,25 @@ export class Main {
 
     // Fetch detailed activity data to get description and private_note fields
     if (activities.length > 0) {
-      ctx.log.info.text('Fetching detailed activity data').emit();
+      ctx.log.info.h2('Fetching detailed activity data for').count(activities.length).h2(
+        'activity',
+        'activities',
+      ).emit();
+      ctx.log.indent();
       for (let i = 0; i < activities.length; i++) {
         try {
           const detailedActivity = await this.api.getDetailedActivity(ctx, activities[i].data);
           // Replace summary activity with detailed activity data
           activities[i] = new Api.Activity.Base(detailedActivity);
+          ctx.log.info.activity(activities[i]).emit();
         } catch (_e) {
           ctx.log.warn.text('Failed to fetch detailed data for').activity(activities[i]).emit();
         }
       }
+      ctx.log.outdent();
+
+      // Attach starred segment efforts to activities
+      await this.attachStarredSegments(ctx, activities);
     }
 
     // Prepare bikes dict from athlete data
@@ -439,6 +449,11 @@ export class Main {
     ctx.log.info.h2('PDF/XML file generated successfully').fs(outputPath).emit();
   }
 
+  async refreshStarredSegments(ctx: Ctx.Context) {
+    const segFile = new Segment.File(new FS.File(configPaths.userSegments));
+    await segFile.get(ctx, { refresh: true });
+  }
+
   /**
    * Fetches starred segments from Strava API with optional efforts and coordinates.
    *
@@ -465,57 +480,92 @@ export class Main {
    */
   async getSegments(
     ctx: Ctx.Context,
-    opts: { efforts?: boolean; coordinates?: boolean; dateRanges?: any } = {},
-  ): Promise<SegmentData[]> {
+    opts: { efforts?: boolean; coordinates?: boolean; dateRanges?: DateRanges; refresh?: boolean } = {},
+  ): Promise<Segment.Data[]> {
     const m0 = ctx.log.mark();
-    ctx.log.info.text('Fetching starred segments from Strava').emit();
 
-    // Fetch starred segments
-    const summarySegments: Api.Schema.SummarySegment[] = [];
-    await this.api.getStarredSegments(ctx, summarySegments);
+    // Load or refresh segment cache
+    const segFile = new Segment.File(new FS.File(configPaths.userSegments));
+    await segFile.get(ctx, { refresh: opts.refresh });
 
-    ctx.log.info.text('Found').count(summarySegments.length).text('starred segment', 'starred segments').ewt(m0);
+    // Get all cached segments
+    const cachedSegments = segFile.getAllSegments();
+    ctx.log.info.text('Loaded').count(cachedSegments.length).text('starred segment', 'starred segments')
+      .text('from cache').ewt(m0);
 
-    // Convert to SegmentData array
-    const segments: SegmentData[] = [];
-    for (const summary of summarySegments) {
-      // Create SegmentBase from API data using Object.assign
-      const base: any = {
-        id: summary.id,
-        name: summary.name,
-        elapsed_time: 0,
-        moving_time: 0,
-        distance: summary.distance || 0,
-        data: summary,
-      };
-
-      // Create SegmentData from base (but we need to work around the instanceof check)
-      const segment = Object.assign(new SegmentData({} as any), base);
-
-      // Extract location info from summary
-      if ('country' in summary && typeof summary.country === 'string') {
-        segment.country = summary.country;
+    // Convert CacheEntry objects to SegmentData
+    const segments: Segment.Data[] = [];
+    for (const cached of cachedSegments) {
+      if (!cached.id || !cached.name) {
+        continue; // Skip invalid entries
       }
-      if ('state' in summary && typeof summary.state === 'string') {
-        segment.state = summary.state;
-      }
+
+      // Create SegmentData from cached entry
+      const segment = new Segment.Data({} as any);
+      segment.id = cached.id;
+      segment.name = cached.name;
+      segment.elapsedTime = 0;
+      segment.movingTime = 0;
+      segment.distance = cached.distance || 0;
+      segment.country = cached.country || '';
+      segment.state = cached.state || '';
+      segment.coordinates = cached.coordinates || [];
 
       segments.push(segment);
     }
 
-    // Fetch coordinates if requested
+    // Fetch coordinates if requested and needed
     if (opts.coordinates && segments.length > 0) {
-      ctx.log.info.text('Fetching coordinates for segments').emit();
-      for (const segment of segments) {
-        const coords = await this.api.getStreamCoords(
-          ctx,
-          'segments' as Api.Schema.StreamKeyType,
-          segment.id,
-          segment.name,
-        );
-        if (coords && coords.length > 0) {
-          segment.coordinates = coords;
+      // Find segments that need coordinates (not cached)
+      const segmentsNeedingCoords = segments.filter((seg) =>
+        !seg.coordinates || seg.coordinates.length === 0
+      );
+
+      if (segmentsNeedingCoords.length > 0) {
+        ctx.log.info.text('Fetching coordinates for').count(segmentsNeedingCoords.length).text(
+          'segment',
+          'segments',
+        )
+          .emit();
+
+        let rateLimitHit = false;
+        for (const segment of segmentsNeedingCoords) {
+          if (rateLimitHit) {
+            break; // Stop fetching if we hit rate limit
+          }
+
+          try {
+            const coords = await this.api.getStreamCoords(
+              ctx,
+              'segments' as Api.Schema.StreamKeyType,
+              segment.id,
+              segment.name,
+            );
+            if (coords && coords.length > 0) {
+              segment.coordinates = coords;
+              // Update cache with fetched coordinates
+              segFile.updateCoordinates(segment.id, coords);
+            }
+          } catch (e) {
+            const err = _.asError(e);
+            // Check for rate limit (429) error
+            if (err.message.includes('429')) {
+              ctx.log.warn.text(
+                'Rate limit hit. Stopping coordinate fetch. Use cached coordinates for remaining segments.',
+              )
+                .emit();
+              rateLimitHit = true;
+            }
+            // For other errors (404, etc.), just continue silently
+          }
         }
+
+        // Save updated cache with new coordinates
+        if (!rateLimitHit) {
+          await segFile.write(ctx);
+        }
+      } else {
+        ctx.log.info.text('All segments already have cached coordinates').emit();
       }
     }
 
@@ -562,5 +612,93 @@ export class Main {
     }
 
     return segments;
+  }
+
+  /**
+   * Attaches starred segment efforts to activities.
+   *
+   * This method fetches the list of starred segments, then filters each activity's
+   * segment_efforts to include only those that match starred segments. The filtered
+   * segment efforts are added to the activity's segments array for use in PDF/XML output.
+   *
+   * @param ctx Application context for logging
+   * @param activities Array of activities to process
+   *
+   * @example
+   * ```ts
+   * await app.attachStarredSegments(ctx, activities);
+   * // Activities now have their starred segment efforts populated
+   * ```
+   */
+  async attachStarredSegments(
+    ctx: Ctx.Context,
+    activities: Api.Activity.Base[],
+  ): Promise<void> {
+    if (!activities.length) {
+      return;
+    }
+
+    // TODO this should use our cached list of starred segments. we only retrive all starred segments with
+    // the segment --refresh command.
+    // Fetch starred segments to get their IDs
+    const starredSegments: Api.Schema.SummarySegment[] = [];
+    await this.api.getStarredSegments(ctx, starredSegments);
+
+    if (starredSegments.length === 0) {
+      ctx.log.info.text('No starred segments found, skipping segment effort processing').emit();
+      return;
+    }
+
+    // Create a Set of starred segment IDs for efficient lookup
+    const starredSegmentIds = new Set(starredSegments.map((seg) => seg.id));
+
+    ctx.log.info.text('Processing segment efforts for').count(activities.length).text(
+      'activity',
+      'activities',
+    )
+      .emit();
+
+    // Process each activity's segment efforts
+    for (const activity of activities) {
+      const detailedData = activity.data as Api.Schema.DetailedActivity;
+
+      // Check if activity has segment_efforts
+      if (!('segment_efforts' in detailedData) || !_.isArray(detailedData.segment_efforts)) {
+        continue;
+      }
+
+      const segmentEfforts = detailedData.segment_efforts;
+
+      // Filter to only starred segments
+      const starredEfforts = segmentEfforts.filter((effort) =>
+        effort.segment && effort.segment.id && starredSegmentIds.has(effort.segment.id)
+      );
+
+      if (starredEfforts.length > 0) {
+        ctx.log.info.text('Found').count(starredEfforts.length).text(
+          'starred segment effort',
+          'starred segment efforts',
+        )
+          .text('for').activity(activity).emit();
+
+        // Add segment efforts to activity data object
+        // We add it to the data object since activity.segments is read-only
+        (activity.data as any).segments = starredEfforts.map((effort) => {
+          // Apply segment name alias from user settings if available
+          let segmentName = effort.segment.name;
+          if (this.userSettings?.aliases && segmentName in this.userSettings.aliases) {
+            segmentName = this.userSettings.aliases[segmentName];
+          }
+
+          return {
+            id: effort.segment.id,
+            name: segmentName,
+            elapsed_time: effort.elapsed_time,
+            moving_time: effort.moving_time,
+            distance: effort.distance,
+          };
+        });
+      }
+    }
   }
 }

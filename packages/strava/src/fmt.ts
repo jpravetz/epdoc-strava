@@ -19,13 +19,20 @@ export type formatHMSOpts = {
   seconds?: boolean;
 };
 
-// export function formatMS(s: Seconds): string {
-//   const seconds = s % 60;
-//   const minutes = Math.floor(s / 60);
-//   let result = minutes + ':';
-//   result += pad(seconds, 2);
-//   return result;
-// }
+/**
+ * Formats seconds as MM:SS (minutes:seconds).
+ * Used for segment effort times where we want to show minutes and seconds.
+ *
+ * @param s Number of seconds
+ * @returns Formatted string like "19:28" for 1168 seconds
+ */
+export function formatMS(s: Seconds): string {
+  const seconds = s % 60;
+  const minutes = Math.floor(s / 60);
+  let result = minutes + ':';
+  result += pad(seconds, 2);
+  return result;
+}
 
 // export function julianDate(d: Date): number {
 //   return Math.floor(d.getTime() / 86400000 - d.getTimezoneOffset() / 1440 + 2440587.5) + 1;

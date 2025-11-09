@@ -1,9 +1,9 @@
 import type { ISODate } from '@epdoc/datetime';
 import type * as Consts from './consts.ts';
-import type { SummaryGear } from './gear.ts';
+import type { GearId, SummaryGear } from './gear.ts';
 import type { PhotoSummary } from './photo.ts';
 import type { DetailedSegmentEffort } from './segment.ts';
-import type { ActivityType, MetaActivity, MetaAthlete } from './types.ts';
+import type { ActivityType, MetaActivity, MetaAthlete, StravaId } from './types.ts';
 
 export type ActivityZoneType = typeof Consts.ActivityZoneDefs[keyof typeof Consts.ActivityZoneDefs];
 
@@ -62,10 +62,14 @@ export interface ActivityStats {
   all_swim_totals: ActivityTotal;
 }
 
+export type ActivityId = StravaId;
+export type ExternalId = string;
+export type UploadId = StravaId;
+
 export interface SummaryActivity {
-  id: number;
-  external_id: string;
-  upload_id: number;
+  id: ActivityId;
+  external_id: ExternalId;
+  upload_id: UploadId;
   athlete: MetaAthlete;
   name: string;
   distance: number;
@@ -96,7 +100,7 @@ export interface SummaryActivity {
   average_speed: number;
   max_speed: number;
   has_kudoed: boolean;
-  gear_id: string;
+  gear_id: GearId;
   average_temp: number;
   device_name: string;
 }
@@ -127,8 +131,10 @@ export interface DetailedActivity extends SummaryActivity {
   sport_type?: string;
 }
 
+export type LapId = StravaId;
+
 export interface Lap {
-  id: number;
+  id: LapId;
   activity: MetaActivity;
   athlete: MetaAthlete;
   average_cadence: number;

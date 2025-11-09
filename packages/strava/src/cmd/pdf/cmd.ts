@@ -1,15 +1,21 @@
+import type { DateRanges } from '@epdoc/daterange';
 import type * as BikeLog from '../../bikelog/mod.ts';
 import type { Ctx } from '../dep.ts';
 import * as Options from '../options/mod.ts';
 import type * as Cmd from '../types.ts';
 
 export const cmdConfig: Options.Config = {
-  replace: { cmd: 'PDF' },
+  replace: { cmd: 'XML' },
   options: {
     output: true,
     date: true,
     // Note: imperial and dryRun are global options defined in root command
   },
+};
+
+type PdfCmdOpts = {
+  date?: DateRanges;
+  output: string;
 };
 
 /**
@@ -53,7 +59,7 @@ export class PdfCmd extends Options.BaseSubCmd {
    * @returns Promise resolving to the configured command instance
    */
   init(ctx: Ctx.Context): Promise<Cmd.Command> {
-    this.cmd.init(ctx).action(async (opts) => {
+    this.cmd.init(ctx).action(async (opts: PdfCmdOpts) => {
       try {
         // Initialize app with required services
         await ctx.app.init(ctx, { strava: true, userSettings: true });

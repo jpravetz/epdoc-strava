@@ -132,10 +132,10 @@ export class AuthService<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
         const sId: string = (src.env === true) ? 'STRAVA_CLIENT_ID' : src.env.id;
         const sSecret: string = (src.env === true) ? 'STRAVA_CLIENT_SECRET' : src.env.secret;
         if (_.isString(sId) && _.isString(sSecret)) {
-          const id = _.asInt(Deno.env.get(sId));
+          const id = Deno.env.get(sId);
           const secret = Deno.env.get(sSecret);
-          if (_.isString(secret) && _.isPosInteger(id)) {
-            this.#client = { id: id, secret: secret };
+          if (_.isString(id) && _.isString(secret) && /^\d+$/.test(id)) {
+            this.#client = { id: _.asInt(id), secret: secret };
           }
         }
       }

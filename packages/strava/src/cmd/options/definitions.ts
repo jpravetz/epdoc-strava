@@ -21,7 +21,7 @@ export const mapDef: Record<string, Options.Def> = {
     short: 'o',
     name: 'output',
     params: '<filename>',
-    description: 'Output KML filename (REQUIRED).',
+    description: 'Output ${cmd} filename (REQUIRED).',
     argParser: (str: string) => {
       return _.isString(str) ? new FileSpec(Deno.cwd(), str) : str;
     },

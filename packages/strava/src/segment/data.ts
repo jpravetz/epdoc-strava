@@ -1,3 +1,4 @@
+import type { Api } from '../dep.ts';
 import { SegmentBase } from './base.ts';
 import type { Coord, Metres, Seconds } from './dep.ts';
 import type * as Segment from './types.ts';
@@ -20,9 +21,9 @@ import type * as Segment from './types.ts';
  * segmentData.state = "California";
  * ```
  */
-export class SegmentData {
-  id: Segment.Id = 0;
-  name: Segment.Name = '';
+export class SegmentData implements Segment.IData {
+  id: Api.Schema.SegmentId = '0';
+  name: Api.Schema.SegmentName = '';
   elapsedTime: Seconds = 0;
   movingTime: Seconds = 0;
   distance: Metres = 0;

@@ -14,17 +14,30 @@ export type StreamResolution = 'low' | 'medium' | 'high';
 export type StreamSeriesType = 'distance' | 'time';
 
 export interface Stream {
-  type: StreamType;
+  type: Exclude<StreamType, 'latlng'>;
   original_size: number;
   resolution: StreamResolution;
   series_type: StreamSeriesType;
-  data: (number | [number, number])[];
+  data: number[];
+}
+
+/**
+ * Stream type specifically for latitude/longitude coordinate data.
+ *
+ * This stream type contains coordinate pairs as [latitude, longitude] tuples.
+ */
+export interface LatLngStream {
+  type: 'latlng';
+  original_size: number;
+  resolution: StreamResolution;
+  series_type: StreamSeriesType;
+  data: [number, number][];
 }
 
 export interface StreamSet {
   time: Stream;
   distance: Stream;
-  latlng: Stream;
+  latlng: LatLngStream;
   altitude: Stream;
   velocity_smooth: Stream;
   heartrate: Stream;

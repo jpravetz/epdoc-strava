@@ -140,7 +140,7 @@ export class StravaCreds {
   async write(data: StravaCredsData): Promise<void> {
     if (isValidCredData(data)) {
       this.#data = data;
-      await this.#fsCredsFile.writeJson(this.#data);
+      await this.#fsCredsFile.writeJson(this.#data, null, 2);
     } else {
       throw new Error('Invalid token data');
     }

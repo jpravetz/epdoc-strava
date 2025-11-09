@@ -1,6 +1,7 @@
 import type { EpochSeconds } from '@epdoc/duration';
 import type * as FS from '@epdoc/fs/fs';
 import type { Dict, Integer } from '@epdoc/type';
+import type * as Schema from './schema/mod.ts';
 
 /** An authorization code obtained from the Strava OAuth2 flow. */
 export type Code = string;
@@ -14,12 +15,6 @@ export type Kilometres = number;
 /** A distance in meters. */
 export type Metres = number;
 
-/** A unique identifier for a Strava object. */
-export type ObjId = number;
-/** A unique identifier for a segment effort. */
-export type EffortId = ObjId;
-/** A unique identifier for a segment. */
-export type SegmentId = ObjId;
 /** A dictionary of query parameters. */
 export type Query = Dict;
 /** A geographical coordinate, represented as a [latitude, longitude] pair. */
@@ -75,7 +70,7 @@ export type AuthUrlOpts = {
 
 /** Options for retrieving activities. */
 export type ActivityOpts = {
-  athleteId: number;
+  athleteId: Schema.AthleteId;
   query: {
     after: EpochSeconds;
     before: EpochSeconds;
@@ -83,9 +78,6 @@ export type ActivityOpts = {
     page?: number;
   };
 };
-
-/** A unique identifier for an activity. */
-export type ActivityId = string;
 
 /**
  * Data for Strava API credentials.
@@ -99,7 +91,7 @@ export type StravaCredsData = {
   refresh_token?: string;
   access_token?: string;
   athlete: {
-    id?: string;
+    id?: Schema.AthleteId;
     username?: string;
     [key: string]: unknown;
   };

@@ -102,11 +102,15 @@
       ]
     },
     "@epdoc/loglevels@0.0.2": {
-      "integrity": "29b4d6d4ecd16c3fa9d30ae2ba7eac2ce23fa085e3eac0076554e7a6edf910b7"
+      "integrity": "29b4d6d4ecd16c3fa9d30ae2ba7eac2ce23fa085e3eac0076554e7a6edf910b7",
+      "dependencies": [
+        "jsr:@epdoc/type@^1.1.18"
+      ]
     },
     "@epdoc/msgbuilder@0.0.3": {
       "integrity": "5f78acdf6a0b1ef27b2d9f616793d58f13e42b3da017f97aa127ec9709fd4f73",
       "dependencies": [
+        "jsr:@epdoc/duration",
         "jsr:@epdoc/string",
         "jsr:@epdoc/type@^1.1.18",
         "jsr:@std/fmt"
@@ -361,6 +365,8 @@
           "jsr:@epdoc/logger@^1003.0.2",
           "jsr:@epdoc/msgbuilder@^0.0.3",
           "jsr:@epdoc/type@^1.1.18",
+          "jsr:@oak/oak@^17.1.6",
+          "jsr:@opensrc/deno-open@1",
           "jsr:@std/assert@^1.0.15",
           "jsr:@std/expect@^1.0.17",
           "jsr:@std/fmt@^1.0.8",

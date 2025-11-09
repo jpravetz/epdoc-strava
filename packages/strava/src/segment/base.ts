@@ -1,5 +1,4 @@
-import type { Schema } from '../../../strava-api/src/mod.ts';
-import type { Metres, Seconds } from './dep.ts';
+import type { Metres, Schema, Seconds } from './dep.ts';
 import type { SegmentSummary } from './summary.ts';
 import type * as Segment from './types.ts';
 
@@ -17,10 +16,10 @@ import type * as Segment from './types.ts';
  * console.log(segment.name, segment.distance);
  * ```
  */
-export class SegmentBase {
+export class SegmentBase implements Segment.IData {
   data: Schema.SummarySegment = {} as Schema.SummarySegment;
-  id: Segment.Id = 0;
-  name: Segment.Name = '';
+  id: Schema.SegmentId = '0';
+  name: Schema.SegmentName = '';
   elapsed_time: Seconds = 0;
   moving_time: Seconds = 0;
   distance: Metres = 0;

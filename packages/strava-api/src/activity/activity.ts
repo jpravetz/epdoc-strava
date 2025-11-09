@@ -1,7 +1,7 @@
 import type { ISODate } from '@epdoc/datetime';
 import { DateEx } from '@epdoc/datetime'; // Import DateEx
 import type { Seconds } from '@epdoc/duration';
-import { _, type Dict } from '@epdoc/type';
+import { _, type CompareResult, type Dict } from '@epdoc/type';
 import type * as Schema from '../schema/mod.ts';
 import type { Coord, Kilometres, Metres } from '../types.ts';
 import type { Filter, SegmentData, SegmentEffort } from './types.ts'; // Corrected import for new types
@@ -90,7 +90,7 @@ export class Activity {
   /**
    * The unique identifier of the activity.
    */
-  public get id(): number {
+  public get id(): Schema.ActivityId {
     return this.data.id;
   }
 
@@ -286,7 +286,7 @@ export class Activity {
    * @param filter The filter to apply.
    * @returns `true` if the activity should be included, `false` otherwise.
    */
-  public include(filter: Filter) { // Updated type to Filter
+  public include(filter: Filter): boolean { // Updated type to Filter
     if (
       (!filter.commuteOnly && !filter.nonCommuteOnly) ||
       (filter.commuteOnly && this.commute) ||
@@ -316,7 +316,7 @@ export class Activity {
    * @param b The second activity.
    * @returns -1 if `a` is before `b`, 1 if `a` is after `b`, and 0 if they are at the same time.
    */
-  public static compareStartDate(a: Activity, b: Activity) {
+  public static compareStartDate(a: Activity, b: Activity): CompareResult {
     if (a.startDate < b.startDate) {
       return -1;
     }

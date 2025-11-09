@@ -1,15 +1,21 @@
+import type { DateRanges } from '@epdoc/daterange';
 import { _ } from '@epdoc/type';
 import type { Ctx } from '../dep.ts';
 import * as Options from '../options/mod.ts';
 import type * as Cmd from '../types.ts';
+import * as Segment from '../../segment/mod.ts';
 
 export const cmdConfig: Options.Config = {
   replace: { cmd: 'segments' },
   options: {
     dates: true,
     refresh: true,
-    dryRun: true,
   },
+};
+
+type SegementCmdOpts = {
+  date?: DateRanges;
+  refresh: true;
 };
 
 /**
@@ -53,13 +59,20 @@ export class SegmentsCmd extends Options.BaseSubCmd {
    * @returns Promise resolving to the configured command instance
    */
   init(ctx: Ctx.Context): Promise<Cmd.Command> {
-    this.cmd.init(ctx).action(async (opts: Record<string, unknown>) => {
+    this.cmd.init(ctx).action(async (opts: SegementCmdOpts) => {
       try {
         await ctx.app.init(ctx, { strava: true, userSettings: true });
 
         // Ensure we have athlete info
         if (!ctx.app.athlete) {
           await ctx.app.getAthlete(ctx);
+        }
+
+        // Handle --refresh flag: refresh the segment cache from Strava API
+        if (opts.refresh) {
+          await ctx.app.refreshStarredSegments(ctx);
+          ctx.log.info.h2('Segment cache refreshed successfully').emit();
+          return; // Exit after refresh
         }
 
         // Fetch segments with efforts if dates specified
