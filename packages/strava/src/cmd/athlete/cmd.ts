@@ -3,8 +3,21 @@ import * as Options from '../options/mod.ts';
 import type * as Cmd from '../types.ts';
 
 /**
- * Command to retrieve and display athlete information from Strava.
- * Delegates business logic to the app layer for reusability.
+ * Command to retrieve and display athlete information from Strava API.
+ *
+ * This command fetches and displays the logged-in athlete's profile information including:
+ * - Name, ID, location (city, state, country)
+ * - List of bikes with IDs
+ * - User-configured bike display names (if defined in user settings)
+ *
+ * The command follows the established pattern of delegating business logic to the app layer
+ * (ctx.app.getAthlete) while handling only the CLI presentation concerns.
+ *
+ * @example
+ * ```bash
+ * # From workspace root
+ * deno run -A ./packages/strava/main.ts athlete
+ * ```
  */
 export class AthleteCmd extends Options.BaseSubCmd {
   constructor() {
@@ -12,9 +25,16 @@ export class AthleteCmd extends Options.BaseSubCmd {
   }
 
   /**
-   * Initialize the athlete command with its action handler.
-   * @param ctx - Application context
-   * @returns Promise resolving to the configured command
+   * Initializes the athlete command with its action handler and options.
+   *
+   * Sets up the command action that:
+   * 1. Initializes the app with Strava API and user settings
+   * 2. Fetches athlete data via ctx.app.getAthlete()
+   * 3. Formats and displays athlete information with proper indentation
+   * 4. Shows bike list with user-configured display names
+   *
+   * @param ctx Application context with logging and app instance
+   * @returns Promise resolving to the configured command instance
    */
   init(ctx: Ctx.Context): Promise<Cmd.Command> {
     this.cmd.init(ctx).action(async () => {

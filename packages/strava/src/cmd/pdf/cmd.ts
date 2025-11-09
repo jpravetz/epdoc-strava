@@ -13,9 +13,27 @@ export const cmdConfig: Options.Config = {
 };
 
 /**
- * Command to generate PDF/XML reports from Strava data.
- * Generates XML data compatible with Adobe Acrobat Forms.
- * Delegates business logic to the app layer for reusability.
+ * Command to generate Adobe Acroforms XML files for bikelog PDF forms.
+ *
+ * This command creates XML files compatible with Adobe Acrobat PDF forms for logging
+ * bike rides and activities. The XML output includes:
+ * - Daily activity summaries (up to 2 bike rides per day tracked)
+ * - Ride metrics: distance, bike name, elevation, moving time
+ * - Activity descriptions and private notes merged and parsed
+ * - Custom properties extracted from descriptions (key=value format)
+ * - Weight data automatically extracted and placed in dedicated field
+ * - Non-bike activities (Run, Swim, etc.) included in notes
+ *
+ * The generated XML can be imported into Adobe Acrobat to populate form fields
+ * in a bikelog PDF template.
+ *
+ * @example
+ * ```bash
+ * # Generate bikelog XML for 2024
+ * deno run -A ./packages/strava/main.ts pdf \
+ *   --date 20240101-20241231 \
+ *   --output bikelog2024.xml
+ * ```
  */
 export class PdfCmd extends Options.BaseSubCmd {
   constructor() {
@@ -23,9 +41,16 @@ export class PdfCmd extends Options.BaseSubCmd {
   }
 
   /**
-   * Initialize the PDF command with its action handler.
-   * @param ctx - Application context
-   * @returns Promise resolving to the configured command
+   * Initializes the PDF command with its action handler and options.
+   *
+   * Sets up the command action that:
+   * 1. Initializes app with Strava API and user settings
+   * 2. Ensures athlete info is loaded (for bike list)
+   * 3. Builds PDF options from command-line arguments
+   * 4. Delegates to ctx.app.getPdf() for XML generation
+   *
+   * @param ctx Application context with logging and app instance
+   * @returns Promise resolving to the configured command instance
    */
   init(ctx: Ctx.Context): Promise<Cmd.Command> {
     this.cmd.init(ctx).action(async (opts) => {
