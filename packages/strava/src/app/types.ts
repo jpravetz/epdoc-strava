@@ -47,15 +47,29 @@ export type UserSettings = {
   cachePath?: string;
   lineStyles?: Record<string, LineStyle>;
   bikes?: BikeDef[];
-  aliases?: Record<Api.Schema.SegmentName, Api.Schema.SegmentName>;
+  /**
+   * A user will manually add entries to this file when they do not like the name that
+   * Strava uses for a segment.
+   */
+  aliases?: Record<Api.Schema.SegmentName, string>;
 };
 
+/**
+ * Config data that is part of the source code for this project
+ */
 export type ConfigFile = {
   description: string;
   paths: {
+    /** The path to a file containing our list of starred segments */
     userSegments: FS.FilePath;
+    /** The path to the user's settings file, which includes name aliases for their starred
+     * segments, in situations where they do not like the names used on Strava. The aliases uses the
+     * segment name rather than id so that the user can hand edit this file and know what each entry
+     * is for.  */
     userSettings: FS.FilePath;
+    /** the user's personal credentials and tokens that allow for authenticating to Strava as an athlete */
     userCreds: FS.FilePath;
+    /** The credentials for this application, registered with Strava */
     clientCreds: FS.FilePath;
   };
 };

@@ -13,15 +13,13 @@ export type GpsDegrees = number;
  * if they've been fetched for KML generation.
  */
 export type CacheEntry = {
-  id?: Api.Schema.SegmentId;
-  name?: Api.Schema.SegmentName;
-  distance?: Metres;
-  gradient?: number;
-  elevation?: Metres;
+  id: Api.Schema.SegmentId;
+  name: Api.Schema.SegmentName;
+  distance: Metres;
+  gradient: number;
+  elevation: Metres;
   country?: string;
   state?: string;
-  coordinates?: Api.Coord[];
-  lastCoordsFetch?: string; // ISO timestamp of when coordinates were last fetched
 };
 
 export interface IData {

@@ -122,7 +122,7 @@ export class Main {
    * Set the athlete ID for API calls.
    * @param _id - Athlete ID to set
    */
-  setAthleteId(_id: string): Promise<void> {
+  setAthleteId(_id: Api.Schema.AthleteId): Promise<void> {
     // TODO: Implement athlete ID storage and usage
     return Promise.resolve();
   }
@@ -157,7 +157,7 @@ export class Main {
   }
 
   /**
-   * Generates a KML file from Strava activities and/or segments for Google Earth visualization.
+   * Generates a KML file from Strava activities or segments for Google Earth visualization.
    *
    * This method orchestrates the complete KML generation workflow:
    * 1. Initializes KML generator with user-configured line styles
@@ -175,13 +175,13 @@ export class Main {
    *
    * @param ctx Application context with logging
    * @param kmlOpts KML generation options including:
-   * @param kmlOpts.activities Include activities in KML output
-   * @param kmlOpts.segments Include starred segments in KML output
+   * @param kmlOpts.activities Include paths of activities within the date range in KML output
    * @param kmlOpts.date Required date ranges for activity filtering
    * @param kmlOpts.output Required output file path
    * @param kmlOpts.laps Enable lap marker output
    * @param kmlOpts.commute Filter commute activities ('yes' | 'no' | 'all')
    * @param kmlOpts.more Include detailed descriptions
+   * @param kmlOpts.efforts Include effort data. Only applicable with --more
    * @param kmlOpts.imperial Use imperial units instead of metric
    *
    * @throws Error if neither activities nor segments is requested
@@ -197,12 +197,13 @@ export class Main {
    * });
    * ```
    */
-  async getKml(ctx: Ctx.Context, kmlOpts: Kml.Opts): Promise<void> {
+  async getActivityKml(ctx: Ctx.Context, kmlOpts: Kml.Opts): Promise<void> {
     // Initialize KML generator with options and line styles
     const kml = new Kml.Main(kmlOpts);
     if (this.userSettings && this.userSettings.lineStyles) {
       kml.setLineStyles(ctx, this.userSettings.lineStyles);
     }
+    assert(kmlOpts.date);
 
     // Validate that at least activities or segments is requested
     if (!kmlOpts.activities && !kmlOpts.segments) {
@@ -214,88 +215,12 @@ export class Main {
 
     // Fetch activities if requested
     if (kmlOpts.activities && kmlOpts.date) {
-      ctx.log.info.text('Fetching activities for date ranges').dateRange(kmlOpts.date).emit();
-
-      // Get athlete ID (default to authenticated user)
-      const athleteId = this.athlete?.id || 0;
-
-      // Get activities for each date range
-      for (const dateRange of kmlOpts.date.ranges) {
-        const opts: Api.ActivityOpts = {
-          athleteId,
-          query: {
-            per_page: 200,
-            after: Math.floor(
-              (dateRange.after ? dateRange.after.getTime() : new Date(1975, 0, 1).getTime()) / 1000,
-            ),
-            before: Math.floor((dateRange.before ? dateRange.before.getTime() : new Date().getTime()) / 1000),
-          },
-        };
-
-        const rangeActivitiesData = await this.api.getActivities(ctx, opts);
-
-        // Convert Dict[] to Activity.Base[]
-        for (const data of rangeActivitiesData) {
-          const activity = new Api.Activity.Base(data as unknown as Api.Schema.SummaryActivity);
-          activities.push(activity);
-        }
-      }
-
-      if (activities.length) {
-        ctx.log.info.text('Found').count(activities.length).text('activity', 'activities').emit();
-
-        // Filter activities based on commute option
-        if (kmlOpts.commute === 'yes') {
-          activities = activities.filter((a) => a.data.commute);
-        } else if (kmlOpts.commute === 'no') {
-          activities = activities.filter((a) => !a.data.commute);
-        }
-
-        // Fetch coordinates for activities
-        ctx.log.info.text('Fetching coordinates for activities').emit();
-        for (const activity of activities) {
-          try {
-            const coords = await this.api.getStreamCoords(
-              ctx,
-              'activities' as Api.Schema.StreamKeyType,
-              activity.id,
-              activity.name,
-            );
-            if (coords && coords.length > 0) {
-              activity.coordinates = coords;
-            }
-          } catch (_e) {
-            // const err = _.asError(_e);
-            ctx.log.warn.text('Failed to fetch coordinates for activity').activity(activity).emit();
-          }
-        }
-
-        // Fetch detailed activity data for lap information if --laps is enabled
-        if (kmlOpts.laps) {
-          ctx.log.info.text('Fetching detailed activity data for lap markers').emit();
-          for (let i = 0; i < activities.length; i++) {
-            // Only fetch if we don't already have lap data (DetailedActivity has laps array)
-            if (!('laps' in activities[i].data)) {
-              try {
-                const detailedActivity = await this.api.getDetailedActivity(ctx, activities[i].data);
-                // Replace summary activity with detailed activity data (includes laps)
-                activities[i] = new Api.Activity.Base(detailedActivity);
-              } catch (_e) {
-                ctx.log.warn.text('Failed to fetch detailed data for').activity(activities[i]).emit();
-              }
-            }
-          }
-        }
-      }
+      activities = await this.getKmlActivities(ctx, kmlOpts);
     }
 
     // Fetch segments if requested
     if (kmlOpts.segments) {
-      segments = await this.getSegments(ctx, {
-        coordinates: true,
-        efforts: false, // Don't fetch efforts for KML, just coordinates
-        dateRanges: kmlOpts.date,
-      });
+      segments = await this.getKmlSegments(ctx);
     }
 
     if (activities.length || segments.length) { // Generate KML file
@@ -313,6 +238,99 @@ export class Main {
     } else {
       ctx.log.info.warn('No activities or segments found for the specified criteria').emit();
     }
+  }
+
+  /**
+   * This will be attached to a new command that will build a KML file for all of the user's segments. It will take a lot of the options
+   */
+  getSegmentKml() {}
+
+  async getKmlActivities(ctx: Ctx.Context, kmlOpts: Kml.Opts): Promise<Api.Activity.Base[]> {
+    ctx.log.info.text('Fetching activities for date ranges').dateRange(kmlOpts.date).emit();
+
+    let activities: Api.Activity.Base[] = [];
+
+    // Get athlete ID (default to authenticated user)
+    const athleteId: Api.Schema.AthleteId = this.athlete?.id || 0 as Api.Schema.AthleteId;
+
+    // Get activities for each date range
+    for (const dateRange of kmlOpts.date!.ranges) {
+      const opts: Api.ActivityOpts = {
+        athleteId,
+        query: {
+          per_page: 200,
+          after: Math.floor(
+            (dateRange.after ? dateRange.after.getTime() : new Date(1975, 0, 1).getTime()) / 1000,
+          ),
+          before: Math.floor((dateRange.before ? dateRange.before.getTime() : new Date().getTime()) / 1000),
+        },
+      };
+
+      const rangeActivitiesData = await this.api.getActivities(ctx, opts);
+
+      // Convert Dict[] to Activity.Base[]
+      for (const data of rangeActivitiesData) {
+        const activity = new Api.Activity.Base(data as unknown as Api.Schema.SummaryActivity);
+        activities.push(activity);
+      }
+    }
+
+    if (activities.length) {
+      ctx.log.info.text('Found').count(activities.length).text('activity', 'activities').emit();
+
+      // Filter activities based on commute option
+      if (kmlOpts.commute === 'yes') {
+        activities = activities.filter((a) => a.data.commute);
+      } else if (kmlOpts.commute === 'no') {
+        activities = activities.filter((a) => !a.data.commute);
+      }
+
+      // Fetch coordinates for activities
+      ctx.log.info.text('Fetching coordinates for activities').emit();
+      for (const activity of activities) {
+        try {
+          const coords = await this.api.getStreamCoords(
+            ctx,
+            'activities' as Api.Schema.StreamKeyType,
+            activity.id,
+            activity.name,
+          );
+          if (coords && coords.length > 0) {
+            activity.coordinates = coords;
+          }
+        } catch (_e) {
+          // const err = _.asError(_e);
+          ctx.log.warn.text('Failed to fetch coordinates for activity').activity(activity).emit();
+        }
+      }
+
+      // Fetch detailed activity data for lap information if --laps is enabled
+      if (kmlOpts.laps) {
+        ctx.log.info.text('Fetching detailed activity data for lap markers').emit();
+        for (let i = 0; i < activities.length; i++) {
+          // Only fetch if we don't already have lap data (DetailedActivity has laps array)
+          if (!('laps' in activities[i].data)) {
+            try {
+              const detailedActivity = await this.api.getDetailedActivity(ctx, activities[i].data);
+              // Replace summary activity with detailed activity data (includes laps)
+              activities[i] = new Api.Activity.Base(detailedActivity);
+            } catch (_e) {
+              ctx.log.warn.text('Failed to fetch detailed data for').activity(activities[i]).emit();
+            }
+          }
+        }
+      }
+    }
+    return activities;
+  }
+
+  async getKmlSegments(ctx: Ctx.Context, opts: { date: DateRanges }): Promise<Segment.Data[]> {
+    const result: Segment.Data[] = await this.getSegments(ctx, {
+      coordinates: true,
+      efforts: false, // Don't fetch efforts for KML, just coordinates
+      dateRanges: opts.date,
+    });
+    return result;
   }
 
   /**
@@ -449,13 +467,50 @@ export class Main {
     ctx.log.info.h2('PDF/XML file generated successfully').fs(outputPath).emit();
   }
 
+  /**
+   * TODO: use some of this logic in the getAllStarredSegments, but for getAllStarredSegments we
+   * optionally also get all the coordinates. we do NOT store the coordinates in the userSegments file.
+   * @param ctx
+   */
   async refreshStarredSegments(ctx: Ctx.Context) {
     const segFile = new Segment.File(new FS.File(configPaths.userSegments));
     await segFile.get(ctx, { refresh: true });
   }
 
   /**
+   * TODO: Implement
+   *
+   * Retrieves effort information associated with starred segments, for an activity. This will be included
+   * in PDF XML or a KML activity's 'more' data.
+   *
+   * How do we determine the starred segments that are in an activity? Our userSegments file lists
+   * all of our starred segments.
+   * @param ctx
+   * @param activityId
+   */
+  async getEffortsForActivity(ctx: Ctx.Context, activityId: ActivityId): Promise<void> {
+    // To implement
+  }
+
+  /**
+   * TODO: Implement
+   *
+   * Retrieves all starred segments from the server, optionally including their coordinates.
+   * Coordinates are only retrieved when we are generating a kml file for the starred segments. In all cases
+   * we will update the userSegments file with information about each starred segment (but not it's coordinates)
+   * @param ctx
+   */
+  async getAllStarredSegments(ctx: Ctx.Context): Promise<void> {
+  }
+
+  /**
+   * TODO: use this logic to implement the above two methods?
+   *
    * Fetches starred segments from Strava API with optional efforts and coordinates.
+   *
+   * This may be called in the following situations:
+   * - to retrieve all starred segments and their coordinates
+   * - to retrieve timing information for a starred segment that was completed during an activity
    *
    * This method retrieves the user's starred segments and optionally:
    * - Fetches segment efforts for specified date ranges
@@ -544,7 +599,7 @@ export class Main {
             if (coords && coords.length > 0) {
               segment.coordinates = coords;
               // Update cache with fetched coordinates
-              segFile.updateCoordinates(segment.id, coords);
+              // segFile.updateCoordinates(segment.id, coords);
             }
           } catch (e) {
             const err = _.asError(e);

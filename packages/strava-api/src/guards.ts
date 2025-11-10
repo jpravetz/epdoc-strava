@@ -11,6 +11,10 @@ export function isStravaId(value: unknown): value is Schema.StravaId {
   return _.isInteger(value);
 }
 
+export function isSegmentId(value: unknown): value is Schema.SegmentId {
+  return _.isInteger(value);
+}
+
 /**
  * Type guard to check if a value is a valid Stream object.
  *

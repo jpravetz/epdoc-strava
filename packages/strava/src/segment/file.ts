@@ -3,7 +3,6 @@ import type { FileSpec } from '@epdoc/fs';
 import { _ } from '@epdoc/type';
 import type * as Ctx from '../context.ts';
 import type { Api } from '../dep.ts';
-import type { Coord } from './dep.ts';
 import type * as Segment from './types.ts';
 import { asCacheEntry } from './utils.ts';
 
@@ -13,8 +12,8 @@ import { asCacheEntry } from './utils.ts';
  * This class handles:
  * - Loading/saving segment metadata from/to local cache
  * - Refreshing segment data from Strava API
- * - Updating cached coordinates for segments
  * - Providing fast lookup by segment ID
+ * - The cache does NOT include the segment coordinates, which must be retrieved each time they are needed.
  *
  * The cache reduces API calls by storing segment metadata locally and only
  * fetching fresh data when explicitly refreshed or when the cache doesn't exist.
@@ -57,15 +56,16 @@ export class SegmentFile {
       this.#segments = new Map();
       summarySegments.forEach((seg) => {
         const newEntry = asCacheEntry(seg);
-        const segId = String(seg.id);
-        if (this.#segments.has(segId)) {
-          const exists = this.#segments.get(segId);
-          ctx.log.info.h2('Segment').label(seg.name)
-            .h2(`ID ${seg.id} (${exists!.distance},${exists!.elevation}) already exists.`)
-            .h2(`Overwriting with (${newEntry.distance},${newEntry.elevation}).`)
-            .emit();
+        if (newEntry) {
+          if (this.#segments.has(newEntry.id)) {
+            const oldEntry = this.#segments.get(newEntry.id);
+            ctx.log.info.h2('Segment').label(seg.name)
+              .h2(`ID ${seg.id} (${oldEntry!.distance},${oldEntry!.elevation}) already exists.`)
+              .h2(`Overwriting with (${newEntry.distance},${newEntry.elevation}).`)
+              .emit();
+          }
+          this.#segments.set(newEntry.id, newEntry);
         }
-        this.#segments.set(segId, newEntry);
       });
     } catch (e) {
       const err = _.asError(e);
@@ -123,43 +123,5 @@ export class SegmentFile {
    */
   getAllSegments(): Segment.CacheEntry[] {
     return Array.from(this.#segments.values());
-  }
-
-  /**
-   * Update coordinates for a specific segment in the cache.
-   *
-   * @param id Segment ID
-   * @param coordinates Array of [lat, lng] coordinate pairs
-   */
-  updateCoordinates(id: Api.Schema.SegmentId, coordinates: Coord[]): void {
-    const segId = String(id);
-    const segment = this.#segments.get(segId);
-    if (segment) {
-      segment.coordinates = coordinates;
-      segment.lastCoordsFetch = new DateEx().toISOLocalString();
-      this.#segments.set(segId, segment);
-    }
-  }
-
-  /**
-   * Check if a segment has cached coordinates.
-   *
-   * @param id Segment ID
-   * @returns true if segment has coordinates cached
-   */
-  hasCoordinates(id: Api.Schema.SegmentId): boolean {
-    const segment = this.#segments.get(String(id));
-    return segment?.coordinates !== undefined && segment.coordinates.length > 0;
-  }
-
-  /**
-   * Get segments that need coordinates fetched.
-   *
-   * @returns Array of cache entries for segments without coordinates
-   */
-  getSegmentsNeedingCoordinates(): Segment.CacheEntry[] {
-    return Array.from(this.#segments.values()).filter((seg) =>
-      !seg.coordinates || seg.coordinates.length === 0
-    );
   }
 }

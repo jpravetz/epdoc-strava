@@ -1,3 +1,4 @@
+import type { Integer } from '@epdoc/type';
 import type { ActivityId } from './activity.ts';
 import type { AthleteId } from './athlete.ts';
 import type * as Consts from './consts.ts';
@@ -8,7 +9,7 @@ import type * as Consts from './consts.ts';
  * Strava IDs are int64 (Long) values that exceed JavaScript's safe integer range.
  * To avoid precision loss during JSON serialization/deserialization, we store them as strings.
  */
-export type StravaId = string;
+export type StravaId = Integer;
 
 export type ActivityType = typeof Consts.ActivityName[keyof typeof Consts.ActivityName];
 export type FollowerStatusType = typeof Consts.FollowerStatus[keyof typeof Consts.FollowerStatus];
