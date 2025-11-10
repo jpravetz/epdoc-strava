@@ -6,6 +6,7 @@ import * as Pdf from '../pdf/mod.ts';
 import * as Segments from '../segments/mod.ts';
 import * as Cmd from '../types.ts';
 import type * as Root from './types.ts';
+import { Api } from '../../dep.ts';
 
 /**
  * Main class responsible for handling the command-line interface of the FinSync
@@ -70,7 +71,9 @@ export class RootCmd {
       }
       // ctx.log.warn.warn('Offline - some operations may not be available').emit();
 
-      await ctx.app.setAthleteId(opts.athleteId);
+      if (Api.isAthleteId(opts.athleteId)) {
+        await ctx.app.setAthleteId(opts.athleteId);
+      }
       // ctx.testOpts = this.configureTestOpts(ctx, opts);
       // if (ctx.dryRun) {
       //   ctx.log.warn.warn('RUNNING IN TEST MODE');

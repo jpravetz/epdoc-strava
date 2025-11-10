@@ -14,10 +14,11 @@ export const cmdConfig: Options.Config = {
   },
 };
 
-type SegementCmdOpts = {
+type SegmentCmdOpts = {
   date?: DateRanges;
   refresh?: boolean;
   kml?: FileSpec;
+  imperial?: boolean; // Global option from root command
 };
 
 /**
@@ -65,7 +66,7 @@ export class SegmentsCmd extends Options.BaseSubCmd {
    * @returns Promise resolving to the configured command instance
    */
   init(ctx: Ctx.Context): Promise<Cmd.Command> {
-    this.cmd.init(ctx).action(async (opts: SegementCmdOpts) => {
+    this.cmd.init(ctx).action(async (opts: SegmentCmdOpts) => {
       try {
         await ctx.app.init(ctx, { strava: true, userSettings: true });
 
@@ -83,12 +84,17 @@ export class SegmentsCmd extends Options.BaseSubCmd {
 
         // Handle --kml flag: generate KML file for all starred segments
         if (opts.kml) {
-          await ctx.app.getSegmentKml(ctx, opts.kml);
-          ctx.log.info.h2(`Segment KML file generated: ${opts.kml.filepath()}`).emit();
+          const kmlOpts = {
+            segments: 'only' as const, // Only segments, no activities
+            output: opts.kml,
+            date: opts.date,
+            imperial: opts.imperial || false,
+          };
+          await ctx.app.getKml(ctx, kmlOpts);
           return; // Exit after KML generation
         }
 
-        // Fetch segments with efforts if dates specified
+        // Fetch segments with efforts if date specified
         const segmentOpts: {
           coordinates: boolean;
           efforts: boolean;
@@ -98,10 +104,10 @@ export class SegmentsCmd extends Options.BaseSubCmd {
           efforts: false,
         };
 
-        // If dates specified, fetch efforts
-        if ('dates' in opts && opts.dates) {
+        // If date specified, fetch efforts
+        if (opts.date) {
           segmentOpts.efforts = true;
-          segmentOpts.dateRanges = opts.dates;
+          segmentOpts.dateRanges = opts.date;
         }
 
         const segments = await ctx.app.getSegments(ctx, segmentOpts);

@@ -1,5 +1,6 @@
 import type { DateRanges } from '@epdoc/daterange';
 import type { FileSpec } from '@epdoc/fs';
+import type { Dict } from '@epdoc/type';
 import type { Api } from '../dep.ts';
 
 export type LineStyle = {
@@ -11,18 +12,16 @@ export type LineStyle = {
 export type LineStyleDefs = Record<string, LineStyle>;
 
 export type ActivityOpts = {
-  activities: true;
-  efforts?: boolean; // include basic activity stats + starred segment efforts (superset of --more)
-  laps?: boolean; // include lap markers in KML output (independent of description options)
+  activities?: boolean;
+  efforts?: boolean; // include starred segment efforts in activity descriptions
+  laps?: boolean; // include lap markers in KML output
   commute?: 'yes' | 'no' | 'all'; // filter by commute status
   type?: Api.Schema.ActivityType[]; // filter by activity type (empty=all, string[]=filtered by types)
 };
 
 export type SegmentOpts = {
-  segments: true;
-  flat: boolean; // flat folder structure, otherwise by region
-  efforts?: boolean; // include basic activity stats + starred segment efforts (superset of --more)
-  refresh?: boolean; // refresh list of starred segments
+  segments?: boolean | 'only' | 'flat'; // true/only = include segments, flat = flat folder structure
+  refresh?: boolean; // refresh list of starred segments from Strava
   bikes?: Dict; // bike definitions for identifying moto vs bike
 };
 
@@ -33,7 +32,7 @@ export type CommonOpts = {
   imperial?: boolean; // use imperial units (miles, feet) instead of metric
 };
 
-export type Opts = ActivityOpts & SegmentOpts & CommonOpts;
+export type Opts = CommonOpts & ActivityOpts & SegmentOpts;
 
 export type Coord = [number, number]; // [lat, lng]
 

@@ -1,5 +1,4 @@
 import type { DateRanges } from '@epdoc/daterange';
-import type { FileSpec } from '@epdoc/fs';
 import * as FS from '@epdoc/fs/fs';
 import { _ } from '@epdoc/type';
 import { assert } from '@std/assert/assert';
@@ -242,62 +241,6 @@ export class Main {
     } else {
       ctx.log.info.warn('No activities or segments found for the specified criteria').emit();
     }
-  }
-
-  /**
-   * Generates a KML file containing all starred segments.
-   *
-   * This method:
-   * 1. Loads starred segments from cache (~/.strava/user.segments.json)
-   * 2. Fetches coordinates for each segment from Strava API (not cached)
-   * 3. Generates KML file with all segments organized by region
-   * 4. Updates segment metadata in cache if modified on server
-   *
-   * Note: Coordinates are fetched on-demand and NOT cached locally.
-   * Run `segments --refresh` to update cached segment metadata.
-   *
-   * @param ctx Application context with logging
-   * @param outputFile Output KML file path
-   *
-   * @example
-   * ```ts
-   * await app.getSegmentKml(ctx, new FileSpec(Deno.cwd(), 'segments.kml'));
-   * ```
-   */
-  async getSegmentKml(ctx: Ctx.Context, outputFile: FileSpec): Promise<void> {
-    // Fetch all starred segments with coordinates
-    ctx.log.info.text('Loading starred segments from cache').emit();
-    const segments = await this.getSegments(ctx, {
-      coordinates: true, // Fetch coordinates on-the-fly
-      efforts: false,
-      refresh: false, // Use cached metadata
-    });
-
-    if (segments.length === 0) {
-      ctx.log.info.text('No starred segments found in cache. Run `segments --refresh` to populate cache.')
-        .emit();
-      return;
-    }
-
-    // Create minimal KML options for segment-only output
-    const kmlOpts: Kml.Opts = {
-      segments: true,
-      type: false,
-      output: outputFile,
-    };
-
-    // Initialize KML generator
-    const kml = new Kml.Main(kmlOpts);
-    if (this.userSettings && this.userSettings.lineStyles) {
-      kml.setLineStyles(ctx, this.userSettings.lineStyles);
-    }
-
-    // Generate KML file
-    ctx.log.info.text('Generating KML file').fs(outputFile).emit();
-    ctx.log.indent();
-    await kml.outputData(ctx, outputFile.path, [], segments);
-    ctx.log.outdent();
-    ctx.log.info.h2('Segment KML file generated successfully').fs(outputFile).emit();
   }
 
   async getKmlActivities(
@@ -552,41 +495,45 @@ export class Main {
   }
 
   /**
-   * TODO: Implement
+   * Retrieves ALL starred segments from cache with optional efforts and coordinates.
    *
-   * Retrieves all starred segments from the server, optionally including their coordinates.
-   * Coordinates are only retrieved when we are generating a kml file for the starred segments. In all cases
-   * we will update the userSegments file with information about each starred segment (but not it's coordinates)
-   * @param ctx
-   */
-  async getAllStarredSegments(_ctx: Ctx.Context): Promise<void> {
-  }
-
-  /**
-   * TODO: use this logic to implement the above two methods?
+   * **IMPORTANT**: This method returns ALL of the user's starred segments (from the
+   * ~/.strava/user.segments.json cache), not just segments related to specific activities.
+   * Use {@link attachStarredSegments} to filter and attach only starred segments that appear
+   * in specific activities.
    *
-   * Fetches starred segments from Strava API with optional efforts and coordinates.
+   * **Cache Behavior**:
+   * - **Metadata cached**: Segment ID, name, distance, country, state are cached locally
+   * - **Coordinates NOT cached**: Coordinates are ALWAYS fetched fresh from Strava API when requested
+   * - **Empty cache**: If cache is empty (first run), returns empty array. Run `segments --refresh`
+   *   or use `opts.refresh=true` to populate the cache first
+   * - **Cache updates**: Only `opts.refresh=true` updates the metadata cache from Strava API
    *
-   * This may be called in the following situations:
-   * - to retrieve all starred segments and their coordinates
-   * - to retrieve timing information for a starred segment that was completed during an activity
+   * **Coordinates**: When `opts.coordinates` is true, fetches coordinates from Strava API
+   * for ALL starred segments (requires separate API call per segment, subject to rate limits).
+   * Coordinates are never cached - always fetched fresh.
    *
-   * This method retrieves the user's starred segments and optionally:
-   * - Fetches segment efforts for specified date ranges
-   * - Fetches coordinates for each segment (for KML output)
-   * - Caches segment data to ~/.strava/user.segments.json
+   * **Efforts**: When `opts.efforts` is true, fetches personal effort data for ALL
+   * starred segments within the specified date ranges. Used for performance analysis.
    *
    * @param ctx Application context with logging
-   * @param opts Segment fetch options including:
-   * @param [opts.efforts] Fetch segment efforts for date ranges
-   * @param [opts.coordinates] Fetch coordinates for segments
-   * @param [opts.dateRanges] Date ranges for effort filtering
-   * @returns Array of segments with optional efforts and coordinates
+   * @param opts Segment fetch options:
+   * @param [opts.coordinates=false] Fetch coordinates from Strava API for ALL starred segments
+   * @param [opts.efforts=false] Fetch personal efforts for ALL starred segments
+   * @param [opts.dateRanges] Date ranges to filter efforts (required if opts.efforts is true)
+   * @param [opts.refresh=false] Refresh metadata cache from Strava API before loading
+   * @returns Array of ALL starred segments with optional efforts and coordinates
    *
    * @example
    * ```ts
+   * // First run - populate cache from Strava
+   * await app.getSegments(ctx, { refresh: true });
+   *
+   * // Get all starred segments with coordinates for KML (fetches coords from API)
+   * const segments = await app.getSegments(ctx, { coordinates: true });
+   *
+   * // Get all starred segments with effort data for analysis
    * const segments = await app.getSegments(ctx, {
-   *   coordinates: true,
    *   efforts: true,
    *   dateRanges: dateRanges
    * });
@@ -733,13 +680,16 @@ export class Main {
   }
 
   /**
-   * // TODO move part of this code to strava-api/src/activity/activity.ts
-   *
    * Attaches starred segment efforts to activities.
    *
-   * This method fetches the list of starred segments, then filters each activity's
-   * segment_efforts to include only those that match starred segments. The filtered
-   * segment efforts are added to the activity's segments array for use in PDF/XML output.
+   * This method fetches the list of starred segments from cache, applies any configured
+   * name aliases, and filters each activity's segment_efforts to include only those that
+   * match starred segments. The filtered segment efforts are attached to each activity's
+   * `segments` property for use in KML/PDF output.
+   *
+   * After calling this method, callers can access the attached segment efforts via
+   * `activity.segments`, which contains an array of {@link Api.Activity.SegmentData} objects
+   * with the aliased segment names already applied.
    *
    * @param ctx Application context for logging
    * @param activities Array of activities to process
@@ -747,7 +697,16 @@ export class Main {
    * @example
    * ```ts
    * await app.attachStarredSegments(ctx, activities);
-   * // Activities now have their starred segment efforts populated
+   *
+   * // Access the attached starred segment efforts
+   * for (const activity of activities) {
+   *   if (activity.segments.length > 0) {
+   *     console.log(`Activity ${activity.name} has ${activity.segments.length} starred segments`);
+   *     for (const segment of activity.segments) {
+   *       console.log(`  - ${segment.name}: ${segment.elapsed_time}s`);
+   *     }
+   *   }
+   * }
    * ```
    */
   async attachStarredSegments(
@@ -769,8 +728,7 @@ export class Main {
       return;
     }
 
-    // Create a Set of starred segment IDs for efficient lookup
-    const starredSegmentIds = new Set(cachedSegments.keys());
+    // Build a map of segmentId -> (aliased) segmentName
     type StarredSegmentDict = Record<Api.Schema.SegmentId, string>;
     const starredSegments = Array.from(cachedSegments.entries()).reduce((acc, [id, seg]) => {
       if (seg.name) {
@@ -802,40 +760,12 @@ export class Main {
     )
       .emit();
 
-    // Process each activity's segment efforts
+    // Call each activity's attachStarredSegments method
     for (const activity of activities) {
-      const detailedData = activity.data as Api.Schema.DetailedActivity;
-
-      // Check if activity has segment_efforts
-      if (!('segment_efforts' in detailedData) || !_.isArray(detailedData.segment_efforts)) {
-        continue;
-      }
-
-      const segmentEfforts = detailedData.segment_efforts;
-
-      // Filter to only starred segments
-      const starredEfforts = segmentEfforts.filter((effort) =>
-        effort.segment && effort.segment.id && starredSegmentIds.has(effort.segment.id)
-      );
-
-      if (starredEfforts.length > 0) {
-        ctx.log.info.text('Found').count(starredEfforts.length)
+      const count = activity.attachStarredSegments(starredSegments);
+      if (count > 0) {
+        ctx.log.info.text('Found').count(count)
           .text('starred segment effort').text('for').activity(activity).emit();
-
-        // Add segment efforts to activity - now writable with setter
-        activity.segments = starredEfforts.map((effort) => {
-          const segmentId = effort.segment?.id;
-          let segmentName = effort.segment?.name?.trim() || 'Unknown';
-          if (segmentId && starredSegments[segmentId]) {
-            segmentName = starredSegments[segmentId];
-          }
-
-          // Return the full DetailedSegmentEffort but with aliased name
-          return {
-            ...effort,
-            name: segmentName, // Override with aliased name if present
-          };
-        });
       }
     }
   }

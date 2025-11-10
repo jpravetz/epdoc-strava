@@ -1,8 +1,7 @@
 import type { ISODate } from '@epdoc/datetime';
 import { DateEx } from '@epdoc/datetime'; // Import DateEx
 import type { Seconds } from '@epdoc/duration';
-import { _, type CompareResult, type Dict } from '@epdoc/type';
-import type * as Ctx from '../context.ts';
+import { _, type CompareResult, type Dict, type Integer } from '@epdoc/type';
 import type * as Schema from '../schema/mod.ts';
 import type { Coord, Kilometres, Metres } from '../types.ts';
 import type { Filter, SegmentData, SegmentEffort, StarredSegmentDict } from './types.ts'; // Corrected import for new types
@@ -316,54 +315,46 @@ export class Activity {
     return false;
   }
 
-  async attachStarredSegments(
-    ctx: Ctx.IContext<M, L>,
-    starredSegments: StarredSegmentDict,
-  ): Promise<void> {
+  /**
+   * Attaches starred segment efforts to this activity.
+   *
+   * This method filters the activity's segment efforts to include only those that are starred,
+   * and applies segment name aliases (if provided in the starredSegments map).
+   *
+   * @param starredSegments Map of segment ID to (possibly aliased) segment name.
+   *                        This map identifies which segments are starred and provides their names.
+   * @returns Number of starred segment efforts found and attached
+   */
+  attachStarredSegments(starredSegments: StarredSegmentDict): Integer {
     // Check if activity has segment_efforts
     if (!('segment_efforts' in this.data) || !_.isArray(this.data.segment_efforts)) {
-      return;
+      return 0;
     }
 
     const segmentEfforts = this.data.segment_efforts;
 
-    // Filter to only starred segments
+    // Filter to only starred segments (those in the map)
     const starredEfforts = segmentEfforts.filter((effort) =>
       effort.segment && effort.segment.id && effort.segment.id in starredSegments
     );
 
     if (starredEfforts.length > 0) {
-      ctx.log.info.text('Found').count(starredEfforts.length)
-        .text('starred segment effort').text('for').activity(this).emit();
-
-      // Add segment efforts to activity - now writable with setter
+      // Add segment efforts to activity with aliased names from the map
       this.segments = starredEfforts.map((effort) => {
-        // Apply segment name alias from user settings if available
-        let segmentName = effort.segment?.name?.trim() || 'Unknown';
-
-        // Try direct lookup first
-        if (this.userSettings?.aliases && segmentName in this.userSettings.aliases) {
-          segmentName = this.userSettings.aliases[segmentName];
-          ctx.log.debug.text('Applied segment alias').value(segmentName).emit();
-        } else if (this.userSettings?.aliases) {
-          // Try case-insensitive lookup
-          const lowerName = segmentName.toLowerCase();
-          const aliasKey = Object.keys(this.userSettings.aliases).find(
-            (key) => key.toLowerCase() === lowerName,
-          );
-          if (aliasKey) {
-            segmentName = this.userSettings.aliases[aliasKey];
-            ctx.log.debug.text('Applied segment alias (case-insensitive)').value(segmentName).emit();
-          }
-        }
+        const segmentId = effort.segment?.id;
+        const segmentName = segmentId !== undefined && segmentId in starredSegments
+          ? starredSegments[segmentId]
+          : effort.segment?.name?.trim() || 'Unknown';
 
         // Return the full DetailedSegmentEffort but with aliased name
         return {
           ...effort,
-          name: segmentName, // Override with aliased name if present
+          name: segmentName,
         };
       });
     }
+
+    return starredEfforts.length;
   }
 
   /**

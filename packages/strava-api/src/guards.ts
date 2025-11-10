@@ -11,6 +11,10 @@ export function isStravaId(value: unknown): value is Schema.StravaLongInt {
   return _.isInteger(value);
 }
 
+export function isAthleteId(value: unknown): value is Schema.AthleteId {
+  return _.isInteger(value);
+}
+
 export function isSegmentId(value: unknown): value is Schema.SegmentId {
   return _.isInteger(value);
 }
