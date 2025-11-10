@@ -1,7 +1,7 @@
-import type { StravaId } from './types.ts';
+import type { StravaLongInt } from './types.ts';
 
 export interface PhotoSummary_primary {
-  id: StravaId;
+  id: StravaLongInt;
   source: number;
   unique_id: string;
   urls: Record<string, string>;

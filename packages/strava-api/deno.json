@@ -1,7 +1,7 @@
 {
   "name": "@jpravetz/strava-api",
   "description": "Strava API",
-  "version": "2.0.0-alpha.5",
+  "version": "2.0.0-alpha.6",
   "author": {
     "name": "James Pravetz",
     "email": "jpravetz@epdoc.com"

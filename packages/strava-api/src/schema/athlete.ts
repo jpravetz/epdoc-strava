@@ -1,10 +1,10 @@
 import type { ISODate } from '@epdoc/datetime';
 import type { ActivityId } from './activity.ts';
 import type { SummaryGear } from './gear.ts';
-import type { ResourceStateType, SexType, SportType, StravaId, UnitSystemType } from './types.ts';
+import type { ResourceStateType, SexType, SportType, StravaLongInt, UnitSystemType } from './types.ts';
 
 export interface SummaryClub {
-  id: StravaId;
+  id: StravaLongInt;
   resource_state: ResourceStateType;
   name: string;
   profile_medium: string;
@@ -21,7 +21,7 @@ export interface SummaryClub {
   url: string;
 }
 
-export type AthleteId = StravaId;
+export type AthleteId = StravaLongInt;
 
 export interface SummaryAthlete {
   id: AthleteId;
@@ -54,7 +54,7 @@ export interface DetailedAthlete extends SummaryAthlete {
 }
 
 export interface Comment {
-  id: StravaId;
+  id: StravaLongInt;
   activity_id: ActivityId;
   text: string;
   athlete: SummaryAthlete;

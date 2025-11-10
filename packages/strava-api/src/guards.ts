@@ -4,10 +4,10 @@ import type * as Schema from './schema/mod.ts';
 /**
  * Type guard to check if a value is a valid StravaId.
  *
- * StravaIds are strings containing only numeric digits (0-9).
- * This avoids JavaScript's integer precision issues with int64 values.
+ * StravaIds are JavaScript integers. While Strava's API uses int64 (Long) values,
+ * in practice these values are small enough to fit within JavaScript's Number.MAX_SAFE_INTEGER.
  */
-export function isStravaId(value: unknown): value is Schema.StravaId {
+export function isStravaId(value: unknown): value is Schema.StravaLongInt {
   return _.isInteger(value);
 }
 
@@ -61,7 +61,7 @@ export function hasLatLngData(
 /**
  * Type guard to check if a value is a SummarySegment.
  *
- * IDs are validated as StravaId (numeric strings) per Strava API Long type specification.
+ * IDs are validated as StravaId (JavaScript integers) per Strava API Long type specification.
  */
 export function isSummarySegment(value: unknown): value is Schema.SummarySegment {
   return _.isDict(value) &&
@@ -87,7 +87,7 @@ export function isSegmentEffortArray(value: unknown): value is Schema.DetailedSe
 /**
  * Type guard to check if a value is a DetailedAthlete.
  *
- * IDs are validated as StravaId (numeric strings) per Strava API Long type specification.
+ * IDs are validated as StravaId (JavaScript integers) per Strava API Long type specification.
  */
 export function isDetailedAthlete(value: unknown): value is Schema.DetailedAthlete {
   return _.isDict(value) &&
@@ -99,7 +99,7 @@ export function isDetailedAthlete(value: unknown): value is Schema.DetailedAthle
 /**
  * Type guard to check if a value is a SummaryActivity.
  *
- * IDs are validated as StravaId (numeric strings) per Strava API Long type specification.
+ * IDs are validated as StravaId (JavaScript integers) per Strava API Long type specification.
  */
 export function isSummaryActivity(value: unknown): value is Schema.SummaryActivity {
   return _.isDict(value) &&
@@ -117,7 +117,7 @@ export function isSummaryActivityArray(value: unknown): value is Schema.SummaryA
 /**
  * Type guard to check if a value is a DetailedActivity.
  *
- * IDs are validated as StravaId (numeric strings) per Strava API Long type specification.
+ * IDs are validated as StravaId (JavaScript integers) per Strava API Long type specification.
  */
 export function isDetailedActivity(value: unknown): value is Schema.DetailedActivity {
   return _.isDict(value) &&

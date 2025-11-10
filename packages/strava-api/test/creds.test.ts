@@ -46,7 +46,7 @@ describe('isValidCredData', () => {
       expires_in: 3600,
       refresh_token: 'refresh123',
       access_token: 'access123',
-      athlete: { id: '123' },
+      athlete: { id: 123 },
     };
     expect(isValidCredData(validData)).toBe(true);
   });
@@ -100,7 +100,7 @@ describe('StravaCreds', () => {
       expires_in: 3600,
       refresh_token: 'refresh_valid',
       access_token: 'access_valid',
-      athlete: { id: '456' },
+      athlete: { id: 456 },
     };
     const mockFile = new MockFile(mockPath, true, validData);
     const creds = new StravaCreds(mockFile);
@@ -126,7 +126,7 @@ describe('StravaCreds', () => {
       expires_in: 7200,
       refresh_token: 'new_refresh',
       access_token: 'new_access',
-      athlete: { id: '789' },
+      athlete: { id: 789 },
     };
     await creds.write(newData);
     expect(creds.accessToken).toBe('new_access');

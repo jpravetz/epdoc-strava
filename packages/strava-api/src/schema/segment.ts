@@ -1,13 +1,13 @@
 import type { ISODate } from '@epdoc/datetime';
 import type { ActivityId, PolylineMap } from './activity.ts'; // Added import for PolylineMap
 import type { AthleteId } from './athlete.ts';
-import type { ActivityType, StravaId } from './types.ts';
+import type { ActivityType, StravaLongInt } from './types.ts';
 
 export type SegmentName = string;
 /** A unique identifier for a segment. */
-export type SegmentId = StravaId;
+export type SegmentId = StravaLongInt;
 /** A unique identifier for a segment effort. */
-export type EffortId = StravaId;
+export type EffortId = StravaLongInt;
 
 export interface SummarySegment {
   id: SegmentId;

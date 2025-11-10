@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.0-alpha.6] - 2025-11-09
+
+- Changed StravaId to StravaLontInt
+
 ## [2.0.0-alpha.5] - 2025-11-02
 
 - JSDoc improvements
