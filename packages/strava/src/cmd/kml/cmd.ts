@@ -99,6 +99,7 @@ export class KmlCmd extends Options.BaseSubCmd {
         }
 
         const opts: Kml.ActivityOpts & Kml.CommonOpts = {
+          activities: true,
           date: kmlOpts.date,
           output: new FS.File(kmlOpts.output),
           more: kmlOpts.more,
@@ -123,7 +124,7 @@ export class KmlCmd extends Options.BaseSubCmd {
 
         await ctx.app.init(ctx, { strava: true, userSettings: true });
 
-        await ctx.app.getKml(ctx, kmlOpts);
+        await ctx.app.getKml(ctx, opts);
       } catch (e) {
         const err = _.asError(e);
         ctx.log.error.error(`Failed to generate KML: ${err.message}`).emit();
