@@ -20,3 +20,5 @@ export type Filter = {
 export type SegmentData = Schema.DetailedSegmentEffort; // Changed to DetailedSegmentEffort
 /** A segment effort. */
 export type SegmentEffort = Schema.DetailedSegmentEffort;
+
+export type StarredSegmentDict = Record<Schema.SegmentId, string>;

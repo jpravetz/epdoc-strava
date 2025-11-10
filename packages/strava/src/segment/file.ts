@@ -20,10 +20,14 @@ import { asCacheEntry } from './utils.ts';
  */
 export class SegmentFile {
   #fsFile: FileSpec;
-  #segments: Map<number, Segment.CacheEntry> = new Map(); // Keyed by segment ID
+  #segments: Segment.CacheMap = new Map(); // Keyed by segment ID
 
   constructor(fsFile: FileSpec) {
     this.#fsFile = fsFile;
+  }
+
+  get segments(): Segment.CacheMap {
+    return this.#segments;
   }
 
   async get(ctx: Ctx.Context, opts: { refresh?: boolean }): Promise<void> {

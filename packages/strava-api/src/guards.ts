@@ -1,5 +1,5 @@
 import { _ } from '@epdoc/type';
-import type * as Schema from './schema/mod.ts';
+import * as Schema from './schema/mod.ts';
 
 /**
  * Type guard to check if a value is a valid StravaId.
@@ -124,4 +124,15 @@ export function isDetailedActivity(value: unknown): value is Schema.DetailedActi
     isStravaId(value.id) &&
     _.isString(value.name) &&
     _.isNumber(value.distance);
+}
+
+// Create a Set for O(1) lookups in the type guard
+const ACTIVITY_NAMES_SET = new Set(Object.values(Schema.ActivityName));
+
+export function isActivityType(value: unknown): value is Schema.ActivityType {
+  return typeof value === 'string' && ACTIVITY_NAMES_SET.has(value as Schema.ActivityType);
+}
+
+export function isActivityTypeArray(value: unknown): value is Schema.ActivityType[] {
+  return Array.isArray(value) && value.every(isActivityType);
 }

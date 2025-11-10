@@ -26,15 +26,15 @@ export const mapDef: Record<string, Options.Def> = {
       return _.isString(str) ? new FileSpec(Deno.cwd(), str) : str;
     },
   },
-  activities: {
-    short: 'a',
-    name: 'activities',
+  type: {
+    short: 't',
+    name: 'type',
     params: '[types]',
     description:
-      'Include activities (default when no flags specified). Optional: comma-separated activity types',
+      'Include activity types (default when no flags specified). Optional: comma-separated activity types',
     choices: Object.keys(Api.Schema.ActivityName),
     argParser: (str: string | boolean) => {
-      if (str === true || str === '') return true; // All activities
+      if (str === true || str === '') return []; // All activities
       if (_.isString(str)) {
         return str.split(',').map((s) => s.trim());
       }
@@ -49,7 +49,7 @@ export const mapDef: Record<string, Options.Def> = {
     choices: ['only', 'flat'],
     argParser: (str: string | boolean) => {
       if (str === true || str === '') return true;
-      return str;
+      return [];
     },
   },
   more: {

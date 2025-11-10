@@ -51,3 +51,5 @@ export type CacheFile = {
   lastModified?: ISOTzDate;
   segments: Record<Api.Schema.SegmentId, CacheEntry>; // Keyed by segment ID as string
 };
+
+export type CacheMap = Map<Api.Schema.SegmentId, CacheEntry>;

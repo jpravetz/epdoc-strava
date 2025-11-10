@@ -40,17 +40,17 @@ const REGEX = {
  * ```
  */
 export class KmlMain {
-  private opts: Kml.Opts = {};
+  private opts: Kml.ActivityOpts = {};
   private lineStyles: Kml.LineStyleDefs = defaultLineStyles;
   private buffer: string = '';
   private writer?: FS.Writer;
   private trackIndex: number = 0;
 
-  constructor(opts: Kml.Opts = {}) {
+  constructor(opts: Kml.ActivityOpts = {}) {
     this.opts = opts;
   }
 
-  setOptions(opts: Kml.Opts = {}) {
+  setOptions(opts: Kml.ActivityOpts = {}) {
     this.opts = opts;
   }
 
@@ -136,7 +136,7 @@ export class KmlMain {
     try {
       await this.header();
 
-      if (this.opts.activities) {
+      if (this.opts.type) {
         await this.addActivities(activities);
       }
 

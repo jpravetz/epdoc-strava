@@ -64,3 +64,5 @@ export type Config = {
 export interface IList {
   list?: boolean | FileSpec;
 }
+
+export type CommuteType = 'yes' | 'no' | 'all';

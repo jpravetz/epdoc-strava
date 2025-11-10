@@ -198,13 +198,12 @@ export class Main {
    * });
    * ```
    */
-  async getActivityKml(ctx: Ctx.Context, kmlOpts: Kml.Opts): Promise<void> {
+  async getKml(ctx: Ctx.Context, kmlOpts: Kml.Opts): Promise<void> {
     // Initialize KML generator with options and line styles
     const kml = new Kml.Main(kmlOpts);
     if (this.userSettings && this.userSettings.lineStyles) {
       kml.setLineStyles(ctx, this.userSettings.lineStyles);
     }
-    assert(kmlOpts.date);
 
     // Validate that at least activities or segments is requested
     if (!kmlOpts.activities && !kmlOpts.segments) {
@@ -214,10 +213,9 @@ export class Main {
     let activities: Api.Activity.Base[] = [];
     let segments: Segment.Data[] = [];
 
-    // Fetch activities if requested
-    if (kmlOpts.activities && kmlOpts.date) {
+    if (kmlOpts.activities) {
+      assert(kmlOpts.date);
       activities = await this.getKmlActivities(ctx, kmlOpts);
-
       // Attach starred segment efforts if --efforts flag is enabled
       if (kmlOpts.efforts && activities.length > 0) {
         await this.attachStarredSegments(ctx, activities);
@@ -225,8 +223,8 @@ export class Main {
     }
 
     // Fetch segments if requested
-    if (kmlOpts.segments && kmlOpts.date) {
-      segments = await this.getKmlSegments(ctx, { date: kmlOpts.date });
+    if (kmlOpts.segments) {
+      segments = await this.getKmlSegments(ctx, kmlOpts);
     }
 
     if (activities.length || segments.length) { // Generate KML file
@@ -244,19 +242,6 @@ export class Main {
     } else {
       ctx.log.info.warn('No activities or segments found for the specified criteria').emit();
     }
-  }
-
-  /**
-   * Main KML generation method that handles both activities and segments.
-   *
-   * This is a convenience wrapper that delegates to getActivityKml().
-   * Use this method from command handlers for standard KML generation workflows.
-   *
-   * @param ctx Application context with logging
-   * @param kmlOpts KML generation options
-   */
-  async getKml(ctx: Ctx.Context, kmlOpts: Kml.Opts): Promise<void> {
-    await this.getActivityKml(ctx, kmlOpts);
   }
 
   /**
@@ -297,7 +282,7 @@ export class Main {
     // Create minimal KML options for segment-only output
     const kmlOpts: Kml.Opts = {
       segments: true,
-      activities: false,
+      type: false,
       output: outputFile,
     };
 
@@ -315,7 +300,10 @@ export class Main {
     ctx.log.info.h2('Segment KML file generated successfully').fs(outputFile).emit();
   }
 
-  async getKmlActivities(ctx: Ctx.Context, kmlOpts: Kml.Opts): Promise<Api.Activity.Base[]> {
+  async getKmlActivities(
+    ctx: Ctx.Context,
+    kmlOpts: Kml.ActivityOpts & Kml.CommonOpts,
+  ): Promise<Api.Activity.Base[]> {
     ctx.log.info.text('Fetching activities for date ranges').dateRange(kmlOpts.date).emit();
 
     let activities: Api.Activity.Base[] = [];
@@ -395,7 +383,7 @@ export class Main {
     return activities;
   }
 
-  async getKmlSegments(ctx: Ctx.Context, opts: { date: DateRanges }): Promise<Segment.Data[]> {
+  async getKmlSegments(ctx: Ctx.Context, opts: Kml.CommonOpts & Kml.SegmentOpts): Promise<Segment.Data[]> {
     const result: Segment.Data[] = await this.getSegments(ctx, {
       coordinates: true,
       efforts: false, // Don't fetch efforts for KML, just coordinates
@@ -770,19 +758,43 @@ export class Main {
       return;
     }
 
-    // Load starred segments from cache (populated by `segments --refresh` command)
+    // Load a list of starred segments from cache (populated by `segments --refresh` command)
     const segFile = new Segment.File(new FS.File(configPaths.userSegments));
     await segFile.get(ctx, { refresh: false }); // Use cache, don't refresh
-    const cachedSegments = segFile.getAllSegments();
+    const cachedSegments = segFile.segments;
 
-    if (cachedSegments.length === 0) {
+    if (cachedSegments.size === 0) {
       ctx.log.info.text('No starred segments found in cache. Run `segments --refresh` to populate cache.')
         .emit();
       return;
     }
 
     // Create a Set of starred segment IDs for efficient lookup
-    const starredSegmentIds = new Set(cachedSegments.map((seg) => seg.id));
+    const starredSegmentIds = new Set(cachedSegments.keys());
+    type StarredSegmentDict = Record<Api.Schema.SegmentId, string>;
+    const starredSegments = Array.from(cachedSegments.entries()).reduce((acc, [id, seg]) => {
+      if (seg.name) {
+        let segmentName = seg.name.trim();
+        // Apply segment name alias from user settings if available
+        if (this.userSettings?.aliases) {
+          // Try direct lookup first
+          if (segmentName in this.userSettings.aliases) {
+            segmentName = this.userSettings.aliases[segmentName];
+          } else {
+            // Try case-insensitive lookup
+            const lowerName = segmentName.toLowerCase();
+            const aliasKey = Object.keys(this.userSettings.aliases).find(
+              (key) => key.toLowerCase() === lowerName,
+            );
+            if (aliasKey) {
+              segmentName = this.userSettings.aliases[aliasKey];
+            }
+          }
+        }
+        acc[id] = segmentName;
+      }
+      return acc;
+    }, {} as StarredSegmentDict);
 
     ctx.log.info.text('Processing segment efforts for').count(activities.length).text(
       'activity',
@@ -812,23 +824,10 @@ export class Main {
 
         // Add segment efforts to activity - now writable with setter
         activity.segments = starredEfforts.map((effort) => {
-          // Apply segment name alias from user settings if available
+          const segmentId = effort.segment?.id;
           let segmentName = effort.segment?.name?.trim() || 'Unknown';
-
-          // Try direct lookup first
-          if (this.userSettings?.aliases && segmentName in this.userSettings.aliases) {
-            segmentName = this.userSettings.aliases[segmentName];
-            ctx.log.debug.text('Applied segment alias').value(segmentName).emit();
-          } else if (this.userSettings?.aliases) {
-            // Try case-insensitive lookup
-            const lowerName = segmentName.toLowerCase();
-            const aliasKey = Object.keys(this.userSettings.aliases).find(
-              (key) => key.toLowerCase() === lowerName,
-            );
-            if (aliasKey) {
-              segmentName = this.userSettings.aliases[aliasKey];
-              ctx.log.debug.text('Applied segment alias (case-insensitive)').value(segmentName).emit();
-            }
+          if (segmentId && starredSegments[segmentId]) {
+            segmentName = starredSegments[segmentId];
           }
 
           // Return the full DetailedSegmentEffort but with aliased name
