@@ -320,11 +320,9 @@ export class Main {
 
     let activities: Api.Activity.Base[] = [];
 
-    // Get athlete ID (default to authenticated user)
-    if (!this.athlete?.id) {
-      throw new Error('Athlete ID is required to fetch activities');
-    }
-    const athleteId: Api.Schema.AthleteId = this.athlete.id;
+    const athleteId: Api.Schema.AthleteId = (this.athlete && Api.isStravaId(this.athlete.id))
+      ? this.athlete.id
+      : 0;
 
     // Get activities for each date range
     for (const dateRange of kmlOpts.date!.ranges) {
@@ -629,7 +627,13 @@ export class Main {
       }
 
       // Create SegmentData from cached entry
-      const segment = new Segment.Data({} as any);
+      const segmentBase = new Segment.Base({
+        id: cached.id,
+        name: cached.name,
+        distance: cached.distance || 0,
+      });
+
+      const segment = new Segment.Data(segmentBase);
       segment.id = cached.id;
       segment.name = cached.name;
       segment.elapsedTime = 0;
@@ -701,7 +705,7 @@ export class Main {
       const athleteId = this.athlete.id;
 
       for (const segment of segments) {
-        const allEfforts: any[] = [];
+        const allEfforts: Api.Schema.DetailedSegmentEffort[] = [];
 
         // Get efforts for each date range
         for (const dateRange of opts.dateRanges.ranges) {
@@ -724,15 +728,15 @@ export class Main {
 
         if (allEfforts.length > 0) {
           // Sort by elapsed time
-          allEfforts.sort((a: any, b: any) => {
+          allEfforts.sort((a, b) => {
             const aTime = a.elapsed_time || 0;
             const bTime = b.elapsed_time || 0;
             return aTime - bTime;
           });
           ctx.log.info.text('Found').count(allEfforts.length).text('effort', 'efforts').text('for')
             .value(segment.name).emit();
-          // Store efforts on segment (you may want to add an efforts property to SegmentData)
-          (segment as any).efforts = allEfforts;
+          // Store efforts on segment
+          segment.efforts = allEfforts;
         }
       }
     }
@@ -806,22 +810,31 @@ export class Main {
         ctx.log.info.text('Found').count(starredEfforts.length)
           .text('starred segment effort').text('for').activity(activity).emit();
 
-        // Add segment efforts to activity data object
-        // We add it to the data object since activity.segments is read-only
+        // Add segment efforts to activity - now writable with setter
         activity.segments = starredEfforts.map((effort) => {
           // Apply segment name alias from user settings if available
-          let segmentName = effort.segment?.name || 'Unknown';
+          let segmentName = effort.segment?.name?.trim() || 'Unknown';
+
+          // Try direct lookup first
           if (this.userSettings?.aliases && segmentName in this.userSettings.aliases) {
             segmentName = this.userSettings.aliases[segmentName];
+            ctx.log.debug.text('Applied segment alias').value(segmentName).emit();
+          } else if (this.userSettings?.aliases) {
+            // Try case-insensitive lookup
+            const lowerName = segmentName.toLowerCase();
+            const aliasKey = Object.keys(this.userSettings.aliases).find(
+              (key) => key.toLowerCase() === lowerName,
+            );
+            if (aliasKey) {
+              segmentName = this.userSettings.aliases[aliasKey];
+              ctx.log.debug.text('Applied segment alias (case-insensitive)').value(segmentName).emit();
+            }
           }
 
+          // Return the full DetailedSegmentEffort but with aliased name
           return {
-            id: effort.segment?.id || '0',
-            name: segmentName,
-            elapsed_time: effort.elapsed_time,
-            moving_time: effort.moving_time,
-            distance: effort.distance,
-            total_elevation_gain: effort.segment?.total_elevation_gain || 0,
+            ...effort,
+            name: segmentName, // Override with aliased name if present
           };
         });
       }

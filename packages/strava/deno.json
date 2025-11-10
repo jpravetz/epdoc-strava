@@ -11,7 +11,7 @@
   "tasks": {
     "test": "deno test -A",
     "lint": "deno lint",
-    "check": "deno check src test/*.test.ts main.ts",
+    "check": "deno check src test main.ts",
     "install": "deno cache --lock=deno.lock ./main.ts && deno install -f --global -A --config deno.json --name strava --lock=deno.lock ./main.ts"
   },
   "tests": {
@@ -46,7 +46,9 @@
     "lineWidth": 110,
     "include": [
       "src",
-      "test"
+      "test",
+      "main.ts",
+      "deno.json"
     ],
     "exclude": [
       "test/readonly",
@@ -56,7 +58,9 @@
   "lint": {
     "include": [
       "src",
-      "test"
+      "test",
+      "main.ts",
+      "deno.json"
     ],
     "exclude": [
       "test/tmp",

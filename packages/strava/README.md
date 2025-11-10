@@ -5,7 +5,8 @@ Command-line interface for managing Strava activities and generating output file
 ## Installation
 
 ```bash
-deno install -A -n strava ./main.ts
+cd packages/strava
+deno task install
 ```
 
 ## Commands

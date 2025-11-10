@@ -80,12 +80,15 @@ export class SegmentFile {
     if (isFile) {
       const data = await this.#fsFile.readJson<Segment.CacheFile>();
       if (data.segments) {
-        this.#segments = new Map(Object.entries(data.segments));
+        // Convert string keys from JSON back to numbers
+        this.#segments = new Map(
+          Object.entries(data.segments).map(([key, value]) => [Number(key), value]),
+        );
       }
       ctx.log.info.h2('Read').count(this.#segments.size).h2('starred segment')
-        .h2('from').path(this.#fsFile.path).ewt(m0);
+        .h2('from').fs(this.#fsFile).ewt(m0);
     } else {
-      ctx.log.info.h2('File not found').path(this.#fsFile.path).ewt(m0);
+      ctx.log.info.h2('File not found').fs(this.#fsFile).ewt(m0);
     }
   }
 
@@ -99,10 +102,10 @@ export class SegmentFile {
     try {
       await this.#fsFile.writeJson(json, null, 2);
       ctx.log.info.h2('Wrote').count(this.#segments.size)
-        .h2('starred segments to').path(this.#fsFile).ewt(m0);
+        .h2('starred segment').h2('to').fs(this.#fsFile).ewt(m0);
     } catch (e) {
       const err = _.asError(e);
-      ctx.log.error.h2('Error writing to file').err(err).path(this.#fsFile.path).ewt(m0);
+      ctx.log.error.h2('Error writing to file').err(err).fs(this.#fsFile).ewt(m0);
     }
   }
 
@@ -113,7 +116,7 @@ export class SegmentFile {
    * @returns CacheEntry if found, undefined otherwise
    */
   getSegment(id: Api.Schema.SegmentId): Segment.CacheEntry | undefined {
-    return this.#segments.get(String(id));
+    return this.#segments.get(id);
   }
 
   /**

@@ -8,7 +8,8 @@
       "Bash(npm search:*)",
       "WebSearch",
       "Bash(cat:*)",
-      "Bash(deno run:*)"
+      "Bash(deno run:*)",
+      "Bash(deno test:*)"
     ],
     "deny": [],
     "ask": []

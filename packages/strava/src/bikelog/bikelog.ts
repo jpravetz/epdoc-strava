@@ -254,22 +254,6 @@ export class Bikelog {
           note += '\n' + times.join(', ');
         }
 
-        // Add starred segment efforts (if available)
-        if ((activity.data as any).segments && _.isArray((activity.data as any).segments)) {
-          const segments = (activity.data as any).segments;
-          if (segments.length > 0) {
-            const segs: string[] = [];
-            let prefix = 'Up ';
-            for (const segment of segments) {
-              const time = segment.elapsed_time || segment.moving_time || 0;
-              const timeStr = formatMS(time);
-              segs.push(`${prefix}${segment.name} [${timeStr}]`);
-              prefix = 'up ';
-            }
-            note += '\n' + segs.join(', ');
-          }
-        }
-
         // TODO: Add EBike energy data from detailed activity
 
         // Add custom description and private note from activity (if available)
@@ -291,6 +275,22 @@ export class Bikelog {
           if (key !== 'description' && key.toLowerCase() !== 'weight' && value !== undefined) {
             note += '\n' + this.toTitleCase(key) + ': ' + String(value);
           }
+        }
+
+        // Add starred segment efforts at the end (if available)
+        const segments = activity.segments;
+        if (_.isArray(segments) && segments.length > 0) {
+          const segs: string[] = [];
+          let prefix = 'Up ';
+          for (const segment of segments) {
+            const time = segment.elapsed_time || segment.moving_time || 0;
+            const timeStr = formatMS(time);
+            // Use segment.name first (contains alias from app.ts), fall back to segment.segment?.name
+            const name = segment.name || segment.segment?.name || 'Unknown';
+            segs.push(`${prefix}${name} [${timeStr}]`);
+            prefix = 'up ';
+          }
+          note += '\n' + segs.join(', ');
         }
 
         if (entry.note0) {

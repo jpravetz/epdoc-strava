@@ -1,42 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <fields xmlns:xfdf="http://ns.adobe.com/xfdf-transition/">
   <day>
-    <group xfdf:original="2460964">
+    <group xfdf:original="2460960">
       <group xfdf:original="0">
-        <bike>Levo17</bike>
-        <dist>23.02</dist>
-        <el>517</el>
-        <t>1.5</t>
+        <bike>SP1</bike>
+        <dist>24.15</dist>
+        <el>164</el>
+        <t>1.26</t>
         <wh>0</wh>
       </group>
-      <note0>EBike: eVuelta de Ojochal y Piñuela Arriba
-Moving: 01:30, Elapsed: 02:06
-Piernas buenas, finalmente! Pero tomé dos Gu, entonces es el resultado de los Gu o los dos andar con bici de ruta?
-ECO mode durante casi todos el paseo.
-No dolor de hombro</note0>
+      <note0>Bike: Hamilton Rail Trail Loop
+Moving: 01:15, Elapsed: 01:25
+So nice to get out on the bike!
+Mid 10's weather.
+Right shoulder lots of pain. 
+Not so fit right now.
+Up Hamilton Rail Trail [20:31]</note0>
     </group>
-    <group xfdf:original="2460966">
-      <group xfdf:original="0">
-        <bike>Levo17</bike>
-        <dist>28.1</dist>
-        <el>657</el>
-        <t>1.72</t>
-        <wh>0</wh>
-      </group>
-      <note0>EBike: eVuelta de Ojochal y Piñuela Arriba
-Moving: 01:43, Elapsed: 02:17
-2 x Gu and great ride</note0>
-    </group>
-    <group xfdf:original="2460967">
-      <group xfdf:original="0">
-        <bike>Levo17</bike>
-        <dist>28.82</dist>
-        <el>572</el>
-        <t>1.46</t>
-        <wh>0</wh>
-      </group>
-      <note0>EBike: El Pavon con Nancita
-Moving: 01:27, Elapsed: 01:34</note0>
+    <group xfdf:original="2460961">
+      <note0>Walk: Bruce Trail and Tea with Marcus and Shannon
+Distance: 2.59 km; Duration: 00:37
+Met Marcus and Shannon for a short walk on the Bruce Trail, followed by tea/coffee.
+Walked 5 km.</note0>
     </group>
   </day>
 </fields>

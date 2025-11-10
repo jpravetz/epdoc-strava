@@ -5,17 +5,20 @@ This document provides essential context for Claude Code when working on this pr
 ## Project Overview
 
 This is a Deno/TypeScript monorepo for generating KML files from Strava activities and segments. It's a modern
-rewrite of the legacy Node.js implementation.
+rewrite of the legacy [epdoc-strava](https://github.com/jpravetz/epdoc-strava) Node.js implementation.
 
 See the top-level [README.md](./README.md) for workspace structure and quick start guide.
 
 ## Coding Standards
 
-**IMPORTANT**: All development in this project must follow the universal coding standards and conventions documented in:
+**IMPORTANT**: All development in this project must follow the universal coding standards and conventions
+documented in:
 
-- **[GEMINI_GLOBAL.md](/Users/jpravetz/dev/GEMINI_GLOBAL.md)** - Universal guidelines for Deno TypeScript projects
+- **[GEMINI_GLOBAL.md](/Users/jpravetz/dev/GEMINI_GLOBAL.md)** - Universal guidelines for Deno TypeScript
+  projects
 
 This document covers:
+
 - Deno project structure and module organization
 - Import conventions and path management
 - TypeScript code generation standards

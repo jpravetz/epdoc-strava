@@ -4,7 +4,6 @@ import { _ } from '@epdoc/type';
 import type { Ctx } from '../dep.ts';
 import * as Options from '../options/mod.ts';
 import type * as Cmd from '../types.ts';
-import type * as Segment from '../../segment/mod.ts';
 
 export const cmdConfig: Options.Config = {
   replace: { cmd: 'segments' },
@@ -90,7 +89,11 @@ export class SegmentsCmd extends Options.BaseSubCmd {
         }
 
         // Fetch segments with efforts if dates specified
-        const segmentOpts: any = {
+        const segmentOpts: {
+          coordinates: boolean;
+          efforts: boolean;
+          dateRanges?: DateRanges;
+        } = {
           coordinates: false, // Don't need coordinates for analysis
           efforts: false,
         };
@@ -123,23 +126,21 @@ export class SegmentsCmd extends Options.BaseSubCmd {
           }
 
           // Display efforts if available
-          if ((segment as any).efforts) {
-            const efforts = (segment as any).efforts;
+          if (segment.efforts && segment.efforts.length > 0) {
+            const efforts = segment.efforts;
             ctx.log.info.text('Efforts:').count(efforts.length).emit();
-            if (efforts.length > 0) {
-              ctx.log.indent();
-              // Show best 3 efforts
-              const bestEfforts = efforts.slice(0, Math.min(3, efforts.length));
-              bestEfforts.forEach((effort: any, index: number) => {
-                const time = effort.elapsed_time || 0;
-                const minutes = Math.floor(time / 60);
-                const seconds = time % 60;
-                const timeStr = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-                const date = effort.start_date_local ? effort.start_date_local.slice(0, 10) : '';
-                ctx.log.info.text(`${index + 1}.`).value(timeStr).text('on').value(date).emit();
-              });
-              ctx.log.outdent();
-            }
+            ctx.log.indent();
+            // Show best 3 efforts
+            const bestEfforts = efforts.slice(0, Math.min(3, efforts.length));
+            bestEfforts.forEach((effort, index: number) => {
+              const time = effort.elapsed_time || 0;
+              const minutes = Math.floor(time / 60);
+              const seconds = time % 60;
+              const timeStr = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+              const date = effort.start_date_local ? effort.start_date_local.slice(0, 10) : '';
+              ctx.log.info.text(`${index + 1}.`).value(timeStr).text('on').value(date).emit();
+            });
+            ctx.log.outdent();
           }
           ctx.log.outdent();
         });

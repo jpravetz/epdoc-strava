@@ -19,11 +19,11 @@ export function isSegmentId(value: unknown): value is Schema.SegmentId {
  * Type guard to check if a value is a valid Stream object.
  *
  * A Stream has a type property and a data array.
+ * Note: When key_by_type is used in Strava API, the type field may be omitted
+ * (it's implicit from the object key), so we only require the data array.
  */
 export function isStream(value: unknown): value is Schema.Stream | Schema.LatLngStream {
   return _.isDict(value) &&
-    'type' in value &&
-    _.isString(value.type) &&
     'data' in value &&
     _.isArray(value.data);
 }

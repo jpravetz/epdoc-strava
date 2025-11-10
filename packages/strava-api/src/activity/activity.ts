@@ -172,6 +172,14 @@ export class Activity {
   }
 
   /**
+   * Sets the segment efforts for the activity.
+   * @param segments Array of segment effort data
+   */
+  public set segments(segments: SegmentData[]) {
+    this.#segments = segments;
+  }
+
+  /**
    * The type of the activity (e.g., 'Ride', 'Run').
    */
   public get type(): string {

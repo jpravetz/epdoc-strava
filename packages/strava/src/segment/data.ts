@@ -30,6 +30,7 @@ export class SegmentData implements Segment.IData {
   coordinates: Coord[] = [];
   country: string = '';
   state: string = '';
+  efforts?: Api.Schema.DetailedSegmentEffort[] = [];
 
   constructor(data: SegmentBase) {
     if (data instanceof SegmentBase) {

@@ -13,7 +13,7 @@ import type * as Segment from './types.ts';
  */
 export function asCacheEntry(data: Api.Schema.SummarySegment): Segment.CacheEntry | undefined {
   if (
-    data && Api.isSegmentId(data.id) && _.isNonEmptyString(name) && _.isNumber(data.elevation_high) &&
+    data && Api.isSegmentId(data.id) && _.isNonEmptyString(data.name) && _.isNumber(data.elevation_high) &&
     _.isNumber(data.elevation_low) && _.isNumber(data.distance) && _.isNumber(data.average_grade)
   ) {
     return {

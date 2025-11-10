@@ -1,6 +1,4 @@
 import type { Metres, Schema, Seconds } from './dep.ts';
-import type { SegmentSummary } from './summary.ts';
-import type * as Segment from './types.ts';
 
 /**
  * Base class for Strava segment data with core timing and distance metrics.
@@ -12,11 +10,13 @@ import type * as Segment from './types.ts';
  *
  * @example
  * ```ts
- * const segment = new SegmentBase(summaryData);
+ * const segment = new SegmentBase();
+ * segment.id = 123;
+ * segment.name = 'Test Segment';
  * console.log(segment.name, segment.distance);
  * ```
  */
-export class SegmentBase implements Segment.IData {
+export class SegmentBase {
   data: Schema.SummarySegment = {} as Schema.SummarySegment;
   id: Schema.SegmentId = 0;
   name: Schema.SegmentName = '';
@@ -24,7 +24,9 @@ export class SegmentBase implements Segment.IData {
   moving_time: Seconds = 0;
   distance: Metres = 0;
 
-  constructor(data: SegmentSummary) {
-    Object.assign(this, data);
+  constructor(data?: Partial<SegmentBase>) {
+    if (data) {
+      Object.assign(this, data);
+    }
   }
 }
