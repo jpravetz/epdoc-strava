@@ -22,7 +22,7 @@ import type * as Segment from './types.ts';
  * ```
  */
 export class SegmentData implements Segment.IData {
-  id: Api.Schema.SegmentId = '0';
+  id: Api.Schema.SegmentId = 0;
   name: Api.Schema.SegmentName = '';
   elapsedTime: Seconds = 0;
   movingTime: Seconds = 0;

@@ -1,4 +1,5 @@
 import type { DateRanges } from '@epdoc/daterange';
+import type { FileSpec } from '@epdoc/fs';
 import * as FS from '@epdoc/fs/fs';
 import { _ } from '@epdoc/type';
 import { assert } from '@std/assert/assert';
@@ -216,11 +217,16 @@ export class Main {
     // Fetch activities if requested
     if (kmlOpts.activities && kmlOpts.date) {
       activities = await this.getKmlActivities(ctx, kmlOpts);
+
+      // Attach starred segment efforts if --efforts flag is enabled
+      if (kmlOpts.efforts && activities.length > 0) {
+        await this.attachStarredSegments(ctx, activities);
+      }
     }
 
     // Fetch segments if requested
-    if (kmlOpts.segments) {
-      segments = await this.getKmlSegments(ctx);
+    if (kmlOpts.segments && kmlOpts.date) {
+      segments = await this.getKmlSegments(ctx, { date: kmlOpts.date });
     }
 
     if (activities.length || segments.length) { // Generate KML file
@@ -241,9 +247,73 @@ export class Main {
   }
 
   /**
-   * This will be attached to a new command that will build a KML file for all of the user's segments. It will take a lot of the options
+   * Main KML generation method that handles both activities and segments.
+   *
+   * This is a convenience wrapper that delegates to getActivityKml().
+   * Use this method from command handlers for standard KML generation workflows.
+   *
+   * @param ctx Application context with logging
+   * @param kmlOpts KML generation options
    */
-  getSegmentKml() {}
+  async getKml(ctx: Ctx.Context, kmlOpts: Kml.Opts): Promise<void> {
+    await this.getActivityKml(ctx, kmlOpts);
+  }
+
+  /**
+   * Generates a KML file containing all starred segments.
+   *
+   * This method:
+   * 1. Loads starred segments from cache (~/.strava/user.segments.json)
+   * 2. Fetches coordinates for each segment from Strava API (not cached)
+   * 3. Generates KML file with all segments organized by region
+   * 4. Updates segment metadata in cache if modified on server
+   *
+   * Note: Coordinates are fetched on-demand and NOT cached locally.
+   * Run `segments --refresh` to update cached segment metadata.
+   *
+   * @param ctx Application context with logging
+   * @param outputFile Output KML file path
+   *
+   * @example
+   * ```ts
+   * await app.getSegmentKml(ctx, new FileSpec(Deno.cwd(), 'segments.kml'));
+   * ```
+   */
+  async getSegmentKml(ctx: Ctx.Context, outputFile: FileSpec): Promise<void> {
+    // Fetch all starred segments with coordinates
+    ctx.log.info.text('Loading starred segments from cache').emit();
+    const segments = await this.getSegments(ctx, {
+      coordinates: true, // Fetch coordinates on-the-fly
+      efforts: false,
+      refresh: false, // Use cached metadata
+    });
+
+    if (segments.length === 0) {
+      ctx.log.info.text('No starred segments found in cache. Run `segments --refresh` to populate cache.')
+        .emit();
+      return;
+    }
+
+    // Create minimal KML options for segment-only output
+    const kmlOpts: Kml.Opts = {
+      segments: true,
+      activities: false,
+      output: outputFile,
+    };
+
+    // Initialize KML generator
+    const kml = new Kml.Main(kmlOpts);
+    if (this.userSettings && this.userSettings.lineStyles) {
+      kml.setLineStyles(ctx, this.userSettings.lineStyles);
+    }
+
+    // Generate KML file
+    ctx.log.info.text('Generating KML file').fs(outputFile).emit();
+    ctx.log.indent();
+    await kml.outputData(ctx, outputFile.path, [], segments);
+    ctx.log.outdent();
+    ctx.log.info.h2('Segment KML file generated successfully').fs(outputFile).emit();
+  }
 
   async getKmlActivities(ctx: Ctx.Context, kmlOpts: Kml.Opts): Promise<Api.Activity.Base[]> {
     ctx.log.info.text('Fetching activities for date ranges').dateRange(kmlOpts.date).emit();
@@ -251,7 +321,10 @@ export class Main {
     let activities: Api.Activity.Base[] = [];
 
     // Get athlete ID (default to authenticated user)
-    const athleteId: Api.Schema.AthleteId = this.athlete?.id || 0 as Api.Schema.AthleteId;
+    if (!this.athlete?.id) {
+      throw new Error('Athlete ID is required to fetch activities');
+    }
+    const athleteId: Api.Schema.AthleteId = this.athlete.id;
 
     // Get activities for each date range
     for (const dateRange of kmlOpts.date!.ranges) {
@@ -488,7 +561,7 @@ export class Main {
    * @param ctx
    * @param activityId
    */
-  async getEffortsForActivity(ctx: Ctx.Context, activityId: ActivityId): Promise<void> {
+  async getEffortsForActivity(_ctx: Ctx.Context, _activityId: Api.Schema.ActivityId): Promise<void> {
     // To implement
   }
 
@@ -500,7 +573,7 @@ export class Main {
    * we will update the userSegments file with information about each starred segment (but not it's coordinates)
    * @param ctx
    */
-  async getAllStarredSegments(ctx: Ctx.Context): Promise<void> {
+  async getAllStarredSegments(_ctx: Ctx.Context): Promise<void> {
   }
 
   /**
@@ -564,7 +637,7 @@ export class Main {
       segment.distance = cached.distance || 0;
       segment.country = cached.country || '';
       segment.state = cached.state || '';
-      segment.coordinates = cached.coordinates || [];
+      segment.coordinates = []; // Never load coordinates from cache - fetch on demand only
 
       segments.push(segment);
     }
@@ -614,20 +687,18 @@ export class Main {
             // For other errors (404, etc.), just continue silently
           }
         }
-
-        // Save updated cache with new coordinates
-        if (!rateLimitHit) {
-          await segFile.write(ctx);
-        }
       } else {
-        ctx.log.info.text('All segments already have cached coordinates').emit();
+        ctx.log.info.text('All segments already have coordinates').emit();
       }
     }
 
     // Fetch efforts if requested
     if (opts.efforts && opts.dateRanges && segments.length > 0) {
       ctx.log.info.text('Fetching segment efforts for date ranges').emit();
-      const athleteId = this.athlete?.id || 0;
+      if (!this.athlete?.id) {
+        throw new Error('Athlete ID is required to fetch segment efforts');
+      }
+      const athleteId = this.athlete.id;
 
       for (const segment of segments) {
         const allEfforts: any[] = [];
@@ -670,6 +741,8 @@ export class Main {
   }
 
   /**
+   * // TODO move part of this code to strava-api/src/activity/activity.ts
+   *
    * Attaches starred segment efforts to activities.
    *
    * This method fetches the list of starred segments, then filters each activity's
@@ -693,19 +766,19 @@ export class Main {
       return;
     }
 
-    // TODO this should use our cached list of starred segments. we only retrive all starred segments with
-    // the segment --refresh command.
-    // Fetch starred segments to get their IDs
-    const starredSegments: Api.Schema.SummarySegment[] = [];
-    await this.api.getStarredSegments(ctx, starredSegments);
+    // Load starred segments from cache (populated by `segments --refresh` command)
+    const segFile = new Segment.File(new FS.File(configPaths.userSegments));
+    await segFile.get(ctx, { refresh: false }); // Use cache, don't refresh
+    const cachedSegments = segFile.getAllSegments();
 
-    if (starredSegments.length === 0) {
-      ctx.log.info.text('No starred segments found, skipping segment effort processing').emit();
+    if (cachedSegments.length === 0) {
+      ctx.log.info.text('No starred segments found in cache. Run `segments --refresh` to populate cache.')
+        .emit();
       return;
     }
 
     // Create a Set of starred segment IDs for efficient lookup
-    const starredSegmentIds = new Set(starredSegments.map((seg) => seg.id));
+    const starredSegmentIds = new Set(cachedSegments.map((seg) => seg.id));
 
     ctx.log.info.text('Processing segment efforts for').count(activities.length).text(
       'activity',
@@ -730,27 +803,25 @@ export class Main {
       );
 
       if (starredEfforts.length > 0) {
-        ctx.log.info.text('Found').count(starredEfforts.length).text(
-          'starred segment effort',
-          'starred segment efforts',
-        )
-          .text('for').activity(activity).emit();
+        ctx.log.info.text('Found').count(starredEfforts.length)
+          .text('starred segment effort').text('for').activity(activity).emit();
 
         // Add segment efforts to activity data object
         // We add it to the data object since activity.segments is read-only
-        (activity.data as any).segments = starredEfforts.map((effort) => {
+        activity.segments = starredEfforts.map((effort) => {
           // Apply segment name alias from user settings if available
-          let segmentName = effort.segment.name;
+          let segmentName = effort.segment?.name || 'Unknown';
           if (this.userSettings?.aliases && segmentName in this.userSettings.aliases) {
             segmentName = this.userSettings.aliases[segmentName];
           }
 
           return {
-            id: effort.segment.id,
+            id: effort.segment?.id || '0',
             name: segmentName,
             elapsed_time: effort.elapsed_time,
             moving_time: effort.moving_time,
             distance: effort.distance,
+            total_elevation_gain: effort.segment?.total_elevation_gain || 0,
           };
         });
       }

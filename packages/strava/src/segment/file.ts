@@ -20,7 +20,7 @@ import { asCacheEntry } from './utils.ts';
  */
 export class SegmentFile {
   #fsFile: FileSpec;
-  #segments: Map<string, Segment.CacheEntry> = new Map(); // Keyed by segment ID as string
+  #segments: Map<number, Segment.CacheEntry> = new Map(); // Keyed by segment ID
 
   constructor(fsFile: FileSpec) {
     this.#fsFile = fsFile;

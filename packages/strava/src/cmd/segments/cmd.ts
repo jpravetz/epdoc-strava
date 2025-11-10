@@ -1,42 +1,51 @@
 import type { DateRanges } from '@epdoc/daterange';
+import type { FileSpec } from '@epdoc/fs';
 import { _ } from '@epdoc/type';
 import type { Ctx } from '../dep.ts';
 import * as Options from '../options/mod.ts';
 import type * as Cmd from '../types.ts';
-import * as Segment from '../../segment/mod.ts';
+import type * as Segment from '../../segment/mod.ts';
 
 export const cmdConfig: Options.Config = {
   replace: { cmd: 'segments' },
   options: {
     dates: true,
     refresh: true,
+    kml: true,
   },
 };
 
 type SegementCmdOpts = {
   date?: DateRanges;
-  refresh: true;
+  refresh?: boolean;
+  kml?: FileSpec;
 };
 
 /**
- * Command to analyze starred segments with effort times and refresh segment data.
+ * Command to manage and visualize starred segments.
  *
- * This command provides segment-specific functionality separate from KML generation:
- * - Fetches starred segments from Strava API
- * - Analyzes effort times for date ranges
- * - Refreshes cached segment data (--refresh flag)
- * - Displays segment performance statistics
+ * This command provides three modes of operation:
+ * 1. **Refresh mode** (--refresh): Updates the cached segment metadata from Strava API
+ * 2. **KML generation mode** (--kml <filename>): Generates a KML file of all starred segments
+ * 3. **Display mode** (default): Shows a list of starred segments with optional effort analysis
  *
- * Note: This command is for segment analysis and data management. To output segments
- * to KML files, use the `kml` command with `--segments` option instead.
+ * The command manages a local cache of segment metadata (distance, elevation, location)
+ * stored in ~/.strava/user.segments.json. Segment coordinates are NOT cached and are
+ * fetched on-demand when generating KML files.
  *
  * @example
  * ```bash
- * # Refresh starred segments cache
+ * # Refresh starred segments cache from Strava
  * deno run -A ./packages/strava/main.ts segments --refresh
  *
- * # Analyze segment efforts for date range
+ * # Generate KML file for all starred segments
+ * deno run -A ./packages/strava/main.ts segments --kml segments.kml
+ *
+ * # Display starred segments with effort analysis
  * deno run -A ./packages/strava/main.ts segments --dates 20240101-20240630
+ *
+ * # Display all starred segments (from cache)
+ * deno run -A ./packages/strava/main.ts segments
  * ```
  */
 export class SegmentsCmd extends Options.BaseSubCmd {
@@ -49,11 +58,9 @@ export class SegmentsCmd extends Options.BaseSubCmd {
    *
    * Sets up the command action that will:
    * 1. Initialize app with Strava API and user settings
-   * 2. Fetch and cache starred segments (if --refresh specified)
-   * 3. Analyze segment efforts for specified date ranges
-   * 4. Display performance statistics
-   *
-   * Note: Full implementation is pending (TODO).
+   * 2. Handle --refresh flag to update segment cache from Strava
+   * 3. Handle --kml flag to generate KML file of all starred segments
+   * 4. Default: Display list of starred segments with optional effort analysis
    *
    * @param ctx Application context with logging and app instance
    * @returns Promise resolving to the configured command instance
@@ -73,6 +80,13 @@ export class SegmentsCmd extends Options.BaseSubCmd {
           await ctx.app.refreshStarredSegments(ctx);
           ctx.log.info.h2('Segment cache refreshed successfully').emit();
           return; // Exit after refresh
+        }
+
+        // Handle --kml flag: generate KML file for all starred segments
+        if (opts.kml) {
+          await ctx.app.getSegmentKml(ctx, opts.kml);
+          ctx.log.info.h2(`Segment KML file generated: ${opts.kml.filepath()}`).emit();
+          return; // Exit after KML generation
         }
 
         // Fetch segments with efforts if dates specified

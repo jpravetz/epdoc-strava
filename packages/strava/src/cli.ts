@@ -13,17 +13,17 @@ async function main() {
   const credentialsFile = path.join(home, '.strava', 'credentials.json');
   const userSettingsFile = path.join(home, '.strava', 'user.settings.json');
 
-  let segments: Dict;
+  let _segments: Dict;
   try {
-    segments = await readJson(segmentsFile);
-  } catch (e) {
-    segments = {};
+    _segments = await readJson(segmentsFile);
+  } catch (_e) {
+    _segments = {};
   }
 
   let userConfig: Dict;
   try {
     userConfig = await readJson(userSettingsFile);
-  } catch (e) {
+  } catch (_e) {
     userConfig = {};
   }
 

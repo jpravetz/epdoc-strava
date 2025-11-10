@@ -55,12 +55,17 @@ export const mapDef: Record<string, Options.Def> = {
   more: {
     short: 'm',
     name: 'more',
-    description: 'Include detailed descriptions',
+    description: 'Include activity stats in descriptions (distance, elevation, times)',
   },
   laps: {
     short: 'l',
     name: 'laps',
     description: 'Include lap markers in KML output',
+  },
+  efforts: {
+    short: 'e',
+    name: 'efforts',
+    description: 'Include activity stats + starred segment efforts in descriptions (superset of --more)',
   },
   commute: {
     name: 'commute',
@@ -78,5 +83,14 @@ export const mapDef: Record<string, Options.Def> = {
     short: 'r',
     name: 'refresh',
     description: 'Refresh list of starred segments.',
+  },
+  kml: {
+    short: 'k',
+    name: 'kml',
+    params: '<filename>',
+    description: 'Generate KML file for starred segments.',
+    argParser: (str: string) => {
+      return _.isString(str) ? new FileSpec(Deno.cwd(), str) : str;
+    },
   },
 } as const;

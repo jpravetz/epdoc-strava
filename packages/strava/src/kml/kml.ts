@@ -62,6 +62,10 @@ export class KmlMain {
     return this.opts && this.opts.more === true;
   }
 
+  get efforts(): boolean {
+    return this.opts && this.opts.efforts === true;
+  }
+
   /**
    * Sets custom line styles for activity routes in the KML output.
    *
@@ -320,23 +324,63 @@ export class KmlMain {
   }
 
   private _buildActivityDescription(activity: Activity): string | undefined {
-    if (!this.more) {
+    // Three levels of description detail:
+    // 1. No flags: no description
+    // 2. --more: basic activity stats
+    // 3. --efforts: basic activity stats + segment efforts (superset of --more)
+    if (!this.more && !this.efforts) {
       return undefined;
     }
 
-    // TODO: Implement full activity description with:
-    // - distance (using Fmt.getDistanceString)
-    // - moving time / elapsed time (using @epdoc/duration formatting)
-    // - elevation gain (using Fmt.getElevationString)
-    // - average temp (using Fmt.getTemperatureString)
-    // - segments list
-    // - custom description from activity.getCustomProperties()
-
     const arr: string[] = [];
-    arr.push(`<b>Distance:</b> ${Fmt.getDistanceString(activity.distance, this.imperial)}`);
-    arr.push(`<b>Elevation Gain:</b> ${Fmt.getElevationString(activity.totalElevationGain, this.imperial)}`);
 
-    return '<![CDATA[' + arr.join('<br>\n') + ']]>';
+    // If --more or --efforts is enabled, include basic activity details
+    if (this.more || this.efforts) {
+      // TODO: Implement full activity description with:
+      // - distance (using Fmt.getDistanceString) ✓
+      // - elevation gain (using Fmt.getElevationString) ✓
+      // - moving time / elapsed time (using @epdoc/duration formatting)
+      // - average temp (using Fmt.getTemperatureString)
+      // - custom description from activity.getCustomProperties()
+      arr.push(`<b>Distance:</b> ${Fmt.getDistanceString(activity.distance, this.imperial)}`);
+      arr.push(
+        `<b>Elevation Gain:</b> ${Fmt.getElevationString(activity.totalElevationGain, this.imperial)}`,
+      );
+    }
+
+    // If --efforts is enabled, also include starred segment efforts
+    if (this.efforts) {
+      const segments = (activity.data as any).segments;
+      if (_.isArray(segments) && segments.length > 0) {
+        arr.push('<b>Starred Segments:</b>');
+        segments.forEach((segment: any) => {
+          const distance = Fmt.getDistanceString(segment.distance || 0, this.imperial);
+          const elevation = segment.total_elevation_gain
+            ? Fmt.getElevationString(segment.total_elevation_gain, this.imperial)
+            : '0m';
+          const time = this._formatTime(segment.elapsed_time || 0);
+          arr.push(`${escapeHtml(segment.name)}: ${distance}, ${elevation}, ${time}`);
+        });
+      }
+    }
+
+    return arr.length > 0 ? '<![CDATA[' + arr.join('<br>\n') + ']]>' : undefined;
+  }
+
+  /**
+   * Formats elapsed time in seconds to MM:SS or HH:MM:SS format.
+   * @param seconds Elapsed time in seconds
+   * @returns Formatted time string
+   */
+  private _formatTime(seconds: number): string {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${minutes}:${secs.toString().padStart(2, '0')}`;
   }
 
   /**

@@ -18,7 +18,7 @@ import type * as Segment from './types.ts';
  */
 export class SegmentBase implements Segment.IData {
   data: Schema.SummarySegment = {} as Schema.SummarySegment;
-  id: Schema.SegmentId = '0';
+  id: Schema.SegmentId = 0;
   name: Schema.SegmentName = '';
   elapsed_time: Seconds = 0;
   moving_time: Seconds = 0;

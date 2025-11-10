@@ -13,8 +13,9 @@ export type LineStyleDefs = Record<string, LineStyle>;
 export type Opts = {
   output?: string | FileSpec; // output filename
   date?: DateRanges; // date range for which to output data
-  more?: boolean; // include additional description for each activity
-  laps?: boolean; // include lap markers in KML output
+  more?: boolean; // include basic activity stats in description (distance, elevation, times, custom props)
+  efforts?: boolean; // include basic activity stats + starred segment efforts (superset of --more)
+  laps?: boolean; // include lap markers in KML output (independent of description options)
   commute?: 'yes' | 'no' | 'all'; // filter by commute status
   activities?: boolean | string[]; // output activities (true=all, string[]=filtered by types)
   segments?: boolean | 'only' | 'flat'; // output segments (true=included, 'only'=segments only no activities, 'flat'=flat folder structure)

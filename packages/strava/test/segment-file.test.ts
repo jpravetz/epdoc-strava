@@ -1,9 +1,10 @@
-import { describe, it } from '@std/testing/bdd';
-import { expect } from '@std/expect';
-import { SegmentFile } from '../../src/segment/file.ts';
-import type * as Ctx from '../../src/context.ts';
 import type { FileSpec } from '@epdoc/fs';
+import { delayPromise } from '@epdoc/type';
+import { expect } from '@std/expect';
+import { describe, it } from '@std/testing/bdd';
+import type * as Ctx from '../../src/context.ts';
 import type { Strava } from '../../src/segment/dep.ts';
+import { SegmentFile } from '../../src/segment/file.ts';
 import type * as Segment from '../../src/segment/types.ts';
 
 // Mock Ctx.Context
@@ -33,6 +34,7 @@ class MockFileSpec implements FileSpec {
   exists: boolean = false;
 
   async isFile(): Promise<boolean> {
+    await delayPromise(1);
     return this.exists;
   }
 
@@ -40,12 +42,15 @@ class MockFileSpec implements FileSpec {
     if (!this.exists || !this.content) {
       throw new Error('File not found or empty');
     }
+    await delayPromise(1);
     return this.content as T;
   }
 
   async writeJson(data: Record<string, unknown>): Promise<void> {
     this.content = data;
     this.exists = true;
+    await delayPromise(1);
+    return Promise.resolve();
   }
 }
 

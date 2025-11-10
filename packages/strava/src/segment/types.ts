@@ -49,5 +49,5 @@ export type Base = Partial<{
 export type CacheFile = {
   description?: string;
   lastModified?: ISOTzDate;
-  segments: Record<string, CacheEntry>; // Keyed by segment ID as string
+  segments: Record<Api.Schema.SegmentId, CacheEntry>; // Keyed by segment ID as string
 };
