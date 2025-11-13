@@ -133,17 +133,17 @@ export class KmlMain {
     this.writer = await fsFile.writer();
 
     try {
-      await this.header();
+      await this.#header();
 
       if (this.opts.type) {
-        await this.addActivities(ctx, activities);
+        await this.#addActivities(ctx, activities);
       }
 
       if (this.opts.segments) {
         await this.addSegments(segments);
       }
 
-      await this.footer();
+      await this.#footer();
       await this.writer.close();
 
       ctx.log.verbose.text('Wrote').fs(file).ewt(m0);
@@ -155,29 +155,29 @@ export class KmlMain {
     }
   }
 
-  private async addActivities(ctx: Ctx.Context, activities: Activity[]): Promise<void> {
+  async #addActivities(ctx: Ctx.Context, activities: Activity[]): Promise<void> {
     if (activities && activities.length) {
-      const dateString = this._dateString();
+      const dateString = this.#dateString();
 
       const indent = 2;
-      this.writeln(
+      this.#writeln(
         indent,
         '<Folder><name>Activities' + (dateString ? ' ' + dateString : '') + '</name><open>1</open>',
       );
 
       for (const activity of activities) {
         if (activity.hasKmlData()) {
-          this.outputActivity(ctx, indent + 1, activity);
+          await this.outputActivity(ctx, indent + 1, activity);
         }
         await this.flush();
       }
 
-      this.writeln(indent, '</Folder>');
+      this.#writeln(indent, '</Folder>');
       await this.flush();
     }
   }
 
-  private _dateString(): string {
+  #dateString(): string {
     if (this.opts.date && this.opts.date.hasRanges()) {
       const ad: string[] = [];
       this.opts.date.ranges.forEach((range) => {
@@ -247,14 +247,14 @@ export class KmlMain {
     state?: string,
   ): void {
     let title = 'Segments';
-    const dateString = this._dateString();
+    const dateString = this.#dateString();
     if (country && state) {
       title += ' for ' + state + ', ' + country;
     } else if (country) {
       title += ' for ' + country;
     }
-    this.writeln(indent, '<Folder><name>' + title + '</name><open>1</open>');
-    this.writeln(
+    this.#writeln(indent, '<Folder><name>' + title + '</name><open>1</open>');
+    this.#writeln(
       indent + 1,
       '<description>Efforts for ' + (dateString ? ' ' + dateString : '') + '</description>',
     );
@@ -263,7 +263,7 @@ export class KmlMain {
         this.#outputSegment(indent + 2, segment);
       }
     });
-    this.writeln(indent, '</Folder>');
+    this.#writeln(indent, '</Folder>');
   }
 
   private getSegmentRegionList(segments: SegmentData[]): Record<string, Record<string, boolean>> {
@@ -312,14 +312,15 @@ export class KmlMain {
       styleName = activity.type;
     }
 
+    const description = await this.#buildActivityDescription(ctx, activity);
     const params: PlacemarkParams = {
       placemarkId: 'StravaTrack' + ++this.trackIndex,
       name: t0 + ' - ' + escapeHtml(activity.name),
-      description: await this.#buildActivityDescription(ctx, activity),
+      description: description,
       styleName: styleName,
       coordinates: activity.coordinates,
     };
-    this.placemark(indent, params);
+    this.#placemark(indent, params);
 
     // Output lap markers if laps are enabled and available
     if (this.opts.laps && 'laps' in activity.data && _.isArray(activity.data.laps)) {
@@ -409,7 +410,7 @@ export class KmlMain {
       styleName: 'Segment',
       coordinates: segment.coordinates,
     };
-    this.placemark(indent, params);
+    this.#placemark(indent, params);
   }
 
   #buildSegmentDescription(_segment: SegmentData) {
@@ -417,28 +418,31 @@ export class KmlMain {
   }
 
   #addLineStyle(name: string, style: Kml.LineStyle): void {
-    this.write(2, '<Style id="StravaLineStyle' + name + '">\n');
-    this.write(
+    this.#write(2, '<Style id="StravaLineStyle' + name + '">\n');
+    this.#write(
       3,
       '<LineStyle><color>' + style.color + '</color><width>' + style.width +
         '</width></LineStyle>\n',
     );
-    this.write(3, '<PolyStyle><color>' + style.color + '</color></PolyStyle>\n');
-    this.write(2, '</Style>\n');
+    this.#write(3, '<PolyStyle><color>' + style.color + '</color></PolyStyle>\n');
+    this.#write(2, '</Style>\n');
   }
 
   #addLapMarkerStyle(): void {
-    this.write(2, '<Style id="LapMarker">\n');
-    this.write(3, '<IconStyle>\n');
-    this.write(4, '<scale>0.6</scale>\n');
-    this.write(4, '<Icon>\n');
-    this.write(5, '<href>http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png</href>\n');
-    this.write(4, '</Icon>\n');
-    this.write(3, '</IconStyle>\n');
-    this.write(3, '<LabelStyle>\n');
-    this.write(4, '<scale>0</scale>\n'); // Hide label by default
-    this.write(3, '</LabelStyle>\n');
-    this.write(2, '</Style>\n');
+    this.#write(2, '<Style id="LapMarker">\n');
+    this.#write(3, '<IconStyle>\n');
+    this.#write(4, '<scale>0.6</scale>\n');
+    this.#write(4, '<Icon>\n');
+    this.#write(
+      5,
+      '<href>http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png</href>\n',
+    );
+    this.#write(4, '</Icon>\n');
+    this.#write(3, '</IconStyle>\n');
+    this.#write(3, '<LabelStyle>\n');
+    this.#write(4, '<scale>0</scale>\n'); // Hide label by default
+    this.#write(3, '</LabelStyle>\n');
+    this.#write(2, '</Style>\n');
   }
 
   /**
@@ -472,7 +476,7 @@ export class KmlMain {
       const startIndex = lap.start_index;
       if (startIndex >= 0 && startIndex < coords.length) {
         const coord = coords[startIndex];
-        this._outputLapPoint(indent, index + 1, coord);
+        this.#outputLapPoint(indent, index + 1, coord);
       }
     });
   }
@@ -488,37 +492,37 @@ export class KmlMain {
    * @param lapNumber Lap number for the label (e.g., 1 for "Lap 1")
    * @param coord Coordinate as [lat, lng] array
    */
-  private _outputLapPoint(indent: number, lapNumber: number, coord: Kml.Coord): void {
-    this.writeln(indent, '<Placemark id="LapMarker' + ++this.trackIndex + '">');
-    this.writeln(indent + 1, '<name>Lap ' + lapNumber + '</name>');
-    this.writeln(indent + 1, '<visibility>1</visibility>');
-    this.writeln(indent + 1, '<styleUrl>#LapMarker</styleUrl>');
-    this.writeln(indent + 1, '<Point>');
-    this.writeln(indent + 2, '<coordinates>' + coord[1] + ',' + coord[0] + ',0</coordinates>');
-    this.writeln(indent + 1, '</Point>');
-    this.writeln(indent, '</Placemark>');
+  #outputLapPoint(indent: number, lapNumber: number, coord: Kml.Coord): void {
+    this.#writeln(indent, '<Placemark id="LapMarker' + ++this.trackIndex + '">');
+    this.#writeln(indent + 1, '<name>Lap ' + lapNumber + '</name>');
+    this.#writeln(indent + 1, '<visibility>1</visibility>');
+    this.#writeln(indent + 1, '<styleUrl>#LapMarker</styleUrl>');
+    this.#writeln(indent + 1, '<Point>');
+    this.#writeln(indent + 2, '<coordinates>' + coord[1] + ',' + coord[0] + ',0</coordinates>');
+    this.#writeln(indent + 1, '</Point>');
+    this.#writeln(indent, '</Placemark>');
   }
 
-  private placemark(indent: number, params: PlacemarkParams): void {
-    this.writeln(indent, '<Placemark id="' + params.placemarkId + '">');
-    this.writeln(indent + 1, '<name>' + params.name + '</name>');
+  #placemark(indent: number, params: PlacemarkParams): void {
+    this.#writeln(indent, '<Placemark id="' + params.placemarkId + '">');
+    this.#writeln(indent + 1, '<name>' + params.name + '</name>');
     if (params.description) {
-      this.writeln(indent + 1, '<description>' + params.description + '</description>');
+      this.#writeln(indent + 1, '<description>' + params.description + '</description>');
     }
 
-    this.writeln(indent + 1, '<visibility>1</visibility>');
-    this.writeln(indent + 1, '<styleUrl>#StravaLineStyle' + params.styleName + '</styleUrl>');
-    this.writeln(indent + 1, '<LineString>');
-    this.writeln(indent + 2, '<tessellate>1</tessellate>');
+    this.#writeln(indent + 1, '<visibility>1</visibility>');
+    this.#writeln(indent + 1, '<styleUrl>#StravaLineStyle' + params.styleName + '</styleUrl>');
+    this.#writeln(indent + 1, '<LineString>');
+    this.#writeln(indent + 2, '<tessellate>1</tessellate>');
     if (params.coordinates && params.coordinates.length) {
-      this.writeln(indent + 2, '<coordinates>');
+      this.#writeln(indent + 2, '<coordinates>');
       params.coordinates.forEach((coord) => {
-        this.write(0, '' + [coord[1], coord[0], 0].join(',') + ' ');
+        this.#write(0, '' + [coord[1], coord[0], 0].join(',') + ' ');
       });
-      this.writeln(indent + 2, '</coordinates>');
+      this.#writeln(indent + 2, '</coordinates>');
     }
-    this.writeln(indent + 1, '</LineString>');
-    this.writeln(indent, '</Placemark>');
+    this.#writeln(indent + 1, '</LineString>');
+    this.#writeln(indent, '</Placemark>');
   }
 
   /**
@@ -532,15 +536,15 @@ export class KmlMain {
    *
    * All content is buffered and flushed after header generation.
    */
-  private async header(): Promise<void> {
-    this.write(0, '<?xml version="1.0" encoding="UTF-8"?>\n');
-    this.writeln(
+  async #header(): Promise<void> {
+    this.#write(0, '<?xml version="1.0" encoding="UTF-8"?>\n');
+    this.#writeln(
       0,
       '<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">',
     );
-    this.writeln(1, '<Document>');
-    this.writeln(2, '<name>Strava Activities</name>');
-    this.writeln(2, '<open>1</open>');
+    this.#writeln(1, '<Document>');
+    this.#writeln(2, '<name>Strava Activities</name>');
+    this.#writeln(2, '<open>1</open>');
     Object.keys(this.lineStyles).forEach((name) => {
       this.#addLineStyle(name, this.lineStyles[name]);
     });
@@ -557,12 +561,12 @@ export class KmlMain {
    * Closes the Document and kml elements, then flushes the buffer to ensure
    * all content is written to the file.
    */
-  private async footer(): Promise<void> {
-    this.write(1, '</Document>\n</kml>\n');
+  async #footer(): Promise<void> {
+    this.#write(1, '</Document>\n</kml>\n');
     await this.flush();
   }
 
-  private write(indent: string | number, s: string): void {
+  #write(indent: string | number, s: string): void {
     if (_.isString(indent)) {
       this.buffer += s;
     } else {
@@ -571,7 +575,7 @@ export class KmlMain {
     }
   }
 
-  private writeln(indent: string | number, s: string): void {
+  #writeln(indent: string | number, s: string): void {
     if (_.isString(indent)) {
       this.buffer += s + '\n';
     } else {
@@ -589,7 +593,7 @@ export class KmlMain {
    * all buffered content is written to the output file.
    */
   public async flush(): Promise<void> {
-    await this._flush();
+    await this.#flush();
   }
 
   /**
@@ -598,7 +602,7 @@ export class KmlMain {
    * Writes the current buffer contents to the FileSpecWriter and clears the buffer.
    * Uses buffering for better write performance when generating large KML files.
    */
-  private async _flush(): Promise<void> {
+  async #flush(): Promise<void> {
     if (this.writer && this.buffer) {
       const content = this.buffer;
       this.buffer = '';

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.0-alpha.6] - 2025-11-13
+
+- fixed non-awaited async call
+
 ## [2.0.0-alpha.5] - 2025-11-13
 
 - Cleaning up generics, and making a mess
