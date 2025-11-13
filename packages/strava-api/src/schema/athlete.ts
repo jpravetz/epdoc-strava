@@ -1,7 +1,13 @@
 import type { ISODate } from '@epdoc/datetime';
 import type { ActivityId } from './activity.ts';
 import type { SummaryGear } from './gear.ts';
-import type { ResourceStateType, SexType, SportType, StravaLongInt, UnitSystemType } from './types.ts';
+import type {
+  ResourceStateType,
+  SexType,
+  SportType,
+  StravaLongInt,
+  UnitSystemType,
+} from './types.ts';
 
 export interface SummaryClub {
   id: StravaLongInt;

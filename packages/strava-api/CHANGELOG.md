@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.0-alpha.7] - 2025-11-13
+
+- Simplified use of generics in strava-api
+
 ## [2.0.0-alpha.6] - 2025-11-09
 
 - Changed StravaId to StravaLontInt

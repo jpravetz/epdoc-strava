@@ -1,7 +1,7 @@
 {
-  "$schema": "https://raw.githubusercontent.com/epdoc/tools/master/packages/launchgen/schemas/launch.schema.json",
+  "$schema": "https://raw.githubusercontent.com/epdoc/tools/master/packages/launchgen/schemas/v2/launch.schema.json",
   "launch": {
-    "groups": [],
+    "groups": {},
     "port": 9229,
     "console": "internalConsole",
     "excludes": [

@@ -1,18 +1,19 @@
 # @epdoc/strava-api
 
-This package provides a Deno TypeScript client for interacting with the Strava API. It handles authentication,
-token management, and provides methods for accessing various Strava resources such as athlete data,
-activities, and segments.
+This package provides a Deno TypeScript client for interacting with the Strava API. It handles
+authentication, token management, and provides methods for accessing various Strava resources such
+as athlete data, activities, and segments.
 
 ## Features
 
-- **OAuth2 Authentication:** Implements the Strava OAuth2 authorization flow, including web-based user consent
-  and token exchange.
-- **Automatic Token Refresh:** Automatically refreshes access tokens using refresh tokens when they expire.
-- **Credential Storage:** Persists authentication tokens to a local file (`~/.strava/credentials.json` by
-  default) for seamless re-authentication.
-- **API Endpoints:** Provides methods to interact with key Strava API endpoints (e.g., get athlete data,
-  activities, segments).
+- **OAuth2 Authentication:** Implements the Strava OAuth2 authorization flow, including web-based
+  user consent and token exchange.
+- **Automatic Token Refresh:** Automatically refreshes access tokens using refresh tokens when they
+  expire.
+- **Credential Storage:** Persists authentication tokens to a local file
+  (`~/.strava/credentials.json` by default) for seamless re-authentication.
+- **API Endpoints:** Provides methods to interact with key Strava API endpoints (e.g., get athlete
+  data, activities, segments).
 
 ## Prerequisites
 
@@ -20,11 +21,11 @@ To use this package, you must have:
 
 1. **Strava API Application:** Register an application on the
    [Strava Developers website](https://developers.strava.com/docs/getting-started/#api-application).
-2. **Client ID and Client Secret:** Obtain your application's Client ID and Client Secret from your Strava API
-   application settings.
+2. **Client ID and Client Secret:** Obtain your application's Client ID and Client Secret from your
+   Strava API application settings.
 3. **Redirect URI:** Configure a Redirect URI for your application. For local development and the
-   authentication flow implemented in this package, `http://localhost:3000/token` is used. Ensure this is
-   added to your Strava application settings.
+   authentication flow implemented in this package, `http://localhost:3000/token` is used. Ensure
+   this is added to your Strava application settings.
 
 ## Installation
 
@@ -46,8 +47,8 @@ deno add jsr:@jpravetz/strava-api
 
 ## Usage
 
-Here’s a complete example of how to initialize the `StravaApi` client, authenticate, and make a simple API
-call to get athlete data.
+Here’s a complete example of how to initialize the `StravaApi` client, authenticate, and make a
+simple API call to get athlete data.
 
 ```typescript
 import { Api as StravaApi } from '@jpravetz/strava-api';
@@ -107,18 +108,19 @@ try {
 
 ### Authentication Flow
 
-When you call `api.init(ctx)`, the client checks for existing, valid credentials in the file you specified
-(e.g., `~/.strava/credentials.json`).
+When you call `api.init(ctx)`, the client checks for existing, valid credentials in the file you
+specified (e.g., `~/.strava/credentials.json`).
 
 - If valid tokens are found, they are used for authentication.
-- If the tokens are expired, the client will automatically use the refresh token to get a new access token.
-- If no credentials or refresh token are available, a local web server will start on `http://localhost:3000`,
-  and your default browser will open the Strava authorization page. After you grant permission, Strava
-  redirects back to the local server, which captures the authorization code, exchanges it for tokens, and
-  saves them to your credentials file for future use.
+- If the tokens are expired, the client will automatically use the refresh token to get a new access
+  token.
+- If no credentials or refresh token are available, a local web server will start on
+  `http://localhost:3000`, and your default browser will open the Strava authorization page. After
+  you grant permission, Strava redirects back to the local server, which captures the authorization
+  code, exchanges it for tokens, and saves them to your credentials file for future use.
 
-This process ensures a seamless authentication experience, whether it's the first time you're running the
-application or you're re-authenticating after a token has expired.
+This process ensures a seamless authentication experience, whether it's the first time you're
+running the application or you're re-authenticating after a token has expired.
 
 ## Project Structure
 
@@ -165,8 +167,8 @@ deno lint
 
 ## Schema Definitions
 
-The JSON object schemas for data returned by the Strava API are defined in the `src/schema` directory. These
-definitions are used for type safety and validation within the package.
+The JSON object schemas for data returned by the Strava API are defined in the `src/schema`
+directory. These definitions are used for type safety and validation within the package.
 
 - `/src/schema/activity.ts`
 - `/src/schema/athlete.ts`
@@ -178,11 +180,12 @@ definitions are used for type safety and validation within the package.
 - `/src/schema/zones.ts`
 
 These schemas should be reviewed against the
-[official Strava API documentation](https://developers.strava.com/docs/reference/) to ensure their accuracy
-and completeness.
+[official Strava API documentation](https://developers.strava.com/docs/reference/) to ensure their
+accuracy and completeness.
 
 ## Extending Functionality
 
-This package also defines classes for various Strava objects (e.g., `Activity`, `Segment`) where additional
-functionality or data enrichment is expected. For instance, an `Activity` class might include methods to fetch
-associated starred segments or detailed stream data, building upon the raw API responses.
+This package also defines classes for various Strava objects (e.g., `Activity`, `Segment`) where
+additional functionality or data enrichment is expected. For instance, an `Activity` class might
+include methods to fetch associated starred segments or detailed stream data, building upon the raw
+API responses.

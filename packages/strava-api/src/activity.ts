@@ -2,9 +2,19 @@ import type { ISODate } from '@epdoc/datetime';
 import { DateEx } from '@epdoc/datetime'; // Import DateEx
 import type { Seconds } from '@epdoc/duration';
 import { _, type CompareResult, type Dict, type Integer } from '@epdoc/type';
-import type * as Schema from '../schema/mod.ts';
-import type { Coord, Kilometres, Metres } from '../types.ts';
-import type { Filter, SegmentData, SegmentEffort, StarredSegmentDict } from './types.ts'; // Corrected import for new types
+import { assert } from '@std/assert';
+import type { Api } from './api.ts';
+import type * as Ctx from './context.ts';
+import type * as Schema from './schema/mod.ts';
+import type {
+  ActivityFilter,
+  Coord,
+  Kilometres,
+  Metres,
+  SegmentData,
+  SegmentEffort,
+  StarredSegmentDict,
+} from './types.ts';
 
 const REGEX = {
   noKmlData: /^(Workout|Yoga|Weight Training)$/i,
@@ -18,6 +28,8 @@ const REGEX = {
  */
 export class Activity {
   public data: Schema.SummaryActivity | Schema.DetailedActivity;
+  api?: Api;
+  #detailed = false;
   private _coordinates: Coord[] = []; // will contain the latlng coordinates for the activity
   #segments: SegmentData[] = []; // Will be declared here
   #aliases?: Record<string, string>; // Private property for aliases
@@ -265,6 +277,35 @@ export class Activity {
   //   });
   // }
 
+  async getCoordinates(ctx: Ctx.IContext): Promise<void> {
+    assert(this.api, 'api not set');
+    try {
+      const coords = await this.api.getStreamCoords(
+        ctx,
+        'activities' as Schema.StreamKeyType,
+        this.data.id,
+        this.data.name,
+      );
+      if (coords && coords.length > 0) {
+        this._coordinates = coords;
+      }
+    } catch (_e) {
+      // const err = _.asError(_e);
+      ctx.log.warn.text('Failed to fetch coordinates for activity').value(this.name).emit();
+    }
+  }
+
+  async getDetailed(ctx: Ctx.IContext): Promise<void> {
+    assert(this.api, 'api not set');
+    try {
+      const detailedActivity = await this.api.getDetailedActivity(ctx, this.data);
+      Object.assign(this.data, detailedActivity);
+      this.#detailed = true;
+    } catch (_e) {
+      ctx.log.warn.warn('Failed to fetch detailed data for').value(this.name).emit();
+    }
+  }
+
   /**
    * Adds a detailed segment to the activity.
    *
@@ -294,7 +335,7 @@ export class Activity {
    * @param filter The filter to apply.
    * @returns `true` if the activity should be included, `false` otherwise.
    */
-  public include(filter: Filter): boolean { // Updated type to Filter
+  public include(filter: ActivityFilter): boolean { // Updated type to Filter
     if (
       (!filter.commuteOnly && !filter.nonCommuteOnly) ||
       (filter.commuteOnly && this.commute) ||
@@ -326,6 +367,7 @@ export class Activity {
    * @returns Number of starred segment efforts found and attached
    */
   attachStarredSegments(starredSegments: StarredSegmentDict): Integer {
+    assert(this.#detailed, 'DetailedActivity data has not been downloaded');
     // Check if activity has segment_efforts
     if (!('segment_efforts' in this.data) || !_.isArray(this.data.segment_efforts)) {
       return 0;
@@ -366,7 +408,7 @@ export class Activity {
    * @param b The second activity.
    * @returns -1 if `a` is before `b`, 1 if `a` is after `b`, and 0 if they are at the same time.
    */
-  public static compareStartDate(a: Activity, b: Activity): CompareResult {
+  public static compareStartDate(a: { startDate: Date }, b: { startDate: Date }): CompareResult {
     if (a.startDate < b.startDate) {
       return -1;
     }

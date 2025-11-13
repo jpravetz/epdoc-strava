@@ -1,5 +1,6 @@
 import type * as FS from '@epdoc/fs/fs';
 import { _, type Dict } from '@epdoc/type';
+import { Activity } from './activity.ts';
 import type { StravaCreds } from './auth/creds.ts';
 import * as Auth from './auth/mod.ts';
 import type * as Ctx from './context.ts';
@@ -65,8 +66,8 @@ export type TokenUrlOpts = {
  * }
  * ```
  */
-export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
-  #auth: Auth.Service<M, L>;
+export class Api {
+  #auth: Auth.Service;
 
   /**
    * Constructs a new `StravaApi` instance.
@@ -97,7 +98,10 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
    * @param opts.force If `true`, the web-based authentication flow will be forced, even if a valid token already exists.
    * @returns A promise that resolves to `true` if authentication is successful, otherwise `false`.
    */
-  async init(ctx: Ctx.IContext<M, L>, opts: { force: boolean } = { force: false }): Promise<boolean> {
+  async init(
+    ctx: Ctx.IContext,
+    opts: { force: boolean } = { force: false },
+  ): Promise<boolean> {
     return await this.#auth.init(ctx, opts);
   }
 
@@ -111,7 +115,7 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
     return this.#auth.creds;
   }
 
-  async #refreshToken(ctx: Ctx.IContext<M, L>, force = false): Promise<void> {
+  async #refreshToken(ctx: Ctx.IContext, force = false): Promise<void> {
     await this.#auth.refreshToken(ctx, force);
   }
 
@@ -126,7 +130,7 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
    * @returns A promise that resolves to the athlete's detailed profile.
    */
   public async getAthlete(
-    ctx: Ctx.IContext<M, L>,
+    ctx: Ctx.IContext,
     athleteId?: Schema.AthleteId,
   ): Promise<Schema.DetailedAthlete> {
     await this.#refreshToken(ctx);
@@ -168,9 +172,9 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
    * @returns A promise that resolves to an array of activities.
    */
   public async getActivities(
-    ctx: Ctx.IContext<M, L>,
+    ctx: Ctx.IContext,
     options: Strava.ActivityOpts,
-  ): Promise<Schema.SummaryActivity[]> {
+  ): Promise<Activity[]> {
     await this.#refreshToken(ctx);
     const url = new URL(STRAVA_URL.activities);
     // if (_.isPosInteger(options.athleteId)) {
@@ -194,17 +198,24 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
     try {
       const resp = await fetch(url.toString(), reqOpts);
       if (!resp.ok) {
-        ctx.log.error.error('Failed to get activities:').error(resp.statusText).path(url.toString()).emit();
+        ctx.log.error.error('Failed to get activities:').error(resp.statusText).path(url.toString())
+          .emit();
         throw new Error(`Failed to get activities: ${resp.statusText}`);
       }
 
       const data: unknown = await resp.json();
 
       if (isSummaryActivityArray(data)) {
-        return data;
+        return data.map((item) => {
+          const activity = new Activity(item);
+          activity.api = this;
+          return activity;
+        });
       }
 
-      throw new Error('Invalid activities return value: Expected an array of SummaryActivity objects.');
+      throw new Error(
+        'Invalid activities return value: Expected an array of SummaryActivity objects.',
+      );
     } catch (error: unknown) {
       const err = _.asError(error);
       err.message = 'Activities - ' + err.message;
@@ -222,7 +233,7 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
    * @param page The page number to retrieve. Defaults to 1.
    */
   public async getStarredSegments(
-    ctx: Ctx.IContext<M, L>,
+    ctx: Ctx.IContext,
     accum: Schema.SummarySegment[],
     page: number = 1,
   ): Promise<void> {
@@ -250,7 +261,8 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
     const data: unknown = await resp.json();
 
     if (isSummarySegmentArray(data)) {
-      ctx.log.info.h2('Retrieved').count(data.length).h2('starred segments for page').value(page).ewt(m0);
+      ctx.log.info.h2('Retrieved').count(data.length).h2('starred segments for page').value(page)
+        .ewt(m0);
       data.forEach((item) => {
         accum.push(item);
       });
@@ -275,7 +287,7 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
    * @returns A promise that resolves to an array of coordinates, where each coordinate is a [latitude, longitude] pair.
    */
   public async getStreamCoords(
-    ctx: Ctx.IContext<M, L>,
+    ctx: Ctx.IContext,
     source: Schema.StreamKeyType,
     objId: Schema.ActivityId | Schema.SegmentId,
     name: string,
@@ -326,7 +338,7 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
    * @returns A promise that resolves to the detailed representation of the activity.
    */
   public async getDetailedActivity(
-    ctx: Ctx.IContext<M, L>,
+    ctx: Ctx.IContext,
     activity: Schema.SummaryActivity,
   ): Promise<Schema.DetailedActivity> {
     await this.#refreshToken(ctx);
@@ -344,7 +356,9 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
       const resp = await fetch(url, reqOpts);
       if (!resp.ok) {
         const errorText = await resp.text();
-        throw new Error(`Failed to get detailed activity: ${resp.status} ${resp.statusText} - ${errorText}`);
+        throw new Error(
+          `Failed to get detailed activity: ${resp.status} ${resp.statusText} - ${errorText}`,
+        );
       }
 
       const data: unknown = await resp.json();
@@ -374,7 +388,7 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
    * are arrays of the stream data.
    */
   public async getStreams(
-    ctx: Ctx.IContext<M, L>,
+    ctx: Ctx.IContext,
     source: Schema.StreamKeyType,
     objId: Schema.ActivityId | Schema.SegmentId,
     options: Strava.Query,
@@ -430,7 +444,7 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
    * @returns A promise that resolves to the segment data.
    */
   public async getSegment(
-    ctx: Ctx.IContext<M, L>,
+    ctx: Ctx.IContext,
     segmentId: Schema.SegmentId,
   ): Promise<Schema.SummarySegment> {
     await this.#refreshToken(ctx);
@@ -468,7 +482,7 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
    * @returns A promise that resolves to an array of segment efforts.
    */
   public async getSegmentEfforts(
-    ctx: Ctx.IContext<M, L>,
+    ctx: Ctx.IContext,
     segmentId: Schema.SegmentId,
     params: Strava.Query,
   ): Promise<Schema.DetailedSegmentEffort[]> {
@@ -492,7 +506,9 @@ export class StravaApi<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
     const resp = await fetch(url.toString(), reqOpts);
     if (!resp.ok) {
       const errorText = await resp.text();
-      throw new Error(`Failed to get segment efforts: ${resp.status} ${resp.statusText} - ${errorText}`);
+      throw new Error(
+        `Failed to get segment efforts: ${resp.status} ${resp.statusText} - ${errorText}`,
+      );
     }
 
     const data: unknown = await resp.json();

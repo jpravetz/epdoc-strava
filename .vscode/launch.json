@@ -24,7 +24,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "strava: test/segment/file.test.ts",
+      "name": "strava: test/segment-utils.test.ts",
       "cwd": "${workspaceFolder}",
       "attachSimplePort": 9229,
       "runtimeExecutable": "/Users/jpravetz/.deno/bin/deno",
@@ -35,7 +35,47 @@
         "test",
         "-A",
         "--inspect-brk",
-        "${workspaceFolder}/packages/strava/test/segment/file.test.ts"
+        "${workspaceFolder}/packages/strava/test/segment-utils.test.ts"
+      ],
+      "presentation": {
+        "group": "strava"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "strava: test/segment-base.test.ts",
+      "cwd": "${workspaceFolder}",
+      "attachSimplePort": 9229,
+      "runtimeExecutable": "/Users/jpravetz/.deno/bin/deno",
+      "env": {
+        "LAUNCHGEN": "true"
+      },
+      "runtimeArgs": [
+        "test",
+        "-A",
+        "--inspect-brk",
+        "${workspaceFolder}/packages/strava/test/segment-base.test.ts"
+      ],
+      "presentation": {
+        "group": "strava"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "strava: test/segment-data.test.ts",
+      "cwd": "${workspaceFolder}",
+      "attachSimplePort": 9229,
+      "runtimeExecutable": "/Users/jpravetz/.deno/bin/deno",
+      "env": {
+        "LAUNCHGEN": "true"
+      },
+      "runtimeArgs": [
+        "test",
+        "-A",
+        "--inspect-brk",
+        "${workspaceFolder}/packages/strava/test/segment-data.test.ts"
       ],
       "presentation": {
         "group": "strava"
@@ -111,7 +151,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "strava: main kml -d 20251001- -o /Users/jpravetz/dev/@epdoc/strava/tmp/Activities.kml",
+      "name": "strava: main kml --help",
       "program": "${workspaceFolder}/packages/strava/./main.ts",
       "cwd": "${workspaceFolder}",
       "attachSimplePort": 9229,
@@ -123,10 +163,9 @@
       ],
       "args": [
         "kml",
-        "-d",
-        "20251001-",
         "-o",
-        "/Users/jpravetz/dev/@epdoc/strava/tmp/Activities.kml"
+        "/Users/jpravetz/dev/@epdoc/strava/tmp/Activities.kml",
+        "--help"
       ],
       "env": {
         "LAUNCHGEN": "true"
@@ -138,7 +177,180 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "strava: main pdf -d 20251104- -o /Users/jpravetz/dev/@epdoc/strava/tmp/Activities.xml",
+      "name": "strava: main kml -d 20251012",
+      "program": "${workspaceFolder}/packages/strava/./main.ts",
+      "cwd": "${workspaceFolder}",
+      "attachSimplePort": 9229,
+      "runtimeExecutable": "/Users/jpravetz/.deno/bin/deno",
+      "runtimeArgs": [
+        "run",
+        "-A",
+        "--inspect-brk"
+      ],
+      "args": [
+        "kml",
+        "-o",
+        "/Users/jpravetz/dev/@epdoc/strava/tmp/Activities.kml",
+        "-d",
+        "20251012"
+      ],
+      "env": {
+        "LAUNCHGEN": "true"
+      },
+      "presentation": {
+        "group": "strava"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "strava: main kml -d 20251012 -m",
+      "program": "${workspaceFolder}/packages/strava/./main.ts",
+      "cwd": "${workspaceFolder}",
+      "attachSimplePort": 9229,
+      "runtimeExecutable": "/Users/jpravetz/.deno/bin/deno",
+      "runtimeArgs": [
+        "run",
+        "-A",
+        "--inspect-brk"
+      ],
+      "args": [
+        "kml",
+        "-o",
+        "/Users/jpravetz/dev/@epdoc/strava/tmp/Activities.kml",
+        "-d",
+        "20251012",
+        "-m"
+      ],
+      "env": {
+        "LAUNCHGEN": "true"
+      },
+      "presentation": {
+        "group": "strava"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "strava: main kml -d 20251012 -mel",
+      "program": "${workspaceFolder}/packages/strava/./main.ts",
+      "cwd": "${workspaceFolder}",
+      "attachSimplePort": 9229,
+      "runtimeExecutable": "/Users/jpravetz/.deno/bin/deno",
+      "runtimeArgs": [
+        "run",
+        "-A",
+        "--inspect-brk"
+      ],
+      "args": [
+        "kml",
+        "-o",
+        "/Users/jpravetz/dev/@epdoc/strava/tmp/Activities.kml",
+        "-d",
+        "20251012",
+        "-mel"
+      ],
+      "env": {
+        "LAUNCHGEN": "true"
+      },
+      "presentation": {
+        "group": "strava"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "strava: main kml -d 20251012 -mel -t Ride",
+      "program": "${workspaceFolder}/packages/strava/./main.ts",
+      "cwd": "${workspaceFolder}",
+      "attachSimplePort": 9229,
+      "runtimeExecutable": "/Users/jpravetz/.deno/bin/deno",
+      "runtimeArgs": [
+        "run",
+        "-A",
+        "--inspect-brk"
+      ],
+      "args": [
+        "kml",
+        "-o",
+        "/Users/jpravetz/dev/@epdoc/strava/tmp/Activities.kml",
+        "-d",
+        "20251012",
+        "-mel",
+        "-t",
+        "Ride"
+      ],
+      "env": {
+        "LAUNCHGEN": "true"
+      },
+      "presentation": {
+        "group": "strava"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "strava: main kml -d 20251012 -mel -t Walk",
+      "program": "${workspaceFolder}/packages/strava/./main.ts",
+      "cwd": "${workspaceFolder}",
+      "attachSimplePort": 9229,
+      "runtimeExecutable": "/Users/jpravetz/.deno/bin/deno",
+      "runtimeArgs": [
+        "run",
+        "-A",
+        "--inspect-brk"
+      ],
+      "args": [
+        "kml",
+        "-o",
+        "/Users/jpravetz/dev/@epdoc/strava/tmp/Activities.kml",
+        "-d",
+        "20251012",
+        "-mel",
+        "-t",
+        "Walk"
+      ],
+      "env": {
+        "LAUNCHGEN": "true"
+      },
+      "presentation": {
+        "group": "strava"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "strava: main kml -d 20251012 -mel -t Hike",
+      "program": "${workspaceFolder}/packages/strava/./main.ts",
+      "cwd": "${workspaceFolder}",
+      "attachSimplePort": 9229,
+      "runtimeExecutable": "/Users/jpravetz/.deno/bin/deno",
+      "runtimeArgs": [
+        "run",
+        "-A",
+        "--inspect-brk"
+      ],
+      "args": [
+        "kml",
+        "-o",
+        "/Users/jpravetz/dev/@epdoc/strava/tmp/Activities.kml",
+        "-d",
+        "20251012",
+        "-mel",
+        "-t",
+        "Hike"
+      ],
+      "env": {
+        "LAUNCHGEN": "true"
+      },
+      "presentation": {
+        "group": "strava"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "strava: main pdf --help",
       "program": "${workspaceFolder}/packages/strava/./main.ts",
       "cwd": "${workspaceFolder}",
       "attachSimplePort": 9229,
@@ -150,10 +362,36 @@
       ],
       "args": [
         "pdf",
-        "-d",
-        "20251104-",
         "-o",
-        "/Users/jpravetz/dev/@epdoc/strava/tmp/Activities.xml"
+        "/Users/jpravetz/dev/@epdoc/strava/tmp/Activities.xml",
+        "--help"
+      ],
+      "env": {
+        "LAUNCHGEN": "true"
+      },
+      "presentation": {
+        "group": "strava"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "strava: main pdf -d 20251011",
+      "program": "${workspaceFolder}/packages/strava/./main.ts",
+      "cwd": "${workspaceFolder}",
+      "attachSimplePort": 9229,
+      "runtimeExecutable": "/Users/jpravetz/.deno/bin/deno",
+      "runtimeArgs": [
+        "run",
+        "-A",
+        "--inspect-brk"
+      ],
+      "args": [
+        "pdf",
+        "-o",
+        "/Users/jpravetz/dev/@epdoc/strava/tmp/Activities.xml",
+        "-d",
+        "20251011"
       ],
       "env": {
         "LAUNCHGEN": "true"
