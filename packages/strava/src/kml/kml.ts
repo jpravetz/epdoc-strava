@@ -323,7 +323,10 @@ export class KmlMain {
     this.#placemark(indent, params);
 
     // Output lap markers if laps are enabled and available
-    if (this.opts.laps && 'laps' in activity.data && _.isArray(activity.data.laps)) {
+    if (
+      this.opts.laps && 'laps' in activity.data && _.isArray(activity.data.laps) &&
+      activity.data.laps.length > 1
+    ) {
       this.#outputLapMarkers(indent, activity);
     }
   }
