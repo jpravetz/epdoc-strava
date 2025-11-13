@@ -1,4 +1,4 @@
-import * as Api from '@jpravetz/strava-api';
+import * as Api from '../../strava-api/src/mod.ts';
 import type * as Ctx from './context.ts';
 export { Api };
 

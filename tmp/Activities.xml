@@ -1,27 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <fields xmlns:xfdf="http://ns.adobe.com/xfdf-transition/">
   <day>
-    <group xfdf:original="2460960">
+    <group xfdf:original="2460987">
       <group xfdf:original="0">
-        <bike>SP1</bike>
-        <dist>24.15</dist>
-        <el>164</el>
-        <t>1.26</t>
+        <bike>Levo17</bike>
+        <dist>27.16</dist>
+        <el>717</el>
+        <t>1.94</t>
         <wh>0</wh>
       </group>
-      <note0>Bike: Hamilton Rail Trail Loop
-Moving: 01:15, Elapsed: 01:25
-So nice to get out on the bike!
-Mid 10's weather.
-Right shoulder lots of pain. 
-Not so fit right now.
-Up Hamilton Rail Trail [20:31]</note0>
-    </group>
-    <group xfdf:original="2460961">
-      <note0>Walk: Bruce Trail and Tea with Marcus and Shannon
-Distance: 2.59 km; Duration: 00:37
-Met Marcus and Shannon for a short walk on the Bruce Trail, followed by tea/coffee.
-Walked 5 km.</note0>
+      <note0>EBike: eVuelta de Ojochal y Piñuela Arriba y Perezoso con John y Paul
+Moving: 01:56, Elapsed: 02:12
+Excellent ride. ECO set to 14%. Tired at end. Paul does San Buenos afterwards
+Biker: avg 128 W, max 447 W, 168 Wh
+Motor: 274 Wh</note0>
+      <wt>105</wt>
     </group>
   </day>
 </fields>

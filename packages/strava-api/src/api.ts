@@ -303,8 +303,6 @@ export class Api<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
     try {
       const resp: Partial<Schema.StreamSet> = await this.getStreams(ctx, source, objId, query);
       if (hasLatLngData(resp)) {
-        ctx.log.info.h2('Get').value(name).h2('Found').count(resp.latlng.data.length)
-          .h2('coordinate').ewt(m0);
         return resp.latlng.data as Strava.Coord[];
       }
       ctx.log.info.h2('Get').value(name).h2('did not contain unknown coordinates').ewt(m0);

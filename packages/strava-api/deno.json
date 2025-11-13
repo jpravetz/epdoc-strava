@@ -7,7 +7,7 @@
     "email": "jpravetz@epdoc.com"
   },
   "license": "MIT",
-  "exports": "./src/mod.ts",
+  "exports": { ".": "./src/mod.ts" },
   "tasks": {
     "test": "deno test -A",
     "lint": "deno lint",

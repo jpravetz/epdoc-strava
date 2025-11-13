@@ -279,6 +279,7 @@ export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
   async getCoordinates(ctx: this['Context']): Promise<void> {
     assert(this.api, 'api not set');
     try {
+      const m0 = ctx.log.mark();
       const coords = await this.api.getStreamCoords(
         ctx,
         'activities' as Schema.StreamKeyType,
@@ -287,6 +288,8 @@ export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
       );
       if (coords && coords.length > 0) {
         this._coordinates = coords;
+        ctx.log.info.h2('Retrieved').count(coords.length)
+          .h2('coordinate').h2('for').value(this.toString()).ewt(m0);
       }
     } catch (_e) {
       // const err = _.asError(_e);
@@ -296,10 +299,15 @@ export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
 
   async getDetailed(ctx: this['Context']): Promise<void> {
     assert(this.api, 'api not set');
+    if (this.#detailed) {
+      return;
+    }
     try {
+      const m0 = ctx.log.mark();
       const detailedActivity = await this.api.getDetailedActivity(ctx, this.data);
-      Object.assign(this.data, detailedActivity);
+      this.data = detailedActivity;
       this.#detailed = true;
+      ctx.log.info.h2('Retrieved detailed activity data for').value(this.toString()).ewt(m0);
     } catch (_e) {
       ctx.log.warn.warn('Failed to fetch detailed data for').value(this.name).emit();
     }
@@ -417,4 +425,3 @@ export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
     return 0;
   }
 }
-
