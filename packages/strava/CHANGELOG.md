@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.0-alpha.5] - 2025-11-13
+
+- Cleaning up generics, and making a mess
+
 ## [2.0.0-alpha.5] - 2025-11-08
 
 ### Added

@@ -1,9 +1,7 @@
 {
-  "$schema": "https://raw.githubusercontent.com/epdoc/tools/master/packages/launchgen/schemas/launch.schema.json",
   "launch": {
-    "groups": [
-      {
-        "id": "test",
+    "groups": {
+      "test": {
         "name": "Tests",
         "console": "internalConsole",
         "includes": [
@@ -15,8 +13,7 @@
           "--inspect-brk"
         ]
       },
-      {
-        "id": ".",
+      ".": {
         "name": "main",
         "console": "internalConsole",
         "program": "./main.ts",
@@ -28,11 +25,45 @@
         "scripts": [
           "",
           "--help",
-          "athlete",
-          "kml -d 20251001- -o /Users/jpravetz/dev/@epdoc/strava/tmp/Activities.kml",
-          "pdf -d 20251104- -o /Users/jpravetz/dev/@epdoc/strava/tmp/Activities.xml"
+          "athlete"
+        ]
+      },
+      "kml": {
+        "name": "main kml",
+        "console": "internalConsole",
+        "program": "./main.ts",
+        "runtimeArgs": [
+          "run",
+          "-A",
+          "--inspect-brk"
+        ],
+        "scriptArgs": "kml -o /Users/jpravetz/dev/@epdoc/strava/tmp/Activities.kml",
+        "scripts": [
+          "--help",
+          "-d 20251012",
+          "-d 20251012 -m",
+          "-d 20251012 -mel",
+          "-d 20251012 -mel -t Ride",
+          "-d 20251012 -mel -t Walk",
+          "-d 20251012 -mel -t Hike"
+        ]
+      },
+      "pdf": {
+        "name": "main pdf",
+        "console": "internalConsole",
+        "program": "./main.ts",
+        "runtimeArgs": [
+          "run",
+          "-A",
+          "--inspect-brk"
+        ],
+        "scriptArgs": "pdf -o /Users/jpravetz/dev/@epdoc/strava/tmp/Activities.xml",
+        "scripts": [
+          "--help",
+          "-d 20251011"
         ]
       }
-    ]
+    },
+    "$schema": "https://raw.githubusercontent.com/epdoc/tools/master/packages/launchgen/schemas/v2/launch.schema.json"
   }
 }

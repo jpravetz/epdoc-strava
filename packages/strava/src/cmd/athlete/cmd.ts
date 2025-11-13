@@ -57,7 +57,10 @@ export class AthleteCmd extends Options.BaseSubCmd {
             { label: 'Country:', value: ctx.app.athlete.country || 'Not specified' },
           ];
 
-          const maxLabelLength = athleteInfo.reduce((max, item) => Math.max(max, item.label.length), 0);
+          const maxLabelLength = athleteInfo.reduce(
+            (max, item) => Math.max(max, item.label.length),
+            0,
+          );
 
           athleteInfo.forEach((item) => {
             ctx.log.info.label(item.label.padEnd(maxLabelLength)).value(item.value).emit();
@@ -76,8 +79,14 @@ export class AthleteCmd extends Options.BaseSubCmd {
               };
             });
 
-            const maxBikeLabelLength = bikeInfo.reduce((max, item) => Math.max(max, item.label.length), 0);
-            const maxBikeIdLength = bikeInfo.reduce((max, item) => Math.max(max, item.id.length), 0);
+            const maxBikeLabelLength = bikeInfo.reduce(
+              (max, item) => Math.max(max, item.label.length),
+              0,
+            );
+            const maxBikeIdLength = bikeInfo.reduce(
+              (max, item) => Math.max(max, item.id.length),
+              0,
+            );
 
             bikeInfo.forEach((item) => {
               ctx.log.info

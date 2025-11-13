@@ -6,7 +6,7 @@ import * as MsgBuilder from '@epdoc/msgbuilder';
 import { _ } from '@epdoc/type';
 import os from 'node:os';
 import { relative } from 'node:path';
-import type { Api } from './dep.ts';
+import type { Activity } from './dep.ts';
 
 const home = os.userInfo().homedir;
 
@@ -15,7 +15,7 @@ export class StravaMsgBuilder extends MsgBuilder.Console.Builder {
     const s = '~/' + relative(home, _.isString(path) ? path : path.path);
     return this.path(s);
   }
-  activity(activity: Api.Activity.Base): this {
+  activity(activity: Activity): this {
     if (activity) {
       this.label('activity').value(activity.toString());
     } else {
@@ -56,3 +56,4 @@ logMgr.msgBuilderFactory = msgBuilderFactory;
 logMgr.init();
 logMgr.threshold = 'info';
 logMgr.show.data = true;
+logMgr.show.time = true;

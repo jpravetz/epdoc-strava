@@ -4,11 +4,9 @@ import * as FS from '@epdoc/fs/fs';
 import { _ } from '@epdoc/type';
 import * as builder from 'xmlbuilder';
 import type * as Ctx from '../context.ts';
-import type { Api } from '../dep.ts';
+import type { Activity } from '../dep.ts';
 import { Fmt, formatMS } from '../fmt.ts';
 import type * as BikeLog from './types.ts';
-
-type Activity = Api.Activity.Base;
 
 const REGEX = {
   moto: /^moto$/i,
@@ -218,7 +216,9 @@ export class Bikelog {
         events: [],
       };
       if (activity.isRide()) {
-        const bike = activity.gearId && this.#opts.bikes ? this.#opts.bikes[activity.gearId] : undefined;
+        const bike = activity.gearId && this.#opts.bikes
+          ? this.#opts.bikes[activity.gearId]
+          : undefined;
         const isMoto: boolean =
           bike && typeof bike === 'object' && 'name' in bike && typeof bike.name === 'string'
             ? REGEX.moto.test(bike.name)
@@ -444,7 +444,11 @@ export class Bikelog {
    * // Creates XML file ready for Adobe Acrobat PDF form import
    * ```
    */
-  public async outputData(ctx: Ctx.Context, filepath: string, stravaActivities: Activity[]): Promise<void> {
+  public async outputData(
+    ctx: Ctx.Context,
+    filepath: string,
+    stravaActivities: Activity[],
+  ): Promise<void> {
     filepath = filepath || 'bikelog.xml';
 
     // Combine activities by day
@@ -497,7 +501,8 @@ export class Bikelog {
       await this.#writer.write(xmlContent);
       await this.#writer.close();
 
-      ctx.log.verbose.text('Wrote').count(xmlContent.length).text('byte').text('to').fs(filepath).ewt(m0);
+      ctx.log.verbose.text('Wrote').count(xmlContent.length).text('byte').text('to').fs(filepath)
+        .ewt(m0);
     } catch (err) {
       if (this.#writer) {
         await this.#writer.close();

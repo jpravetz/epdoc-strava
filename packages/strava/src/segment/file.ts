@@ -31,7 +31,6 @@ export class SegmentFile {
   }
 
   async get(ctx: Ctx.Context, opts: { refresh?: boolean }): Promise<void> {
-    ctx.log.info.h2('Retrieving list of starred segments from server').emit();
     try {
       if (opts.refresh) {
         await this.#getFromServer(ctx);
@@ -40,7 +39,9 @@ export class SegmentFile {
         await this.read(ctx);
       }
     } catch (err) {
-      ctx.log.info.h2(`Error reading starred segments from ${this.#fsFile.path}`).ewt(ctx.log.mark());
+      ctx.log.info.h2(`Error reading starred segments from ${this.#fsFile.path}`).ewt(
+        ctx.log.mark(),
+      );
       ctx.log.info.h2('    ' + (err as Error).message).ewt(ctx.log.mark());
       await this.#getFromServer(ctx);
       await this.write(ctx);
@@ -89,7 +90,7 @@ export class SegmentFile {
           Object.entries(data.segments).map(([key, value]) => [Number(key), value]),
         );
       }
-      ctx.log.info.h2('Read').count(this.#segments.size).h2('starred segment')
+      ctx.log.info.h2('Using').count(this.#segments.size).h2('starred segment')
         .h2('from').fs(this.#fsFile).ewt(m0);
     } else {
       ctx.log.info.h2('File not found').fs(this.#fsFile).ewt(m0);

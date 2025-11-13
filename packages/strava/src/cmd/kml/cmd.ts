@@ -85,14 +85,16 @@ export class KmlCmd extends Options.BaseSubCmd {
       try {
         // Validate required options - show help and exit on validation failure
         if (!kmlOpts.date || !kmlOpts.date.hasRanges()) {
-          ctx.log.error.error('--date is required. Specify date range(s) (e.g., 20240101-20241231)').emit();
+          ctx.log.error.error('--date is required. Specify date range(s) (e.g., 20240101-20241231)')
+            .emit();
           console.error(''); // blank line before help
           this.cmd.outputHelp();
           Deno.exit(1);
         }
 
         if (!kmlOpts.output) {
-          ctx.log.error.error('--output is required. Specify output filename (e.g., -o output.kml)').emit();
+          ctx.log.error.error('--output is required. Specify output filename (e.g., -o output.kml)')
+            .emit();
           console.error(''); // blank line before help
           this.cmd.outputHelp();
           Deno.exit(1);

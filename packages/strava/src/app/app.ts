@@ -5,7 +5,7 @@ import { assert } from '@std/assert/assert';
 import * as BikeLog from '../bikelog/mod.ts';
 import rawConfig from '../config.json' with { type: 'json' };
 import type * as Ctx from '../context.ts';
-import { Api } from '../dep.ts';
+import { type Activity, Api, type StravaApi } from '../dep.ts';
 import * as Kml from '../kml/mod.ts';
 import * as Segment from '../segment/mod.ts';
 import type * as App from './types.ts';
@@ -16,8 +16,19 @@ assert(
   _.isDict(rawConfig) && 'paths' in rawConfig && _.isDict(rawConfig.paths),
   'Invalid application configuration',
 );
-const lessRaw = _.deepCopy(rawConfig, { replace: { 'HOME': home }, pre: '${', post: '}' }) as App.ConfigFile;
+const lessRaw = _.deepCopy(rawConfig, {
+  replace: { 'HOME': home },
+  pre: '${',
+  post: '}',
+}) as App.ConfigFile;
 const configPaths = lessRaw.paths;
+
+type GetActivitiesOpts = {
+  detailed?: boolean;
+  coordinates?: boolean;
+  starredSegments?: boolean;
+  filter?: Api.ActivityFilter;
+};
 
 /**
  * Main application class handling Strava API interactions and core business logic.
@@ -46,14 +57,16 @@ const configPaths = lessRaw.paths;
  * ```
  */
 export class Main {
-  #api: Api.Api<Ctx.MsgBuilder, Ctx.Logger>;
+  #api: StravaApi;
   athlete?: Api.Schema.DetailedAthlete;
   userSettings?: App.UserSettings;
   notifyOffline = false;
 
   constructor() {
     // Initialize with defaults
-    this.#api = new Api.Api(configPaths.userCreds, [{ path: configPaths.clientCreds }, { env: true }]);
+    this.#api = new Api.Api(configPaths.userCreds, [{ path: configPaths.clientCreds }, {
+      env: true,
+    }]);
   }
 
   /**
@@ -62,7 +75,7 @@ export class Main {
    * @returns The API client configured with user credentials
    * @throws Error if API not initialized (should not happen in normal usage)
    */
-  get api(): Api.Api<Ctx.MsgBuilder, Ctx.Logger> {
+  get api(): StravaApi {
     if (!this.#api) {
       throw new Error('API not initialized. Call initClient() first.');
     }
@@ -72,21 +85,23 @@ export class Main {
   /**
    * Initializes application services based on specified options.
    *
-   * This method selectively initializes only the services needed for a given operation,
-   * avoiding unnecessary initialization overhead. Services are initialized in order:
-   * 1. Configuration files (if opts.config is true)
-   * 2. Strava API with OAuth authentication (if opts.strava is true)
-   * 3. User settings from ~/.strava/user.settings.json (if opts.userSettings is true)
+   * This method selectively initializes only the services needed for a given
+   * operation, avoiding unnecessary initialization overhead. Services are
+   * initialized in order:
    *
-   * @param ctx Application context with logging
-   * @param [opts={}] Initialization options specifying which services to initialize
-   * @param [opts.config] Initialize configuration files
-   * @param [opts.strava] Initialize Strava API client with authentication
-   * @param [opts.userSettings] Load user settings (line styles, bikes, etc.)
+   * 1. Configuration files (if `opts.config` is true).
+   * 2. Strava API with OAuth authentication (if `opts.strava` is true).
+   * 3. User settings from `~/.strava/user.settings.json` (if `opts.userSettings` is true).
+   *
+   * @param ctx - Application context with logging.
+   * @param [opts={}] - Initialization options.
+   * @param [opts.config] - When true, initializes configuration files.
+   * @param [opts.strava] - When true, initializes the Strava API client with authentication.
+   * @param [opts.userSettings] - When true, loads user settings (e.g. line styles, bikes).
    *
    * @example
    * ```ts
-   * // Initialize only what's needed for athlete command
+   * // Initialize only what's needed for an athlete command
    * await app.init(ctx, { strava: true, userSettings: true });
    *
    * // Initialize everything
@@ -108,9 +123,11 @@ export class Main {
   }
 
   /**
-   * Check if internet access is available.
-   * @param _ctx - Application context (unused for now)
-   * @returns Promise resolving to true if online
+   * Checks if internet access is available.
+   *
+   * @param _ctx - Application context (currently unused).
+   * @returns A promise that resolves to `true` if online, `false` otherwise.
+   * @todo Implement a more robust internet connectivity check.
    */
   checkInternetAccess(_ctx: Ctx.Context): Promise<boolean> {
     // Simple internet check - for now just return true
@@ -119,8 +136,10 @@ export class Main {
   }
 
   /**
-   * Set the athlete ID for API calls.
-   * @param _id - Athlete ID to set
+   * Sets the athlete ID for API calls.
+   *
+   * @param _id - The athlete ID to set.
+   * @todo Implement athlete ID storage and usage.
    */
   setAthleteId(_id: Api.Schema.AthleteId): Promise<void> {
     // TODO: Implement athlete ID storage and usage
@@ -128,16 +147,18 @@ export class Main {
   }
 
   /**
-   * Retrieves athlete profile information from Strava API.
+   * Retrieves athlete profile information from the Strava API.
    *
-   * Fetches the authenticated athlete's profile (or a specific athlete if ID provided)
-   * and stores it in the `athlete` property. The profile includes:
-   * - Name, location (city, state, country)
+   * Fetches the authenticated athlete's profile (or a specific athlete if an ID
+   * is provided) and stores it in the `athlete` property. The profile includes:
+   *
+   * - Name and location (city, state, country)
    * - Athlete ID
-   * - List of bikes and shoes
+   * - A list of the athlete's bikes and shoes
    *
-   * @param ctx Application context with logging
-   * @param [athleteId] Optional specific athlete ID (defaults to authenticated user)
+   * @param ctx - Application context for logging.
+   * @param [athleteId] - Optional. The ID of a specific athlete. Defaults to the
+   * authenticated user.
    *
    * @example
    * ```ts
@@ -148,7 +169,9 @@ export class Main {
   async getAthlete(ctx: Ctx.Context, athleteId?: Api.Schema.AthleteId): Promise<void> {
     try {
       this.athlete = await this.api.getAthlete(ctx, athleteId);
-      ctx.log.info.h2(`Retrieved athlete: ${this.athlete.firstname} ${this.athlete.lastname}`).emit();
+      assert(this.athlete, 'Athlete not defined');
+      ctx.log.info.h2(`Retrieved athlete: ${this.athlete.firstname} ${this.athlete.lastname}`)
+        .emit();
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       ctx.log.error.error(`Failed to get athlete: ${errorMsg}`).emit();
@@ -157,34 +180,119 @@ export class Main {
   }
 
   /**
-   * Generates a KML file from Strava activities or segments for Google Earth visualization.
+   * Fetches activities for a given set of date ranges.
+   *
+   * This method retrieves activities from the Strava API within one or more
+   * specified date ranges. It can optionally fetch detailed information,
+   * coordinates, and attach starred segment data to the activities.
+   *
+   * @param ctx - The application context for logging.
+   * @param date - The date ranges to fetch activities for.
+   * @param [opts={}] - Options for fetching activities.
+   * @param [opts.detailed=false] - Whether to fetch detailed information for each activity.
+   * @param [opts.coordinates=false] - Whether to fetch coordinates for each activity.
+   * @param [opts.starredSegments=false] - Whether to attach starred segment information to each activity.
+   * @param [opts.filter] - A filter to apply to the activities.
+   * @returns A promise that resolves to an array of activities.
+   */
+  async getActivitiesForDateRange(
+    ctx: Ctx.Context,
+    date: DateRanges,
+    opts: GetActivitiesOpts = {},
+  ): Promise<Activity[]> {
+    let activities: Activity[] = [];
+
+    const m0 = ctx.log.mark();
+    ctx.log.info.text('Fetching activities for date ranges').dateRange(date).emit();
+
+    const athleteId: Api.Schema.AthleteId = (this.athlete && Api.isStravaId(this.athlete.id))
+      ? this.athlete.id
+      : 0;
+
+    // Get activities for each date range
+    for (const dateRange of date.ranges) {
+      const opts: Api.ActivityOpts = {
+        athleteId,
+        query: {
+          per_page: 200,
+          after: Math.floor(
+            (dateRange.after ? dateRange.after.getTime() : new Date(1975, 0, 1).getTime()) / 1000,
+          ),
+          before: Math.floor(
+            (dateRange.before ? dateRange.before.getTime() : new Date().getTime()) / 1000,
+          ),
+        },
+      };
+
+      activities = [...activities, ...await this.api.getActivities(ctx, opts)];
+    }
+    if (opts.filter) {
+      activities = activities.filter((activity) => activity.include(opts.filter!));
+    }
+
+    ctx.log.info.text('Found').count(activities.length).text('activity', 'activities').ewt(m0);
+
+    if (activities.length) {
+      if (opts.detailed || opts.starredSegments) {
+        const jobs: Promise<void>[] = [];
+        activities.forEach((activity) => {
+          jobs.push(activity.getDetailed(ctx));
+        });
+        await Promise.all(jobs);
+      }
+      if (opts.coordinates) {
+        ctx.log.info.text('Fetching coordinates for activities').emit();
+        const jobs: Promise<void>[] = [];
+        activities.forEach((activity) => {
+          jobs.push(activity.getCoordinates(ctx));
+        });
+        await Promise.all(jobs);
+      }
+
+      if (opts.starredSegments) {
+        const starredSegmentDict = await this.getStarredSegmentDict(ctx);
+        ctx.log.info.text('Processing segment efforts for').count(activities.length)
+          .text('activity', 'activities').emit();
+        activities.forEach((activity) => {
+          const count = activity.attachStarredSegments(starredSegmentDict);
+          if (count > 0) {
+            ctx.log.info.text('Found').count(count)
+              .text('starred segment effort').text('for').activity(activity).emit();
+          }
+        });
+      }
+    }
+    return activities;
+  }
+
+  /**
+   * Generates a KML file from Strava activities or segments for Google Earth.
    *
    * This method orchestrates the complete KML generation workflow:
-   * 1. Initializes KML generator with user-configured line styles
-   * 2. Validates that activities or segments are requested
-   * 3. Fetches activities for specified date ranges with filtering
-   * 4. Optionally fetches detailed activity data for lap markers (--laps flag)
-   * 5. Fetches coordinates for each activity from Strava streams
-   * 6. Applies commute filtering if specified
-   * 7. Generates KML file with proper styling and organization
+   * 1. Initializes a KML generator with user-configured line styles.
+   * 2. Validates that activities or segments are requested.
+   * 3. Fetches activities for the specified date ranges, applying filters.
+   * 4. Optionally fetches detailed activity data for lap markers (if `kmlOpts.laps` is true).
+   * 5. Fetches coordinates for each activity from Strava streams.
+   * 6. Applies commute filtering based on `kmlOpts.commute`.
+   * 7. Generates a KML file with appropriate styling and organization.
    *
-   * The generated KML includes:
-   * - Activity routes as color-coded LineStrings
-   * - Optional lap markers as Point placemarks (if --laps enabled)
-   * - Segment routes organized by region (if --segments enabled)
+   * The generated KML can include:
+   * - Activity routes as color-coded `LineString` elements.
+   * - Optional lap markers as `Point` placemarks.
+   * - Segment routes organized by region.
    *
-   * @param ctx Application context with logging
-   * @param kmlOpts KML generation options including:
-   * @param kmlOpts.activities Include paths of activities within the date range in KML output
-   * @param kmlOpts.date Required date ranges for activity filtering
-   * @param kmlOpts.output Required output file path
-   * @param kmlOpts.laps Enable lap marker output
-   * @param kmlOpts.commute Filter commute activities ('yes' | 'no' | 'all')
-   * @param kmlOpts.more Include detailed descriptions
-   * @param kmlOpts.efforts Include effort data. Only applicable with --more
-   * @param kmlOpts.imperial Use imperial units instead of metric
-   *
-   * @throws Error if neither activities nor segments is requested
+   * @param ctx - Application context for logging.
+   * @param kmlOpts - KML generation options.
+   * @param [kmlOpts.activities=false] - Whether to include activity paths in the KML.
+   * @param [kmlOpts.date] - Date ranges for filtering activities. Required if `kmlOpts.activities` is true.
+   * @param [kmlOpts.output='Activities.kml'] - The path for the output file.
+   * @param [kmlOpts.laps=false] - Whether to include lap markers.
+   * @param [kmlOpts.commute='all'] - Commute filter ('yes', 'no', or 'all').
+   * @param [kmlOpts.more=false] - Whether to include detailed descriptions.
+   * @param [kmlOpts.efforts=false] - Whether to include effort data.
+   * @param [kmlOpts.imperial=false] - Whether to use imperial units.
+   * @throws If neither `kmlOpts.activities` nor `kmlOpts.segments` is true.
    *
    * @example
    * ```ts
@@ -209,19 +317,28 @@ export class Main {
       throw new Error('When writing KML, select either segments, activities, or both');
     }
 
-    let activities: Api.Activity.Base[] = [];
+    let activities: Activity[] = [];
     let segments: Segment.Data[] = [];
 
     if (kmlOpts.activities) {
       assert(kmlOpts.date);
-      activities = await this.getKmlActivities(ctx, kmlOpts);
-      // Attach starred segment efforts if --efforts flag is enabled
-      if (kmlOpts.efforts && activities.length > 0) {
-        await this.attachStarredSegments(ctx, activities);
+
+      const opts: GetActivitiesOpts = {
+        detailed: kmlOpts.laps || kmlOpts.more || kmlOpts.efforts,
+        coordinates: true,
+        starredSegments: kmlOpts.efforts,
+      };
+      // Filter activities based on commute option
+      if (kmlOpts.commute === 'yes') {
+        opts.filter = { commuteOnly: true };
+      } else if (kmlOpts.commute === 'no') {
+        opts.filter = { nonCommuteOnly: true };
       }
+
+      activities = await this.getActivitiesForDateRange(ctx, kmlOpts.date!, opts);
     }
 
-    // Fetch segments if requested
+    // Fetch segments because we are building a KML of all our segments
     if (kmlOpts.segments) {
       segments = await this.getKmlSegments(ctx, kmlOpts);
     }
@@ -243,90 +360,20 @@ export class Main {
     }
   }
 
-  async getKmlActivities(
+  /**
+   * Retrieves segments suitable for KML generation.
+   *
+   * This method fetches starred segments, including their coordinates, but
+   * without effort data, which is not needed for KML visualization.
+   *
+   * @param ctx - Application context for logging.
+   * @param opts - Options for fetching KML segments, including date ranges.
+   * @returns A promise that resolves to an array of segment data.
+   */
+  async getKmlSegments(
     ctx: Ctx.Context,
-    kmlOpts: Kml.ActivityOpts & Kml.CommonOpts,
-  ): Promise<Api.Activity.Base[]> {
-    ctx.log.info.text('Fetching activities for date ranges').dateRange(kmlOpts.date).emit();
-
-    let activities: Api.Activity.Base[] = [];
-
-    const athleteId: Api.Schema.AthleteId = (this.athlete && Api.isStravaId(this.athlete.id))
-      ? this.athlete.id
-      : 0;
-
-    // Get activities for each date range
-    for (const dateRange of kmlOpts.date!.ranges) {
-      const opts: Api.ActivityOpts = {
-        athleteId,
-        query: {
-          per_page: 200,
-          after: Math.floor(
-            (dateRange.after ? dateRange.after.getTime() : new Date(1975, 0, 1).getTime()) / 1000,
-          ),
-          before: Math.floor((dateRange.before ? dateRange.before.getTime() : new Date().getTime()) / 1000),
-        },
-      };
-
-      const rangeActivitiesData = await this.api.getActivities(ctx, opts);
-
-      // Convert Dict[] to Activity.Base[]
-      for (const data of rangeActivitiesData) {
-        const activity = new Api.Activity.Base(data as unknown as Api.Schema.SummaryActivity);
-        activities.push(activity);
-      }
-    }
-
-    if (activities.length) {
-      ctx.log.info.text('Found').count(activities.length).text('activity', 'activities').emit();
-
-      // Filter activities based on commute option
-      if (kmlOpts.commute === 'yes') {
-        activities = activities.filter((a) => a.data.commute);
-      } else if (kmlOpts.commute === 'no') {
-        activities = activities.filter((a) => !a.data.commute);
-      }
-
-      // Fetch coordinates for activities
-      ctx.log.info.text('Fetching coordinates for activities').emit();
-      for (const activity of activities) {
-        try {
-          const coords = await this.api.getStreamCoords(
-            ctx,
-            'activities' as Api.Schema.StreamKeyType,
-            activity.id,
-            activity.name,
-          );
-          if (coords && coords.length > 0) {
-            activity.coordinates = coords;
-          }
-        } catch (_e) {
-          // const err = _.asError(_e);
-          ctx.log.warn.text('Failed to fetch coordinates for activity').activity(activity).emit();
-        }
-      }
-
-      // Fetch detailed activity data for lap information if --laps is enabled
-      if (kmlOpts.laps) {
-        ctx.log.info.text('Fetching detailed activity data for lap markers').emit();
-        for (let i = 0; i < activities.length; i++) {
-          // Only fetch if we don't already have lap data (DetailedActivity has laps array)
-          if (!('laps' in activities[i].data)) {
-            try {
-              const detailedActivity = await this.api.getDetailedActivity(ctx, activities[i].data);
-              // Replace summary activity with detailed activity data (includes laps)
-              activities[i] = new Api.Activity.Base(detailedActivity);
-            } catch (_e) {
-              ctx.log.warn.text('Failed to fetch detailed data for').activity(activities[i]).emit();
-            }
-          }
-        }
-      }
-    }
-    return activities;
-  }
-
-  async getKmlSegments(ctx: Ctx.Context, opts: Kml.CommonOpts & Kml.SegmentOpts): Promise<Segment.Data[]> {
+    opts: Kml.CommonOpts & Kml.SegmentOpts,
+  ): Promise<Segment.Data[]> {
     const result: Segment.Data[] = await this.getSegments(ctx, {
       coordinates: true,
       efforts: false, // Don't fetch efforts for KML, just coordinates
@@ -336,26 +383,25 @@ export class Main {
   }
 
   /**
-   * Generates Adobe Acroforms XML file from Strava activities for bikelog PDF forms.
+   * Generates an Adobe Acroforms XML file for bikelog PDF forms.
    *
-   * This method orchestrates the complete XML generation workflow for bikelog PDF forms:
-   * 1. Validates date ranges are specified
-   * 2. Fetches activities for specified date ranges
-   * 3. Fetches detailed activity data to access description and private_note fields
-   * 4. Prepares bike dictionary from athlete profile
-   * 5. Generates XML file with daily activity summaries
+   * This method orchestrates the XML generation for bikelog PDFs:
+   * 1. Validates that date ranges are specified.
+   * 2. Fetches activities within the given date ranges.
+   * 3. Fetches detailed data for each activity to access descriptions and private notes.
+   * 4. Prepares a dictionary of the athlete's bikes from their profile.
+   * 5. Generates an XML file containing daily activity summaries.
    *
-   * The generated XML includes:
-   * - Up to 2 bike ride events per day (distance, bike, elevation, time)
-   * - Activity notes with parsed description and private_note
-   * - Custom properties extracted from descriptions (key=value format)
-   * - Weight data automatically extracted to dedicated field
-   * - Non-bike activities (Run, Swim, etc.) in notes section
+   * The generated XML can include:
+   * - Up to two bike ride events per day (distance, bike, elevation, time).
+   * - Activity notes parsed from descriptions and private notes.
+   * - Custom properties and weight data extracted from descriptions.
+   * - Non-bike activities (e.g., runs, swims) in the notes section.
    *
-   * @param ctx Application context with logging
-   * @param pdfOpts PDF/XML generation options including:
-   * @param pdfOpts.date Required date ranges for activity filtering
-   * @param pdfOpts.output Output file path (defaults to 'bikelog.xml')
+   * @param ctx - Application context for logging.
+   * @param pdfOpts - PDF/XML generation options.
+   * @param pdfOpts.date - The date ranges for activity filtering.
+   * @param [pdfOpts.output='bikelog.xml'] - The path for the output file.
    *
    * @example
    * ```ts
@@ -366,8 +412,6 @@ export class Main {
    * ```
    */
   async getPdf(ctx: Ctx.Context, pdfOpts: BikeLog.Opts): Promise<void> {
-    const activities: Api.Activity.Base[] = [];
-
     // Fetch activities if we have date ranges
     if (!(pdfOpts.date && pdfOpts.date.hasRanges())) {
       ctx.log.warn.warn('No date ranges specified').emit();
@@ -376,58 +420,12 @@ export class Main {
 
     ctx.log.info.text('Generating PDF/XML for Adobe Acrobat Forms').emit();
 
-    const m0 = ctx.log.mark();
-    ctx.log.info.text('Fetching activities for date ranges').dateRange(pdfOpts.date).emit();
+    const opts: GetActivitiesOpts = {
+      detailed: true,
+      starredSegments: true,
+    };
 
-    // Get athlete ID (default to authenticated user)
-    const athleteId = this.athlete?.id || 0;
-
-    // Get activities for each date range
-    for (const dateRange of pdfOpts.date.ranges) {
-      const opts: Api.ActivityOpts = {
-        athleteId,
-        query: {
-          per_page: 200,
-          after: Math.floor(
-            (dateRange.after ? dateRange.after.getTime() : new Date(1975, 0, 1).getTime()) / 1000,
-          ),
-          before: Math.floor((dateRange.before ? dateRange.before.getTime() : new Date().getTime()) / 1000),
-        },
-      };
-
-      const rangeActivitiesData = await this.api.getActivities(ctx, opts);
-
-      // Convert Dict[] to Activity.Base[]
-      for (const data of rangeActivitiesData) {
-        const activity = new Api.Activity.Base(data as unknown as Api.Schema.SummaryActivity);
-        activities.push(activity);
-      }
-    }
-
-    ctx.log.info.text('Found').count(activities.length).text('activity', 'activities').ewt(m0);
-
-    // Fetch detailed activity data to get description and private_note fields
-    if (activities.length > 0) {
-      ctx.log.info.h2('Fetching detailed activity data for').count(activities.length).h2(
-        'activity',
-        'activities',
-      ).emit();
-      ctx.log.indent();
-      for (let i = 0; i < activities.length; i++) {
-        try {
-          const detailedActivity = await this.api.getDetailedActivity(ctx, activities[i].data);
-          // Replace summary activity with detailed activity data
-          activities[i] = new Api.Activity.Base(detailedActivity);
-          ctx.log.info.activity(activities[i]).emit();
-        } catch (_e) {
-          ctx.log.warn.text('Failed to fetch detailed data for').activity(activities[i]).emit();
-        }
-      }
-      ctx.log.outdent();
-
-      // Attach starred segment efforts to activities
-      await this.attachStarredSegments(ctx, activities);
-    }
+    const activities: Activity[] = await this.getActivitiesForDateRange(ctx, pdfOpts.date, opts);
 
     // Prepare bikes dict from athlete data
     const bikes: Record<string, Api.Schema.SummaryGear> = {};
@@ -470,9 +468,12 @@ export class Main {
   }
 
   /**
-   * TODO: use some of this logic in the getAllStarredSegments, but for getAllStarredSegments we
-   * optionally also get all the coordinates. we do NOT store the coordinates in the userSegments file.
-   * @param ctx
+   * Refreshes the cache of the user's starred segments.
+   *
+   * This method forces an update of the local cache of starred segments by
+   * fetching the latest data from the Strava API.
+   *
+   * @param ctx - Application context for logging.
    */
   async refreshStarredSegments(ctx: Ctx.Context) {
     const segFile = new Segment.File(new FS.File(configPaths.userSegments));
@@ -480,60 +481,52 @@ export class Main {
   }
 
   /**
-   * TODO: Implement
+   * Retrieves all starred segments from the cache, with optional efforts and coordinates.
    *
-   * Retrieves effort information associated with starred segments, for an activity. This will be included
-   * in PDF XML or a KML activity's 'more' data.
-   *
-   * How do we determine the starred segments that are in an activity? Our userSegments file lists
-   * all of our starred segments.
-   * @param ctx
-   * @param activityId
-   */
-  async getEffortsForActivity(_ctx: Ctx.Context, _activityId: Api.Schema.ActivityId): Promise<void> {
-    // To implement
-  }
-
-  /**
-   * Retrieves ALL starred segments from cache with optional efforts and coordinates.
-   *
-   * **IMPORTANT**: This method returns ALL of the user's starred segments (from the
-   * ~/.strava/user.segments.json cache), not just segments related to specific activities.
-   * Use {@link attachStarredSegments} to filter and attach only starred segments that appear
-   * in specific activities.
+   * @remarks
+   * This method returns all of the user's starred segments from the local
+   * cache (`~/.strava/user.segments.json`), not just segments related to
+   * specific activities. To filter and attach only the starred segments that
+   * appear in specific activities, use {@link Main.getStarredSegmentDict} and
+   * {@link Api.Activity.attachStarredSegments}.
    *
    * **Cache Behavior**:
-   * - **Metadata cached**: Segment ID, name, distance, country, state are cached locally
-   * - **Coordinates NOT cached**: Coordinates are ALWAYS fetched fresh from Strava API when requested
-   * - **Empty cache**: If cache is empty (first run), returns empty array. Run `segments --refresh`
-   *   or use `opts.refresh=true` to populate the cache first
-   * - **Cache updates**: Only `opts.refresh=true` updates the metadata cache from Strava API
+   * - Segment metadata (ID, name, distance, country, state) is cached locally.
+   * - Coordinates are **never** cached and are always fetched from the Strava
+   *   API when requested.
+   * - If the cache is empty, this method returns an empty array. The cache can
+   *   be populated by running the `segments --refresh` command or by setting
+   *   `opts.refresh` to `true`.
+   * - The cache is only updated from the Strava API if `opts.refresh` is `true`.
    *
-   * **Coordinates**: When `opts.coordinates` is true, fetches coordinates from Strava API
-   * for ALL starred segments (requires separate API call per segment, subject to rate limits).
-   * Coordinates are never cached - always fetched fresh.
+   * **Coordinates**:
+   * When `opts.coordinates` is `true`, coordinates are fetched from the Strava
+   * API for all starred segments. This may require a separate API call for each
+   * segment and is subject to rate limits.
    *
-   * **Efforts**: When `opts.efforts` is true, fetches personal effort data for ALL
-   * starred segments within the specified date ranges. Used for performance analysis.
+   * **Efforts**:
+   * When `opts.efforts` is `true`, personal effort data is fetched for all
+   * starred segments within the specified date ranges.
    *
-   * @param ctx Application context with logging
-   * @param opts Segment fetch options:
-   * @param [opts.coordinates=false] Fetch coordinates from Strava API for ALL starred segments
-   * @param [opts.efforts=false] Fetch personal efforts for ALL starred segments
-   * @param [opts.dateRanges] Date ranges to filter efforts (required if opts.efforts is true)
-   * @param [opts.refresh=false] Refresh metadata cache from Strava API before loading
-   * @returns Array of ALL starred segments with optional efforts and coordinates
+   * @param ctx - Application context for logging.
+   * @param [opts={}] - Segment fetch options.
+   * @param [opts.coordinates=false] - If true, fetches coordinates for all starred segments.
+   * @param [opts.efforts=false] - If true, fetches personal efforts for all starred segments.
+   * @param [opts.dateRanges] - Date ranges to filter efforts. Required if `opts.efforts` is true.
+   * @param [opts.refresh=false] - If true, refreshes the metadata cache from the Strava API.
+   * @returns A promise that resolves to an array of all starred segments, with
+   * optional efforts and coordinates.
    *
    * @example
    * ```ts
-   * // First run - populate cache from Strava
+   * // First run - populate the cache from Strava
    * await app.getSegments(ctx, { refresh: true });
    *
-   * // Get all starred segments with coordinates for KML (fetches coords from API)
-   * const segments = await app.getSegments(ctx, { coordinates: true });
+   * // Get all starred segments with coordinates for KML
+   * const segmentsWithCoords = await app.getSegments(ctx, { coordinates: true });
    *
    * // Get all starred segments with effort data for analysis
-   * const segments = await app.getSegments(ctx, {
+   * const segmentsWithEfforts = await app.getSegments(ctx, {
    *   efforts: true,
    *   dateRanges: dateRanges
    * });
@@ -541,7 +534,8 @@ export class Main {
    */
   async getSegments(
     ctx: Ctx.Context,
-    opts: { efforts?: boolean; coordinates?: boolean; dateRanges?: DateRanges; refresh?: boolean } = {},
+    opts: { efforts?: boolean; coordinates?: boolean; dateRanges?: DateRanges; refresh?: boolean } =
+      {},
   ): Promise<Segment.Data[]> {
     const m0 = ctx.log.mark();
 
@@ -551,7 +545,10 @@ export class Main {
 
     // Get all cached segments
     const cachedSegments = segFile.getAllSegments();
-    ctx.log.info.text('Loaded').count(cachedSegments.length).text('starred segment', 'starred segments')
+    ctx.log.info.text('Loaded').count(cachedSegments.length).text(
+      'starred segment',
+      'starred segments',
+    )
       .text('from cache').ewt(m0);
 
     // Convert CacheEntry objects to SegmentData
@@ -679,94 +676,74 @@ export class Main {
     return segments;
   }
 
+  async getCachedSegments(ctx: Ctx.Context): Promise<Segment.CacheMap> {
+    const segFile = new Segment.File(new FS.File(configPaths.userSegments));
+    await segFile.get(ctx, { refresh: false }); // Use cache, don't refresh
+    return segFile.segments;
+  }
+
   /**
-   * Attaches starred segment efforts to activities.
+   * Retrieves a dictionary of starred segments from the cache.
    *
-   * This method fetches the list of starred segments from cache, applies any configured
-   * name aliases, and filters each activity's segment_efforts to include only those that
-   * match starred segments. The filtered segment efforts are attached to each activity's
-   * `segments` property for use in KML/PDF output.
+   * This method fetches the list of starred segments from the cache, applies any
+   * configured name aliases, and returns a dictionary mapping segment IDs to
+   * their names. This dictionary is used to efficiently identify starred
+   * segments in activities.
    *
-   * After calling this method, callers can access the attached segment efforts via
-   * `activity.segments`, which contains an array of {@link Api.Activity.SegmentData} objects
-   * with the aliased segment names already applied.
-   *
-   * @param ctx Application context for logging
-   * @param activities Array of activities to process
+   * @param ctx - Application context for logging.
+   * @returns A promise that resolves to a dictionary of starred segments, where
+   * the keys are segment IDs and the values are the segment names.
    *
    * @example
    * ```ts
-   * await app.attachStarredSegments(ctx, activities);
-   *
-   * // Access the attached starred segment efforts
+   * const starredSegments = await app.getStarredSegmentDict(ctx);
    * for (const activity of activities) {
-   *   if (activity.segments.length > 0) {
-   *     console.log(`Activity ${activity.name} has ${activity.segments.length} starred segments`);
-   *     for (const segment of activity.segments) {
-   *       console.log(`  - ${segment.name}: ${segment.elapsed_time}s`);
-   *     }
-   *   }
+   *   activity.attachStarredSegments(starredSegments);
    * }
    * ```
    */
-  async attachStarredSegments(
+  async getStarredSegmentDict(
     ctx: Ctx.Context,
-    activities: Api.Activity.Base[],
-  ): Promise<void> {
-    if (!activities.length) {
-      return;
-    }
-
+  ): Promise<Api.StarredSegmentDict> {
     // Load a list of starred segments from cache (populated by `segments --refresh` command)
-    const segFile = new Segment.File(new FS.File(configPaths.userSegments));
-    await segFile.get(ctx, { refresh: false }); // Use cache, don't refresh
-    const cachedSegments = segFile.segments;
+
+    const cachedSegments = await this.getCachedSegments(ctx);
 
     if (cachedSegments.size === 0) {
-      ctx.log.info.text('No starred segments found in cache. Run `segments --refresh` to populate cache.')
+      ctx.log.info.text(
+        'No starred segments found in cache. Run `segments --refresh` to populate cache.',
+      )
         .emit();
-      return;
+      return {};
     }
 
     // Build a map of segmentId -> (aliased) segmentName
-    type StarredSegmentDict = Record<Api.Schema.SegmentId, string>;
-    const starredSegments = Array.from(cachedSegments.entries()).reduce((acc, [id, seg]) => {
-      if (seg.name) {
-        let segmentName = seg.name.trim();
-        // Apply segment name alias from user settings if available
-        if (this.userSettings?.aliases) {
-          // Try direct lookup first
-          if (segmentName in this.userSettings.aliases) {
-            segmentName = this.userSettings.aliases[segmentName];
-          } else {
-            // Try case-insensitive lookup
-            const lowerName = segmentName.toLowerCase();
-            const aliasKey = Object.keys(this.userSettings.aliases).find(
-              (key) => key.toLowerCase() === lowerName,
-            );
-            if (aliasKey) {
-              segmentName = this.userSettings.aliases[aliasKey];
+    const starredSegments: Api.StarredSegmentDict = Array.from(cachedSegments.entries()).reduce(
+      (acc, [id, seg]) => {
+        if (seg.name) {
+          let segmentName = seg.name.trim();
+          // Apply segment name alias from user settings if available
+          if (this.userSettings?.aliases) {
+            // Try direct lookup first
+            if (segmentName in this.userSettings.aliases) {
+              segmentName = this.userSettings.aliases[segmentName];
+            } else {
+              // Try case-insensitive lookup
+              const lowerName = segmentName.toLowerCase();
+              const aliasKey = Object.keys(this.userSettings.aliases).find(
+                (key) => key.toLowerCase() === lowerName,
+              );
+              if (aliasKey) {
+                segmentName = this.userSettings.aliases[aliasKey];
+              }
             }
           }
+          acc[id] = segmentName;
         }
-        acc[id] = segmentName;
-      }
-      return acc;
-    }, {} as StarredSegmentDict);
-
-    ctx.log.info.text('Processing segment efforts for').count(activities.length).text(
-      'activity',
-      'activities',
-    )
-      .emit();
-
-    // Call each activity's attachStarredSegments method
-    for (const activity of activities) {
-      const count = activity.attachStarredSegments(starredSegments);
-      if (count > 0) {
-        ctx.log.info.text('Found').count(count)
-          .text('starred segment effort').text('for').activity(activity).emit();
-      }
-    }
+        return acc;
+      },
+      {} as Api.StarredSegmentDict,
+    );
+    return starredSegments;
   }
 }

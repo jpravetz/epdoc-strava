@@ -65,7 +65,8 @@ export const mapDef: Record<string, Options.Def> = {
   efforts: {
     short: 'e',
     name: 'efforts',
-    description: 'Include activity stats + starred segment efforts in descriptions (superset of --more)',
+    description:
+      'Include activity stats + starred segment efforts in descriptions (superset of --more)',
   },
   commute: {
     name: 'commute',

@@ -1,14 +1,13 @@
 import * as FS from '@epdoc/fs/fs';
 import { _ } from '@epdoc/type';
 import type * as Ctx from '../context.ts';
-import type { Api } from '../dep.ts';
+import type { Activity, Api } from '../dep.ts';
 import { escapeHtml, Fmt } from '../fmt.ts';
 import type * as Segment from '../segment/mod.ts';
 import { isValidActivityType, isValidLineStyle } from './guards.ts';
 import { defaultLineStyles } from './linestyles.ts';
 import type * as Kml from './types.ts';
 
-type Activity = Api.Activity.Base;
 type SegmentData = Segment.Data;
 type PlacemarkParams = Kml.PlacemarkParams;
 
@@ -137,7 +136,7 @@ export class KmlMain {
       await this.header();
 
       if (this.opts.type) {
-        await this.addActivities(activities);
+        await this.addActivities(ctx, activities);
       }
 
       if (this.opts.segments) {
@@ -156,7 +155,7 @@ export class KmlMain {
     }
   }
 
-  private async addActivities(activities: Activity[]): Promise<void> {
+  private async addActivities(ctx: Ctx.Context, activities: Activity[]): Promise<void> {
     if (activities && activities.length) {
       const dateString = this._dateString();
 
@@ -168,7 +167,7 @@ export class KmlMain {
 
       for (const activity of activities) {
         if (activity.hasKmlData()) {
-          this.outputActivity(indent + 1, activity);
+          this.outputActivity(ctx, indent + 1, activity);
         }
         await this.flush();
       }
@@ -241,7 +240,12 @@ export class KmlMain {
    * @param [country] Optional country filter (e.g., "USA")
    * @param [state] Optional state filter (e.g., "California")
    */
-  public outputSegments(indent: number, segments: SegmentData[], country?: string, state?: string): void {
+  public outputSegments(
+    indent: number,
+    segments: SegmentData[],
+    country?: string,
+    state?: string,
+  ): void {
     let title = 'Segments';
     const dateString = this._dateString();
     if (country && state) {
@@ -256,7 +260,7 @@ export class KmlMain {
     );
     segments.forEach((segment) => {
       if (!country || (country === segment.country && state == segment.state)) {
-        this.outputSegment(indent + 2, segment);
+        this.#outputSegment(indent + 2, segment);
       }
     });
     this.writeln(indent, '</Folder>');
@@ -290,7 +294,7 @@ export class KmlMain {
    * @param indent Indentation level for KML output
    * @param activity Strava activity with coordinates and metadata
    */
-  public outputActivity(indent: number, activity: Activity): void {
+  async outputActivity(ctx: Ctx.Context, indent: number, activity: Activity): Promise<void> {
     const t0 = activity.startDateLocal.slice(0, 10);
     let styleName = 'Default';
 
@@ -311,7 +315,7 @@ export class KmlMain {
     const params: PlacemarkParams = {
       placemarkId: 'StravaTrack' + ++this.trackIndex,
       name: t0 + ' - ' + escapeHtml(activity.name),
-      description: this._buildActivityDescription(activity),
+      description: await this.#buildActivityDescription(ctx, activity),
       styleName: styleName,
       coordinates: activity.coordinates,
     };
@@ -319,47 +323,53 @@ export class KmlMain {
 
     // Output lap markers if laps are enabled and available
     if (this.opts.laps && 'laps' in activity.data && _.isArray(activity.data.laps)) {
-      this._outputLapMarkers(indent, activity);
+      this.#outputLapMarkers(indent, activity);
     }
   }
 
-  private _buildActivityDescription(activity: Activity): string | undefined {
+  async #buildActivityDescription(
+    ctx: Ctx.Context,
+    activity: Activity,
+  ): Promise<string | undefined> {
     const arr: string[] = [];
 
     // Always add the activity's text description first (if it exists)
-    const customProps = activity.getCustomProperties();
-    if (customProps.description && _.isString(customProps.description)) {
-      const descLines = customProps.description.trim().split(/\r?\n/);
-      descLines.forEach((line) => {
-        if (line.trim()) {
-          arr.push(escapeHtml(line));
-        }
-      });
-    }
+    // const customProps = activity.getCustomProperties();
+    // if (customProps.description && _.isString(customProps.description)) {
+    //   const descLines: string[] = customProps.description.trim().split(/\r?\n/);
+    //   descLines.forEach((line) => {
+    //     if (line.trim()) {
+    //       arr.push(escapeHtml(line));
+    //     }
+    //   });
+    // }
 
     // If --more or --efforts is enabled, add technical stats
     if (this.more || this.efforts) {
       arr.push(`<b>Distance:</b> ${Fmt.getDistanceString(activity.distance, this.imperial)}`);
       arr.push(
-        `<b>Elevation Gain:</b> ${Fmt.getElevationString(activity.totalElevationGain, this.imperial)}`,
+        `<b>Elevation Gain:</b> ${
+          Fmt.getElevationString(activity.totalElevationGain, this.imperial)
+        }`,
       );
       // TODO: Add moving time, elapsed time, average temp, etc.
     }
 
     // Always include starred segment times at the end (if any exist)
     const segments = activity.segments;
+    const cachedSegments = await ctx.app.getCachedSegments(ctx);
+
     if (_.isArray(segments) && segments.length > 0) {
       segments.forEach((segment) => {
         // Use segment.name first (contains alias from app.ts), fall back to segment.segment?.name
         const name = segment.name || segment.segment?.name || 'Unknown';
-        const time = this._formatTime(segment.elapsed_time || 0);
+        const time = this.#formatTime(segment.elapsed_time || 0);
+        const cachedSeg = cachedSegments.get(segment.id);
 
         // Format: "Up <name> [MM:SS]" or "Up <name>: <distance>, <elevation>, [MM:SS]" with --efforts
-        if (this.efforts) {
-          const distance = Fmt.getDistanceString(segment.distance || 0, this.imperial);
-          const elevation = segment.segment?.total_elevation_gain
-            ? Fmt.getElevationString(segment.segment.total_elevation_gain, this.imperial)
-            : '0m';
+        if (this.efforts && cachedSeg) {
+          const distance = Fmt.getDistanceString(cachedSeg.distance || 0, this.imperial);
+          const elevation = Fmt.getElevationString(cachedSeg.elevation, this.imperial);
           arr.push(`Up ${escapeHtml(name)}: ${distance}, ${elevation} [${time}]`);
         } else {
           arr.push(`Up ${escapeHtml(name)} [${time}]`);
@@ -375,7 +385,7 @@ export class KmlMain {
    * @param seconds Elapsed time in seconds
    * @returns Formatted time string
    */
-  private _formatTime(seconds: number): string {
+  #formatTime(seconds: number): string {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = Math.floor(seconds % 60);
@@ -391,32 +401,33 @@ export class KmlMain {
    * @param segment
    * @returns {string}
    */
-  private outputSegment(indent: number, segment: SegmentData): void {
+  #outputSegment(indent: number, segment: SegmentData): void {
     const params = {
       placemarkId: 'StravaSegment' + ++this.trackIndex,
       name: escapeHtml(segment.name),
-      description: this.buildSegmentDescription(segment),
+      description: this.#buildSegmentDescription(segment),
       styleName: 'Segment',
       coordinates: segment.coordinates,
     };
     this.placemark(indent, params);
   }
 
-  private buildSegmentDescription(_segment: SegmentData) {
+  #buildSegmentDescription(_segment: SegmentData) {
     return '';
   }
 
-  private _addLineStyle(name: string, style: Kml.LineStyle): void {
+  #addLineStyle(name: string, style: Kml.LineStyle): void {
     this.write(2, '<Style id="StravaLineStyle' + name + '">\n');
     this.write(
       3,
-      '<LineStyle><color>' + style.color + '</color><width>' + style.width + '</width></LineStyle>\n',
+      '<LineStyle><color>' + style.color + '</color><width>' + style.width +
+        '</width></LineStyle>\n',
     );
     this.write(3, '<PolyStyle><color>' + style.color + '</color></PolyStyle>\n');
     this.write(2, '</Style>\n');
   }
 
-  private _addLapMarkerStyle(): void {
+  #addLapMarkerStyle(): void {
     this.write(2, '<Style id="LapMarker">\n');
     this.write(3, '<IconStyle>\n');
     this.write(4, '<scale>0.6</scale>\n');
@@ -444,7 +455,7 @@ export class KmlMain {
    * @param indent Indentation level for KML output
    * @param activity Strava activity with laps array and coordinates
    */
-  private _outputLapMarkers(indent: number, activity: Activity): void {
+  #outputLapMarkers(indent: number, activity: Activity): void {
     if (!('laps' in activity.data) || !_.isArray(activity.data.laps)) {
       return;
     }
@@ -452,7 +463,7 @@ export class KmlMain {
     const laps = activity.data.laps as Api.Schema.Lap[];
     const coords = activity.coordinates;
 
-    if (!coords || coords.length === 0) {
+    if (!coords || coords.length === 0 || laps.length < 2) {
       return;
     }
 
@@ -531,11 +542,11 @@ export class KmlMain {
     this.writeln(2, '<name>Strava Activities</name>');
     this.writeln(2, '<open>1</open>');
     Object.keys(this.lineStyles).forEach((name) => {
-      this._addLineStyle(name, this.lineStyles[name]);
+      this.#addLineStyle(name, this.lineStyles[name]);
     });
     // Add lap marker style if laps are enabled
     if (this.opts.laps) {
-      this._addLapMarkerStyle();
+      this.#addLapMarkerStyle();
     }
     await this.flush();
   }
