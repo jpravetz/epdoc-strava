@@ -55,6 +55,7 @@
       "integrity": "6cadf213b73890c6361c7879da428a6a2cdbc6a65620dfd876b3bfa3648153ab",
       "dependencies": [
         "jsr:@epdoc/logger",
+        "jsr:@epdoc/msgbuilder",
         "jsr:@epdoc/type@^1.1.19",
         "jsr:@std/fmt",
         "npm:commander"

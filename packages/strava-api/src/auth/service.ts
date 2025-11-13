@@ -48,7 +48,8 @@ function isClientCreds(val: unknown): val is Strava.ClientCreds {
  * credentials from various sources and will handle the user authentication flow by starting a local web server and
  * opening the user's browser to the Strava authorization page.
  */
-export class AuthService {
+export class AuthService<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
+  public Context!: Ctx.IContext<M, L>;
   #client?: ClientCreds;
   clientCredSrc: Strava.ClientCredSrc[];
   #creds: StravaCreds;
@@ -94,7 +95,7 @@ export class AuthService {
    * @returns A promise that resolves to `true` if authentication is successful, `false` otherwise.
    */
   async init(
-    ctx: Ctx.IContext,
+    ctx: this['Context'],
     opts: { force: boolean } = { force: false },
   ): Promise<boolean> {
     await this.#initClientCreds(ctx);
@@ -110,7 +111,7 @@ export class AuthService {
       return true;
     }
 
-    const result = await this.runAuthWebPage(ctx as Ctx.IContext, m0);
+    const result = await this.runAuthWebPage(ctx, m0);
     ctx.log.outdent();
     return result;
   }
@@ -124,7 +125,7 @@ export class AuthService {
    * @param ctx The application context for logging.
    * @throws {Error} If the client credentials cannot be loaded from any of the configured sources.
    */
-  async #initClientCreds(ctx: Ctx.IContext) {
+  async #initClientCreds(ctx: this['Context']) {
     let src: Strava.ClientCredSrc | undefined = this.clientCredSrc.shift();
     while (!isClientCreds(this.#client) && src) {
       if ('creds' in src && isClientCreds(src.creds)) {
@@ -209,7 +210,7 @@ export class AuthService {
    * Logs the current authentication status, including token expiration.
    * @private
    */
-  #logAuthStatus(ctx: Ctx.IContext, mark: string): Promise<boolean> {
+  #logAuthStatus(ctx: this['Context'], mark: string): Promise<boolean> {
     const delta = this.#creds.expiresAt - new Date().getTime();
     ctx.log.debug.h2('Authorization')
       .if(delta > 0).h2('is still valid, expires').else().h2('has expired').endif()
@@ -227,7 +228,7 @@ export class AuthService {
    * @param code The authorization code.
    * @returns A promise that resolves to `true` if the token is successfully requested, `false` otherwise.
    */
-  async requestToken(ctx: Ctx.IContext, code: Strava.Code): Promise<boolean> {
+  async requestToken(ctx: this['Context'], code: Strava.Code): Promise<boolean> {
     const reqOpts: RequestInit = {
       method: 'POST',
       body: JSON.stringify({
@@ -263,7 +264,7 @@ export class AuthService {
    * @param ctx The application context for logging.
    * @param force If `true`, the token will be refreshed even if it is still valid.
    */
-  async refreshToken(ctx: Ctx.IContext, force = false): Promise<void> {
+  async refreshToken(ctx: this['Context'], force = false): Promise<void> {
     if (this.#creds.needsRefresh() || force) {
       if (force) {
         ctx.log.info.warn('Forcing token refresh').emit();
@@ -319,7 +320,7 @@ export class AuthService {
    * @param mark A timestamp for logging the duration of the operation.
    * @returns A promise that resolves to `true` if the flow is successful, or rejects with an error.
    */
-  runAuthWebPage(ctx: Ctx.IContext, mark: string): Promise<boolean> { // Changed ctx type to Ctx.IContext and return type to Promise<boolean>
+  runAuthWebPage(ctx: this['Context'], mark: string): Promise<boolean> { // Changed ctx type to Ctx.IContext and return type to Promise<boolean>
     // assert(ctx.api, 'Strava API not initialized'); // No longer needed
     return new Promise((resolve, reject) => {
       const cb: cbFunction = () => { // Removed async as it's not needed here
@@ -353,7 +354,7 @@ export class AuthService {
    * @param authUrl The Strava authorization URL.
    * @param cb The callback function to execute when the flow is complete.
    */
-  #startServer(ctx: Ctx.IContext, authUrl: string, cb: cbFunction): void { // Changed ctx type to Ctx.IContext
+  #startServer(ctx: this['Context'], authUrl: string, cb: cbFunction): void { // Changed ctx type to Ctx.IContext
     const app = new Application();
     const router = new Router();
     this.abortController = new AbortController();
@@ -412,7 +413,7 @@ export class AuthService {
    *
    * @param ctx The application context for logging.
    */
-  #close(ctx?: Ctx.IContext): void { // Removed async and changed return type
+  #close(ctx?: this['Context']): void { // Removed async and changed return type
     if (this.abortController) {
       this.abortController.abort();
       ctx && ctx.log.debug.text('Server closed').emit();

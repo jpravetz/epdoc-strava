@@ -6,19 +6,13 @@ import type { Console } from '@epdoc/msgbuilder';
  */
 
 export type MsgBuilder = Console.Builder;
-export type Logger<M extends Console.Builder> = Log.Std.Logger<M>;
-
-// Define the default concrete types you'll use throughout your app
-export type DefaultMsgBuilder = Console.Builder;
-export type DefaultLogger = Log.Std.Logger<DefaultMsgBuilder>;
+export type Logger<M extends MsgBuilder = MsgBuilder> = Log.Std.Logger<M>;
 
 /**
  * Represents the application context, containing a logger.
  */
-export interface ICtxGeneric<M extends MsgBuilder, L extends Logger<M>> {
+export interface IContext<M extends MsgBuilder, L extends Logger<M>> {
   /** The application logger. */
   log: L;
 }
 
-// This is your global context type that doesn't require generics
-export interface IContext extends ICtxGeneric<DefaultMsgBuilder, DefaultLogger> {}

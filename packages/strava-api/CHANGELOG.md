@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.0-alpha.8] - 2025-11-13
+
+- Playing with generics, very annoying that you cant
+- aliase
+- your
+- generics
+- away
+
+
 ## [2.0.0-alpha.7] - 2025-11-13
 
 - Simplified use of generics in strava-api

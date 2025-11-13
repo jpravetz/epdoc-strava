@@ -66,8 +66,11 @@ export type TokenUrlOpts = {
  * }
  * ```
  */
-export class Api {
-  #auth: Auth.Service;
+export class Api<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
+  public Context!: Ctx.IContext<M, L>;
+  public AuthService!: Auth.Service<M, L>;
+  public Activity!: Activity<M, L>;
+  #auth: Auth.Service<M, L>;
 
   /**
    * Constructs a new `StravaApi` instance.
@@ -99,7 +102,7 @@ export class Api {
    * @returns A promise that resolves to `true` if authentication is successful, otherwise `false`.
    */
   async init(
-    ctx: Ctx.IContext,
+    ctx: this['Context'],
     opts: { force: boolean } = { force: false },
   ): Promise<boolean> {
     return await this.#auth.init(ctx, opts);
@@ -115,7 +118,7 @@ export class Api {
     return this.#auth.creds;
   }
 
-  async #refreshToken(ctx: Ctx.IContext, force = false): Promise<void> {
+  async #refreshToken(ctx: this['Context'], force = false): Promise<void> {
     await this.#auth.refreshToken(ctx, force);
   }
 
@@ -130,7 +133,7 @@ export class Api {
    * @returns A promise that resolves to the athlete's detailed profile.
    */
   public async getAthlete(
-    ctx: Ctx.IContext,
+    ctx: this['Context'],
     athleteId?: Schema.AthleteId,
   ): Promise<Schema.DetailedAthlete> {
     await this.#refreshToken(ctx);
@@ -172,9 +175,9 @@ export class Api {
    * @returns A promise that resolves to an array of activities.
    */
   public async getActivities(
-    ctx: Ctx.IContext,
+    ctx: this['Context'],
     options: Strava.ActivityOpts,
-  ): Promise<Activity[]> {
+  ): Promise<this['Activity'][]> {
     await this.#refreshToken(ctx);
     const url = new URL(STRAVA_URL.activities);
     // if (_.isPosInteger(options.athleteId)) {
@@ -207,7 +210,7 @@ export class Api {
 
       if (isSummaryActivityArray(data)) {
         return data.map((item) => {
-          const activity = new Activity(item);
+          const activity = new Activity<M, L>(item);
           activity.api = this;
           return activity;
         });
@@ -233,7 +236,7 @@ export class Api {
    * @param page The page number to retrieve. Defaults to 1.
    */
   public async getStarredSegments(
-    ctx: Ctx.IContext,
+    ctx: this['Context'],
     accum: Schema.SummarySegment[],
     page: number = 1,
   ): Promise<void> {
@@ -287,7 +290,7 @@ export class Api {
    * @returns A promise that resolves to an array of coordinates, where each coordinate is a [latitude, longitude] pair.
    */
   public async getStreamCoords(
-    ctx: Ctx.IContext,
+    ctx: this['Context'],
     source: Schema.StreamKeyType,
     objId: Schema.ActivityId | Schema.SegmentId,
     name: string,
@@ -338,7 +341,7 @@ export class Api {
    * @returns A promise that resolves to the detailed representation of the activity.
    */
   public async getDetailedActivity(
-    ctx: Ctx.IContext,
+    ctx: this['Context'],
     activity: Schema.SummaryActivity,
   ): Promise<Schema.DetailedActivity> {
     await this.#refreshToken(ctx);
@@ -388,7 +391,7 @@ export class Api {
    * are arrays of the stream data.
    */
   public async getStreams(
-    ctx: Ctx.IContext,
+    ctx: this['Context'],
     source: Schema.StreamKeyType,
     objId: Schema.ActivityId | Schema.SegmentId,
     options: Strava.Query,
@@ -444,7 +447,7 @@ export class Api {
    * @returns A promise that resolves to the segment data.
    */
   public async getSegment(
-    ctx: Ctx.IContext,
+    ctx: this['Context'],
     segmentId: Schema.SegmentId,
   ): Promise<Schema.SummarySegment> {
     await this.#refreshToken(ctx);
@@ -482,7 +485,7 @@ export class Api {
    * @returns A promise that resolves to an array of segment efforts.
    */
   public async getSegmentEfforts(
-    ctx: Ctx.IContext,
+    ctx: this['Context'],
     segmentId: Schema.SegmentId,
     params: Strava.Query,
   ): Promise<Schema.DetailedSegmentEffort[]> {

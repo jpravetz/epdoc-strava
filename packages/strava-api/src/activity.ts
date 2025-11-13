@@ -26,9 +26,10 @@ const REGEX = {
  * This class encapsulates the data for a Strava activity and provides convenient methods for accessing and manipulating
  * that data.
  */
-export class Activity {
+export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
+  public Context!: Ctx.IContext<M, L>;
   public data: Schema.SummaryActivity | Schema.DetailedActivity;
-  api?: Api;
+  api?: Api<M, L>;
   #detailed = false;
   private _coordinates: Coord[] = []; // will contain the latlng coordinates for the activity
   #segments: SegmentData[] = []; // Will be declared here
@@ -244,8 +245,6 @@ export class Activity {
         if (a.length) {
           result.description = a.join('\n');
         }
-      } else {
-        result.description = this.data.description;
       }
     }
     return result;
@@ -277,7 +276,7 @@ export class Activity {
   //   });
   // }
 
-  async getCoordinates(ctx: Ctx.IContext): Promise<void> {
+  async getCoordinates(ctx: this['Context']): Promise<void> {
     assert(this.api, 'api not set');
     try {
       const coords = await this.api.getStreamCoords(
@@ -295,7 +294,7 @@ export class Activity {
     }
   }
 
-  async getDetailed(ctx: Ctx.IContext): Promise<void> {
+  async getDetailed(ctx: this['Context']): Promise<void> {
     assert(this.api, 'api not set');
     try {
       const detailedActivity = await this.api.getDetailedActivity(ctx, this.data);
@@ -418,3 +417,4 @@ export class Activity {
     return 0;
   }
 }
+
