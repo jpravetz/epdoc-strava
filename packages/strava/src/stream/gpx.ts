@@ -1,5 +1,5 @@
 import * as FS from '@epdoc/fs/fs';
-import { _ } from '@epdoc/type';
+import { _, Integer } from '@epdoc/type';
 import pkg from '../../deno.json' with { type: 'json' };
 import type * as Ctx from '../context.ts';
 import { type Activity, Api } from '../dep.ts';
@@ -115,7 +115,10 @@ export class GpxWriter extends StreamWriter {
       await this.#footer();
       await this.writer.close();
 
-      ctx.log.info.text('Wrote GPX file').fs(fsFile).ewt(m0);
+      ctx.log.info.text('Wrote').count(activity.coordinates.length).text('point').text(
+        'to GPX file',
+      )
+        .fs(fsFile).ewt(m0);
     } catch (err) {
       if (this.writer) {
         await this.writer.close();
@@ -212,17 +215,18 @@ export class GpxWriter extends StreamWriter {
    *
    * @param activity The activity with lap and coordinate data
    */
-  async #outputLapWaypoints(activity: Activity): Promise<void> {
+  async #outputLapWaypoints(activity: Activity): Promise<Integer> {
     if (!('laps' in activity.data) || !_.isArray(activity.data.laps)) {
-      return;
+      return 0;
     }
 
     const laps = activity.data.laps as Api.Schema.Lap[];
     if (!laps || laps.length <= 1) {
-      return;
+      return 0;
     }
 
     // Skip the last lap as it's at the end of the activity
+    let count = 0;
     for (let i = 0; i < laps.length - 1; i++) {
       const lap = laps[i];
 
@@ -247,10 +251,12 @@ export class GpxWriter extends StreamWriter {
 
         this.writeln(2, '<type>Lap</type>');
         this.writeln(1, '</wpt>');
+        ++count;
       }
     }
 
     await this.flush();
+    return count;
   }
 
   /**

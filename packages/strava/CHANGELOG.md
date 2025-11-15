@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.0-alpha.14] - 2025-11-15
+
+- logging improvement
+
 ## [2.0.0-alpha.13] - 2025-11-15
 
 - Added filter log msg
