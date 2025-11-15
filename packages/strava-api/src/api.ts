@@ -1,3 +1,4 @@
+import { DateEx } from '@epdoc/datetime';
 import type * as FS from '@epdoc/fs/fs';
 import { _, type Dict } from '@epdoc/type';
 import { Activity } from './activity.ts';
@@ -16,8 +17,8 @@ import {
   isSummarySegment,
   isSummarySegmentArray,
 } from './guards.ts';
-import * as Schema from './schema/mod.ts';
-import * as Strava from './types.ts';
+import type * as Schema from './schema/mod.ts';
+import type * as Strava from './types.ts';
 
 const STRAVA_URL_PREFIX = Deno.env.get('STRAVA_URL_PREFIX') || 'https://www.strava.com';
 const STRAVA_API_PREFIX = STRAVA_URL_PREFIX + '/api/v3';
@@ -326,15 +327,20 @@ export class Api<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
   }
 
   /**
-   * Retrieves the geographical coordinates for a given activity or segment.
+   * Retrieves stream data for a given activity or segment and combines it into CoordData objects.
    *
-   * This method is useful for plotting the route of an activity or segment on a map.
+   * This method fetches the requested stream types from the Strava API and combines
+   * them into an array of CoordData objects, where each object represents a single point
+   * with all available data (lat, lng, altitude, time, etc.).
    *
    * @param ctx The application context for logging.
    * @param source The type of object to retrieve the stream for (e.g., 'activities', 'segments').
+   * @param streamTypes The types of streams to retrieve (latlng, altitude, time, etc.).
    * @param objId The ID of the activity or segment.
    * @param name The name of the object, used for logging purposes.
-   * @returns A promise that resolves to an array of coordinates, where each coordinate is a [latitude, longitude] pair.
+   * @param timezone Optional timezone string in format "(GMT-08:00) America/Los_Angeles" for converting time to ISOTzDate.
+   * @param startDate Optional start date for calculating absolute times from relative time stream.
+   * @returns A promise that resolves to an array of CoordData objects with requested stream data.
    */
   public async getStreamCoords(
     ctx: this['Context'],
@@ -342,25 +348,57 @@ export class Api<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
     streamTypes: Schema.StreamKeyType[],
     objId: Schema.ActivityId | Schema.SegmentId,
     name: string,
-  ): Promise<Strava.Coord[]> {
+    timezone?: string,
+    startDate?: Date,
+  ): Promise<Partial<Strava.CoordData>[]> {
     const query: Dict = {
-      keys: streamTypes,
-      key_by_type: ' ',
+      keys: streamTypes.join(','),
+      key_by_type: true,
     };
     const m0 = ctx.log.mark();
     try {
       const resp: Partial<Schema.StreamSet> = await this.getStreams(ctx, source, objId, query);
       if (hasLatLngData(resp)) {
-        const results = Strava.CoordData[];
-        for( let idx=0; idx<resp.latlng.data.length ) {
-          const item: Partial<CoordData> = {};
+        const results: Partial<Strava.CoordData>[] = [];
+        const len = resp.latlng.data.length;
+
+        for (let idx = 0; idx < len; idx++) {
+          const item: Partial<Strava.CoordData> = {
+            lat: resp.latlng.data[idx][0],
+            lng: resp.latlng.data[idx][1],
+          };
+
+          // Add altitude if available
+          if (resp.altitude && idx < resp.altitude.data.length) {
+            item.altitude = resp.altitude.data[idx];
+          }
+
+          // Add time if available - convert from seconds offset to ISOTzDate
+          if (resp.time && idx < resp.time.data.length && startDate) {
+            const secondsOffset = resp.time.data[idx];
+            const timestamp = new Date(startDate.getTime() + secondsOffset * 1000);
+
+            // Extract timezone name from format "(GMT-08:00) America/Los_Angeles"
+            let tz = 'UTC';
+            if (timezone) {
+              const tzMatch = timezone.match(/\)\s*(.+)$/);
+              if (tzMatch) {
+                tz = tzMatch[1];
+              }
+            }
+
+            // Use DateEx to create ISOTzDate with timezone
+            const dateEx = new DateEx(timestamp, { tz });
+            item.time = dateEx.toISOLocalString();
+          }
+
+          results.push(item);
         }
-        if (streamTypes.length === 1 && streamTypes[0] === Schema.StreamKeys.LatLng) {
-          return resp.latlng.data as Strava.Coord[];
-        } else {
-        }
+
+        ctx.log.info.h2('Retrieved').count(results.length).h2('stream points for').value(name).ewt(m0);
+        return results;
       }
-      ctx.log.info.h2('Get').value(name).h2('did not contain unknown coordinates').ewt(m0);
+      ctx.log.info.h2('Get').value(name).h2('did not contain latlng coordinates').ewt(m0);
       return [];
     } catch (error: unknown) {
       const err = _.asError(error);

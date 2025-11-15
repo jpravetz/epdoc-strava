@@ -1,5 +1,6 @@
 import type { DateRanges } from '@epdoc/daterange';
 import type { FileSpec } from '@epdoc/fs';
+import type * as FS from '@epdoc/fs/fs';
 import { _ } from '@epdoc/type';
 import type { Ctx } from '../dep.ts';
 import * as Options from '../options/mod.ts';
@@ -86,7 +87,7 @@ export class SegmentsCmd extends Options.BaseSubCmd {
         if (opts.kml) {
           const kmlOpts = {
             segments: 'only' as const, // Only segments, no activities
-            output: opts.kml,
+            output: opts.kml.path as FS.Path,
             date: opts.date,
             imperial: opts.imperial || false,
           };

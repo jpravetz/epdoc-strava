@@ -1,4 +1,5 @@
 import type { DateRanges } from '@epdoc/daterange';
+import type * as FS from '@epdoc/fs/fs';
 import type { Dict } from '@epdoc/type';
 import type { Api } from '../dep.ts';
 
@@ -25,7 +26,7 @@ export type SegmentOpts = {
 };
 
 export type CommonOpts = {
-  output?: string; // output filename with extension or folder path if outputting gpx files
+  output?: FS.Path; // output filename with extension or folder path if outputting gpx files
   date?: DateRanges; // date range for which to output data
   more?: boolean; // include basic activity stats in description (distance, elevation, times, custom props)
   imperial?: boolean; // use imperial units (miles, feet) instead of metric
@@ -33,11 +34,11 @@ export type CommonOpts = {
 
 export type Opts = CommonOpts & ActivityOpts & SegmentOpts;
 
-export type Coord = [number, number]; // [lat, lng]
+export type Coord = [number, number]; // [lat, lng] - deprecated, use CoordData instead
 
 export type KmlPlacemarkParams = {
   description?: string;
-  coordinates?: Coord[];
+  coordinates?: Partial<Api.CoordData>[];
   placemarkId?: string;
   name?: string;
   styleName?: string;

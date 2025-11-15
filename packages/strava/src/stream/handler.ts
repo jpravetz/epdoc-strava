@@ -6,7 +6,7 @@ import type * as Segment from '../segment/mod.ts';
 import { GpxWriter } from './gpx.ts';
 import { KmlWriter } from './kml.ts';
 import { defaultKmlLineStyles } from './linestyles.ts';
-import { StreamWriter } from './streamer.ts';
+import type { StreamWriter } from './streamer.ts';
 import type * as Stream from './types.ts';
 
 type SegmentData = Segment.Data;
@@ -131,7 +131,7 @@ export class Handler {
     activities: Activity[],
     segments: SegmentData[],
   ): Promise<void> {
-    const m0 = ctx.log.mark();
+    const _m0 = ctx.log.mark();
     const fsSpec = new FS.Spec(FS.Folder.cwd(), filepath);
     const fs = await fsSpec.resolvedType();
     assert(fs, 'Invalid output file specifier');

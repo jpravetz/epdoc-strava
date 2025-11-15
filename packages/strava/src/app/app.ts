@@ -245,8 +245,9 @@ export class Main {
       if (_.isNonEmptyArray(opts.streams)) {
         ctx.log.info.text('Fetching coordinates for activities').emit();
         const jobs: Promise<void>[] = [];
+        const streams = opts.streams; // Extract to non-null variable
         activities.forEach((activity) => {
-          jobs.push(activity.getCoordinates(ctx, opts.streams));
+          jobs.push(activity.getCoordinates(ctx, streams));
         });
         await Promise.all(jobs);
       }
@@ -315,6 +316,7 @@ export class Main {
 
     // Initialize stream generator with options and line styles
     const handler = new Stream.Handler(streamOpts);
+    assert(streamOpts.output, 'Output path is required for stream generation');
     const writer = await handler.initWriter(ctx, streamOpts.output);
 
     assert(writer, 'No stream writer could be generated for the given output path');
@@ -350,11 +352,8 @@ export class Main {
     }
 
     if (activities.length || segments.length) { // Generate KML file
-      const outputPath = typeof streamOpts.output === 'string'
-        ? streamOpts.output
-        : streamOpts.output?.path
-        ? streamOpts.output.path
-        : 'Activities.kml';
+      // We already asserted output is not undefined earlier
+      const outputPath = streamOpts.output;
 
       ctx.log.info.text('Generating KML file').fs(outputPath).emit();
       ctx.log.indent();
@@ -378,7 +377,7 @@ export class Main {
    */
   async getKmlSegments(
     ctx: Ctx.Context,
-    opts: Kml.CommonOpts & Kml.SegmentOpts,
+    opts: Stream.CommonOpts & Stream.SegmentOpts,
   ): Promise<Segment.Data[]> {
     const result: Segment.Data[] = await this.getSegments(ctx, {
       coordinates: true,
@@ -607,7 +606,8 @@ export class Main {
           try {
             const coords = await this.api.getStreamCoords(
               ctx,
-              'segments' as Api.Schema.StreamKeyType,
+              'segments',
+              [Api.Schema.StreamKeys.LatLng, Api.Schema.StreamKeys.Altitude],
               segment.id,
               segment.name,
             );

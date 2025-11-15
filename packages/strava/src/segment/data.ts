@@ -1,6 +1,6 @@
 import type { Api } from '../dep.ts';
 import { SegmentBase } from './base.ts';
-import type { Coord, Metres, Seconds } from './dep.ts';
+import type { Metres, Seconds } from './dep.ts';
 import type * as Segment from './types.ts';
 
 /**
@@ -16,7 +16,7 @@ import type * as Segment from './types.ts';
  * @example
  * ```ts
  * const segmentData = new SegmentData(segmentBase);
- * segmentData.coordinates = [[lat1, lng1], [lat2, lng2]];
+ * segmentData.coordinates = [{ lat: 37.7, lng: -122.4 }];
  * segmentData.country = "USA";
  * segmentData.state = "California";
  * ```
@@ -27,7 +27,7 @@ export class SegmentData implements Segment.IData {
   elapsedTime: Seconds = 0;
   movingTime: Seconds = 0;
   distance: Metres = 0;
-  coordinates: Coord[] = [];
+  coordinates: Partial<Api.CoordData>[] = [];
   country: string = '';
   state: string = '';
   efforts?: Api.Schema.DetailedSegmentEffort[] = [];

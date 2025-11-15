@@ -46,7 +46,10 @@ describe('SegmentData', () => {
       const data = new SegmentData(base);
       data.country = 'USA';
       data.state = 'California';
-      data.coordinates = [[37.7749, -122.4194], [37.7750, -122.4195]];
+      data.coordinates = [
+        { lat: 37.7749, lng: -122.4194 },
+        { lat: 37.7750, lng: -122.4195 },
+      ];
 
       expect(data.country).toBe('USA');
       expect(data.state).toBe('California');

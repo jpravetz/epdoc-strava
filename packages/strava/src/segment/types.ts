@@ -28,7 +28,7 @@ export interface IData {
   elapsedTime: Seconds;
   movingTime: Seconds;
   distance: Metres;
-  coordinates: Api.Coord[];
+  coordinates: Partial<Api.CoordData>[];
   country: string;
   state: string;
 }

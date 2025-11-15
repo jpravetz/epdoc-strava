@@ -18,11 +18,14 @@ export type Metres = number;
 
 /** A dictionary of query parameters. */
 export type Query = Dict;
+export type Latitude = number;
+export type Longitude = number;
 /** A geographical coordinate, represented as a [latitude, longitude] pair. */
 export type Coord = [number, number];
 /** Data for a set of coordinates. */
 export type CoordData = {
-  latlng: Coord[];
+  lat: Latitude;
+  lng: Longitude;
   altitude?: Metres;
   time?: ISOTzDate;
 };

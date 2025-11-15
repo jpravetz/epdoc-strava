@@ -5,7 +5,7 @@ import { _, type CompareResult, type Dict, type Integer } from '@epdoc/type';
 import { assert } from '@std/assert';
 import type { Api } from './api.ts';
 import type * as Ctx from './context.ts';
-import * as Schema from './schema/mod.ts';
+import type * as Schema from './schema/mod.ts';
 import type {
   ActivityFilter,
   CoordData,
@@ -31,7 +31,7 @@ export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
   public data: Schema.SummaryActivity | Schema.DetailedActivity;
   api?: Api<M, L>;
   #detailed = false;
-  #coordinates: CoordData[] = []; // will contain the latlng coordinates for the activity
+  #coordinates: Partial<CoordData>[] = []; // will contain the latlng coordinates for the activity
   #segments: SegmentData[] = []; // Will be declared here
   #aliases?: Record<string, string>; // Private property for aliases
   #segmentProvider?: { getSegment(name: string): Schema.SummarySegment | undefined }; // Private property for segment provider
@@ -83,13 +83,13 @@ export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
   }
 
   /**
-   * The geographical coordinates of the activity, represented as an array of [latitude, longitude] pairs.
+   * The geographical coordinates of the activity with optional altitude and time data.
    */
-  public get coordinates(): CoordData[] {
+  public get coordinates(): Partial<CoordData>[] {
     return this.#coordinates;
   }
 
-  public set coordinates(val: CoordData[]) {
+  public set coordinates(val: Partial<CoordData>[]) {
     this.#coordinates = val;
   }
 
@@ -286,6 +286,8 @@ export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
         streamTypes,
         this.data.id,
         this.data.name,
+        this.data.timezone,
+        this.startDate,
       );
       if (coords && coords.length > 0) {
         this.#coordinates = coords;

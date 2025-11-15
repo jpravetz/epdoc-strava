@@ -9,11 +9,6 @@ import type * as Stream from './types.ts';
 type SegmentData = Segment.Data;
 type PlacemarkParams = Stream.KmlPlacemarkParams;
 
-const REGEX = {
-  color: /^[a-zA-Z0-9]{8}$/,
-  moto: /^moto$/i,
-};
-
 /**
  * Generates KML (Keyhole Markup Language) files for visualizing Strava activities in Google Earth.
  *
@@ -112,19 +107,24 @@ export class GpxWriter extends StreamWriter {
   }
 
   /**
-   * Writes a complete KML `<Placemark>` block for a LineString.
+   * Writes a GPX track point with coordinates, elevation, and time.
    *
    * @private
-   * @param indent - The indentation level for the KML output.
-   * @param params - The parameters for the placemark.
+   * @param indent - The indentation level for the GPX output.
+   * @param coord - The coordinate data containing lat, lng, altitude, and time.
    */
-  #outputCoordinate(indent: number, coord: Api.CoordData): void {
-    const lines: string[] = [
-      `<trkpt lat="${coord.latlng[0]}" lon="${coord.latlng[1]}">`,
-      `  <ele>${coord.elevation}</ele>`,
-      `  <time>${coord.date}</time>`,
-      `</trkpt>`,
-    ];
+  #outputCoordinate(indent: number, coord: Partial<Api.CoordData>): void {
+    const lines: string[] = [`<trkpt lat="${coord.lat}" lon="${coord.lng}">`];
+
+    if (coord.altitude !== undefined) {
+      lines.push(`  <ele>${coord.altitude}</ele>`);
+    }
+
+    if (coord.time) {
+      lines.push(`  <time>${coord.time}</time>`);
+    }
+
+    lines.push(`</trkpt>`);
     this.writelns(indent, lines);
   }
 

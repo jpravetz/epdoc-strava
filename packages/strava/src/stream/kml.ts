@@ -585,15 +585,16 @@ export class KmlWriter extends StreamWriter {
    *
    * @param indent - Indentation level for KML output.
    * @param lapNumber - Lap number for the label (e.g., 1 for "Lap 1").
-   * @param coord - Coordinate as [lat, lng] array.
+   * @param coord - Coordinate data object with lat, lng, and optional altitude.
    */
-  #outputLapPoint(indent: number, lapNumber: number, coord: Stream.Coord): void {
+  #outputLapPoint(indent: number, lapNumber: number, coord: Partial<Api.CoordData>): void {
     this.writeln(indent, '<Placemark id="LapMarker' + ++this.trackIndex + '">');
     this.writeln(indent + 1, '<name>Lap ' + lapNumber + '</name>');
     this.writeln(indent + 1, '<visibility>1</visibility>');
     this.writeln(indent + 1, '<styleUrl>#LapMarker</styleUrl>');
     this.writeln(indent + 1, '<Point>');
-    this.writeln(indent + 2, '<coordinates>' + coord[1] + ',' + coord[0] + ',0</coordinates>');
+    const alt = coord.altitude ?? 0;
+    this.writeln(indent + 2, `<coordinates>${coord.lng},${coord.lat},${alt}</coordinates>`);
     this.writeln(indent + 1, '</Point>');
     this.writeln(indent, '</Placemark>');
   }
@@ -619,7 +620,9 @@ export class KmlWriter extends StreamWriter {
     if (params.coordinates && params.coordinates.length) {
       this.writeln(indent + 2, '<coordinates>');
       params.coordinates.forEach((coord) => {
-        this.write(0, '' + [coord[1], coord[0], 0].join(',') + ' ');
+        // KML format is: longitude,latitude,altitude
+        const alt = coord.altitude ?? 0;
+        this.write(0, `${coord.lng},${coord.lat},${alt} `);
       });
       this.writeln(indent + 2, '</coordinates>');
     }
