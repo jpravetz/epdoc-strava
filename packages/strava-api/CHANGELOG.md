@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.0-alpha.10] - 2025-11-15
+
+- bug fixes
+
 ## [2.0.0-alpha.9] - 2025-11-15
 
 - Added coordinate filtering

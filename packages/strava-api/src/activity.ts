@@ -301,10 +301,12 @@ export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
     }
   }
 
-  filterCoordinates(dedup: boolean, blackoutZones?: LatLngRect[]) {
+  filterCoordinates(ctx: this['Context'], dedup: boolean, blackoutZones?: LatLngRect[]) {
     if (_.isNonEmptyArray(blackoutZones)) {
       this.#coordinates = this.#coordinates.filter((pt) => {
-        return !pointIsInRects(pt as CoordData, blackoutZones);
+        const rm = pointIsInRects(pt as CoordData, blackoutZones);
+        ctx.log.spam.text('Blackout').value(pt.lat).value(pt.lng).value(pt.time).emit();
+        return rm ? false : true;
       });
     }
 
@@ -313,17 +315,17 @@ export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
       const filtered: CoordData[] = [];
 
       for (let i = 0; i < this.#coordinates.length; i++) {
-        const current = this.#coordinates[i];
+        const pt = this.#coordinates[i];
 
         // Always keep the first point
         if (i === 0) {
-          filtered.push(current);
+          filtered.push(pt);
           continue;
         }
 
         // Always keep the last point
         if (i === this.#coordinates.length - 1) {
-          filtered.push(current);
+          filtered.push(pt);
           continue;
         }
 
@@ -331,12 +333,14 @@ export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
         const next = this.#coordinates[i + 1];
 
         // Check if current point is an intermediate duplicate
-        const isSameAsPrev = current.lat === prev.lat && current.lng === prev.lng;
-        const isSameAsNext = current.lat === next.lat && current.lng === next.lng;
+        const isSameAsPrev = pt.lat === prev.lat && pt.lng === prev.lng;
+        const isSameAsNext = pt.lat === next.lat && pt.lng === next.lng;
 
         // Only keep if it's NOT an intermediate duplicate
         if (!(isSameAsPrev && isSameAsNext)) {
-          filtered.push(current);
+          filtered.push(pt);
+        } else {
+          ctx.log.spam.text('Dedup').value(pt.lat).value(pt.lng).value(pt.time).emit();
         }
       }
 
