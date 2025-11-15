@@ -5,11 +5,12 @@ import type { Activity, Api } from '../dep.ts';
 import { escapeHtml, Fmt } from '../fmt.ts';
 import type * as Segment from '../segment/mod.ts';
 import { isValidActivityType, isValidLineStyle } from './guards.ts';
-import { defaultLineStyles } from './linestyles.ts';
-import type * as Kml from './types.ts';
+import { defaultKmlLineStyles } from './linestyles.ts';
+import { StreamWriter } from './streamer.ts';
+import type * as Stream from './types.ts';
 
 type SegmentData = Segment.Data;
-type PlacemarkParams = Kml.PlacemarkParams;
+type PlacemarkParams = Stream.KmlPlacemarkParams;
 
 const REGEX = {
   color: /^[a-zA-Z0-9]{8}$/,
@@ -38,29 +39,30 @@ const REGEX = {
  * await kml.outputData(ctx, 'output.kml', activities, segments);
  * ```
  */
-export class KmlMain {
-  private opts: Kml.Opts = {};
-  private lineStyles: Kml.LineStyleDefs = defaultLineStyles;
-  private buffer: string = '';
-  private writer?: FS.Writer;
+export class KmlWriter extends StreamWriter {
+  private lineStyles: Stream.KmlLineStyleDefs = defaultKmlLineStyles;
   private trackIndex: number = 0;
 
-  constructor(opts: Kml.Opts = {}) {
-    this.opts = opts;
-  }
-
-  setOptions(opts: Kml.Opts = {}) {
-    this.opts = opts;
-  }
-
+  /**
+   * Indicates if units should be imperial.
+   * @returns `true` if imperial units should be used, `false` otherwise.
+   */
   get imperial(): boolean {
     return this.opts && this.opts.imperial === true;
   }
 
+  /**
+   * Indicates if detailed descriptions should be included.
+   * @returns `true` if detailed descriptions are enabled, `false` otherwise.
+   */
   get more(): boolean {
     return this.opts && this.opts.more === true;
   }
 
+  /**
+   * Indicates if segment effort data should be included.
+   * @returns `true` if effort data is enabled, `false` otherwise.
+   */
   get efforts(): boolean {
     return this.opts && this.opts.efforts === true;
   }
@@ -85,7 +87,7 @@ export class KmlMain {
    * kml.setLineStyles(ctx, customStyles);
    * ```
    */
-  public setLineStyles(ctx: Ctx.Context, styles: Kml.LineStyleDefs) {
+  setLineStyles(ctx: Ctx.Context, styles: Stream.KmlLineStyleDefs) {
     Object.entries(styles).forEach(([name, style]) => {
       if (isValidActivityType(name) && isValidLineStyle(style)) {
         this.lineStyles[name] = style;
@@ -123,7 +125,7 @@ export class KmlMain {
    */
   async outputData(
     ctx: Ctx.Context,
-    filepath: string,
+    filepath: FS.FilePath,
     activities: Activity[],
     segments: SegmentData[],
   ): Promise<void> {
@@ -155,12 +157,60 @@ export class KmlMain {
     }
   }
 
+  /**
+   * Writes the KML file header with document structure and style definitions.
+   *
+   * The header includes:
+   * - XML declaration and KML namespace declarations
+   * - Document element with name and open state
+   * - LineStyle definitions for all activity types and categories
+   * - Lap marker style (if --laps flag is enabled)
+   *
+   * All content is buffered and flushed after header generation.
+   */
+  async #header(): Promise<void> {
+    this.write(0, '<?xml version="1.0" encoding="UTF-8"?>\n');
+    this.writeln(
+      0,
+      '<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">',
+    );
+    this.writeln(1, '<Document>');
+    this.writeln(2, '<name>Strava Activities</name>');
+    this.writeln(2, '<open>1</open>');
+    Object.keys(this.lineStyles).forEach((name) => {
+      this.#addLineStyle(name, this.lineStyles[name]);
+    });
+    // Add lap marker style if laps are enabled
+    if (this.opts.laps) {
+      this.#addLapMarkerStyle();
+    }
+    await this.flush();
+  }
+
+  /**
+   * Writes the KML file footer to close the document structure.
+   *
+   * Closes the Document and kml elements, then flushes the buffer to ensure
+   * all content is written to the file.
+   */
+  async #footer(): Promise<void> {
+    this.write(1, '</Document>\n</kml>\n');
+    await this.flush();
+  }
+
+  /**
+   * Adds a folder of activities to the KML file.
+   *
+   * @private
+   * @param ctx - The application context.
+   * @param activities - An array of activities to include.
+   */
   async #addActivities(ctx: Ctx.Context, activities: Activity[]): Promise<void> {
     if (activities && activities.length) {
       const dateString = this.#dateString();
 
       const indent = 2;
-      this.#writeln(
+      this.writeln(
         indent,
         '<Folder><name>Activities' + (dateString ? ' ' + dateString : '') + '</name><open>1</open>',
       );
@@ -172,11 +222,17 @@ export class KmlMain {
         await this.flush();
       }
 
-      this.#writeln(indent, '</Folder>');
+      this.writeln(indent, '</Folder>');
       await this.flush();
     }
   }
 
+  /**
+   * Generates a date string for folder names based on the date range options.
+   *
+   * @private
+   * @returns A formatted string representing the date range(s).
+   */
   #dateString(): string {
     if (this.opts.date && this.opts.date.hasRanges()) {
       const ad: string[] = [];
@@ -253,8 +309,8 @@ export class KmlMain {
     } else if (country) {
       title += ' for ' + country;
     }
-    this.#writeln(indent, '<Folder><name>' + title + '</name><open>1</open>');
-    this.#writeln(
+    this.writeln(indent, '<Folder><name>' + title + '</name><open>1</open>');
+    this.writeln(
       indent + 1,
       '<description>Efforts for ' + (dateString ? ' ' + dateString : '') + '</description>',
     );
@@ -263,9 +319,16 @@ export class KmlMain {
         this.#outputSegment(indent + 2, segment);
       }
     });
-    this.#writeln(indent, '</Folder>');
+    this.writeln(indent, '</Folder>');
   }
 
+  /**
+   * Analyzes a list of segments and returns a nested dictionary of their regions.
+   *
+   * @private
+   * @param segments - An array of segments.
+   * @returns A dictionary where keys are countries and values are dictionaries of states.
+   */
   private getSegmentRegionList(segments: SegmentData[]): Record<string, Record<string, boolean>> {
     const regions: Record<string, Record<string, boolean>> = {};
     segments.forEach((segment) => {
@@ -306,9 +369,9 @@ export class KmlMain {
 
     if (isMoto) {
       styleName = 'Moto';
-    } else if (activity.commute && defaultLineStyles['Commute']) {
+    } else if (activity.commute && defaultKmlLineStyles['Commute']) {
       styleName = 'Commute';
-    } else if (defaultLineStyles[activity.type]) {
+    } else if (defaultKmlLineStyles[activity.type]) {
       styleName = activity.type;
     }
 
@@ -331,6 +394,14 @@ export class KmlMain {
     }
   }
 
+  /**
+   * Builds the HTML description for an activity placemark.
+   *
+   * @private
+   * @param ctx - The application context.
+   * @param activity - The activity for which to build the description.
+   * @returns The formatted HTML description, or `undefined` if there is no content.
+   */
   async #buildActivityDescription(
     ctx: Ctx.Context,
     activity: Activity,
@@ -401,9 +472,11 @@ export class KmlMain {
   }
 
   /**
-   * Add one segment to the KML file.
-   * @param segment
-   * @returns {string}
+   * Outputs a single segment as a KML LineString placemark.
+   *
+   * @private
+   * @param indent - The indentation level for the KML output.
+   * @param segment - The segment data to output.
    */
   #outputSegment(indent: number, segment: SegmentData): void {
     const params = {
@@ -416,36 +489,55 @@ export class KmlMain {
     this.#placemark(indent, params);
   }
 
+  /**
+   * Builds the description for a segment placemark.
+   *
+   * @private
+   * @param _segment - The segment data.
+   * @returns An empty string (currently a placeholder).
+   */
   #buildSegmentDescription(_segment: SegmentData) {
     return '';
   }
 
-  #addLineStyle(name: string, style: Kml.LineStyle): void {
-    this.#write(2, '<Style id="StravaLineStyle' + name + '">\n');
-    this.#write(
+  /**
+   * Writes a KML `<Style>` block for a line.
+   *
+   * @private
+   * @param name - The name to be used in the style ID (e.g., "Ride").
+   * @param style - The line style definition containing color and width.
+   */
+  #addLineStyle(name: string, style: Stream.KmlLineStyle): void {
+    this.write(2, '<Style id="StravaLineStyle' + name + '">\n');
+    this.write(
       3,
       '<LineStyle><color>' + style.color + '</color><width>' + style.width +
         '</width></LineStyle>\n',
     );
-    this.#write(3, '<PolyStyle><color>' + style.color + '</color></PolyStyle>\n');
-    this.#write(2, '</Style>\n');
+    this.write(3, '<PolyStyle><color>' + style.color + '</color></PolyStyle>\n');
+    this.write(2, '</Style>\n');
   }
 
+  /**
+   * Writes the KML `<Style>` block for lap markers.
+   *
+   * @private
+   */
   #addLapMarkerStyle(): void {
-    this.#write(2, '<Style id="LapMarker">\n');
-    this.#write(3, '<IconStyle>\n');
-    this.#write(4, '<scale>0.6</scale>\n');
-    this.#write(4, '<Icon>\n');
-    this.#write(
+    this.write(2, '<Style id="LapMarker">\n');
+    this.write(3, '<IconStyle>\n');
+    this.write(4, '<scale>0.6</scale>\n');
+    this.write(4, '<Icon>\n');
+    this.write(
       5,
       '<href>http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png</href>\n',
     );
-    this.#write(4, '</Icon>\n');
-    this.#write(3, '</IconStyle>\n');
-    this.#write(3, '<LabelStyle>\n');
-    this.#write(4, '<scale>0</scale>\n'); // Hide label by default
-    this.#write(3, '</LabelStyle>\n');
-    this.#write(2, '</Style>\n');
+    this.write(4, '</Icon>\n');
+    this.write(3, '</IconStyle>\n');
+    this.write(3, '<LabelStyle>\n');
+    this.write(4, '<scale>0</scale>\n'); // Hide label by default
+    this.write(3, '</LabelStyle>\n');
+    this.write(2, '</Style>\n');
   }
 
   /**
@@ -459,8 +551,8 @@ export class KmlMain {
    * Only outputs markers if the activity has lap data and coordinates. Skips laps with
    * invalid start indices.
    *
-   * @param indent Indentation level for KML output
-   * @param activity Strava activity with laps array and coordinates
+   * @param indent - Indentation level for KML output.
+   * @param activity - Strava activity with laps array and coordinates.
    */
   #outputLapMarkers(indent: number, activity: Activity): void {
     if (!('laps' in activity.data) || !_.isArray(activity.data.laps)) {
@@ -491,125 +583,47 @@ export class KmlMain {
    * the lap number. The label is hidden by default (scale=0) and only appears when
    * the marker is clicked in Google Earth.
    *
-   * @param indent Indentation level for KML output
-   * @param lapNumber Lap number for the label (e.g., 1 for "Lap 1")
-   * @param coord Coordinate as [lat, lng] array
+   * @param indent - Indentation level for KML output.
+   * @param lapNumber - Lap number for the label (e.g., 1 for "Lap 1").
+   * @param coord - Coordinate as [lat, lng] array.
    */
-  #outputLapPoint(indent: number, lapNumber: number, coord: Kml.Coord): void {
-    this.#writeln(indent, '<Placemark id="LapMarker' + ++this.trackIndex + '">');
-    this.#writeln(indent + 1, '<name>Lap ' + lapNumber + '</name>');
-    this.#writeln(indent + 1, '<visibility>1</visibility>');
-    this.#writeln(indent + 1, '<styleUrl>#LapMarker</styleUrl>');
-    this.#writeln(indent + 1, '<Point>');
-    this.#writeln(indent + 2, '<coordinates>' + coord[1] + ',' + coord[0] + ',0</coordinates>');
-    this.#writeln(indent + 1, '</Point>');
-    this.#writeln(indent, '</Placemark>');
+  #outputLapPoint(indent: number, lapNumber: number, coord: Stream.Coord): void {
+    this.writeln(indent, '<Placemark id="LapMarker' + ++this.trackIndex + '">');
+    this.writeln(indent + 1, '<name>Lap ' + lapNumber + '</name>');
+    this.writeln(indent + 1, '<visibility>1</visibility>');
+    this.writeln(indent + 1, '<styleUrl>#LapMarker</styleUrl>');
+    this.writeln(indent + 1, '<Point>');
+    this.writeln(indent + 2, '<coordinates>' + coord[1] + ',' + coord[0] + ',0</coordinates>');
+    this.writeln(indent + 1, '</Point>');
+    this.writeln(indent, '</Placemark>');
   }
 
+  /**
+   * Writes a complete KML `<Placemark>` block for a LineString.
+   *
+   * @private
+   * @param indent - The indentation level for the KML output.
+   * @param params - The parameters for the placemark.
+   */
   #placemark(indent: number, params: PlacemarkParams): void {
-    this.#writeln(indent, '<Placemark id="' + params.placemarkId + '">');
-    this.#writeln(indent + 1, '<name>' + params.name + '</name>');
+    this.writeln(indent, '<Placemark id="' + params.placemarkId + '">');
+    this.writeln(indent + 1, '<name>' + params.name + '</name>');
     if (params.description) {
-      this.#writeln(indent + 1, '<description>' + params.description + '</description>');
+      this.writeln(indent + 1, '<description>' + params.description + '</description>');
     }
 
-    this.#writeln(indent + 1, '<visibility>1</visibility>');
-    this.#writeln(indent + 1, '<styleUrl>#StravaLineStyle' + params.styleName + '</styleUrl>');
-    this.#writeln(indent + 1, '<LineString>');
-    this.#writeln(indent + 2, '<tessellate>1</tessellate>');
+    this.writeln(indent + 1, '<visibility>1</visibility>');
+    this.writeln(indent + 1, '<styleUrl>#StravaLineStyle' + params.styleName + '</styleUrl>');
+    this.writeln(indent + 1, '<LineString>');
+    this.writeln(indent + 2, '<tessellate>1</tessellate>');
     if (params.coordinates && params.coordinates.length) {
-      this.#writeln(indent + 2, '<coordinates>');
+      this.writeln(indent + 2, '<coordinates>');
       params.coordinates.forEach((coord) => {
-        this.#write(0, '' + [coord[1], coord[0], 0].join(',') + ' ');
+        this.write(0, '' + [coord[1], coord[0], 0].join(',') + ' ');
       });
-      this.#writeln(indent + 2, '</coordinates>');
+      this.writeln(indent + 2, '</coordinates>');
     }
-    this.#writeln(indent + 1, '</LineString>');
-    this.#writeln(indent, '</Placemark>');
-  }
-
-  /**
-   * Writes the KML file header with document structure and style definitions.
-   *
-   * The header includes:
-   * - XML declaration and KML namespace declarations
-   * - Document element with name and open state
-   * - LineStyle definitions for all activity types and categories
-   * - Lap marker style (if --laps flag is enabled)
-   *
-   * All content is buffered and flushed after header generation.
-   */
-  async #header(): Promise<void> {
-    this.#write(0, '<?xml version="1.0" encoding="UTF-8"?>\n');
-    this.#writeln(
-      0,
-      '<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">',
-    );
-    this.#writeln(1, '<Document>');
-    this.#writeln(2, '<name>Strava Activities</name>');
-    this.#writeln(2, '<open>1</open>');
-    Object.keys(this.lineStyles).forEach((name) => {
-      this.#addLineStyle(name, this.lineStyles[name]);
-    });
-    // Add lap marker style if laps are enabled
-    if (this.opts.laps) {
-      this.#addLapMarkerStyle();
-    }
-    await this.flush();
-  }
-
-  /**
-   * Writes the KML file footer to close the document structure.
-   *
-   * Closes the Document and kml elements, then flushes the buffer to ensure
-   * all content is written to the file.
-   */
-  async #footer(): Promise<void> {
-    this.#write(1, '</Document>\n</kml>\n');
-    await this.flush();
-  }
-
-  #write(indent: string | number, s: string): void {
-    if (_.isString(indent)) {
-      this.buffer += s;
-    } else {
-      const indent2 = new Array(indent + 1).join('  ');
-      this.buffer += indent2 + s;
-    }
-  }
-
-  #writeln(indent: string | number, s: string): void {
-    if (_.isString(indent)) {
-      this.buffer += s + '\n';
-    } else {
-      const indent2 = new Array(indent + 1).join('  ');
-      this.buffer += indent2 + s + '\n';
-    }
-    // this.buffer.write( indent + s + "\n", 'utf8' );
-  }
-
-  /**
-   * Flushes the internal buffer to the file writer.
-   *
-   * This public method delegates to the private _flush() implementation.
-   * Called after generating header, activities, segments, and footer to ensure
-   * all buffered content is written to the output file.
-   */
-  public async flush(): Promise<void> {
-    await this.#flush();
-  }
-
-  /**
-   * Internal implementation for flushing buffered content to the file writer.
-   *
-   * Writes the current buffer contents to the FileSpecWriter and clears the buffer.
-   * Uses buffering for better write performance when generating large KML files.
-   */
-  async #flush(): Promise<void> {
-    if (this.writer && this.buffer) {
-      const content = this.buffer;
-      this.buffer = '';
-      await this.writer.write(content);
-    }
+    this.writeln(indent + 1, '</LineString>');
+    this.writeln(indent, '</Placemark>');
   }
 }

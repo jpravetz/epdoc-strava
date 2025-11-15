@@ -1,15 +1,14 @@
 import type { DateRanges } from '@epdoc/daterange';
-import type { FileSpec } from '@epdoc/fs';
 import type { Dict } from '@epdoc/type';
 import type { Api } from '../dep.ts';
 
-export type LineStyle = {
+export type KmlLineStyle = {
   color: string;
   width: number;
 };
 
 // LineStyleDefs supports ActivityTypes plus custom style names (Commute, Moto, Segment, Default, etc.)
-export type LineStyleDefs = Record<string, LineStyle>;
+export type KmlLineStyleDefs = Record<string, KmlLineStyle>;
 
 export type ActivityOpts = {
   activities?: boolean;
@@ -26,7 +25,7 @@ export type SegmentOpts = {
 };
 
 export type CommonOpts = {
-  output?: string | FileSpec; // output filename
+  output?: string; // output filename with extension or folder path if outputting gpx files
   date?: DateRanges; // date range for which to output data
   more?: boolean; // include basic activity stats in description (distance, elevation, times, custom props)
   imperial?: boolean; // use imperial units (miles, feet) instead of metric
@@ -36,7 +35,7 @@ export type Opts = CommonOpts & ActivityOpts & SegmentOpts;
 
 export type Coord = [number, number]; // [lat, lng]
 
-export type PlacemarkParams = {
+export type KmlPlacemarkParams = {
   description?: string;
   coordinates?: Coord[];
   placemarkId?: string;

@@ -1,6 +1,6 @@
 import { _ } from '@epdoc/type';
 import { Api } from '../dep.ts';
-import type { LineStyle } from './types.ts';
+import type { KmlLineStyle } from './types.ts';
 
 export function isValidActivityType(name: string): boolean {
   // Allow standard activity types, plus custom style names (Default, Commute, Moto, Segment, etc.)
@@ -11,6 +11,6 @@ export function isValidActivityType(name: string): boolean {
     name === 'Segment';
 }
 
-export function isValidLineStyle(val: LineStyle): val is LineStyle {
+export function isValidLineStyle(val: KmlLineStyle): val is KmlLineStyle {
   return !!(val && _.isString(val.color) && _.isNumber(val.width) && _.isHexString(val.color, 8));
 }

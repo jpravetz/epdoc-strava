@@ -350,6 +350,203 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "strava: main gpx --help",
+      "program": "${workspaceFolder}/packages/strava/./main.ts",
+      "cwd": "${workspaceFolder}",
+      "attachSimplePort": 9229,
+      "runtimeExecutable": "/Users/jpravetz/.deno/bin/deno",
+      "runtimeArgs": [
+        "run",
+        "-A",
+        "--inspect-brk"
+      ],
+      "args": [
+        "kml",
+        "-o",
+        "/Users/jpravetz/dev/@epdoc/strava/tmp/",
+        "--help"
+      ],
+      "env": {
+        "LAUNCHGEN": "true"
+      },
+      "presentation": {
+        "group": "strava"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "strava: main gpx -d 20251012",
+      "program": "${workspaceFolder}/packages/strava/./main.ts",
+      "cwd": "${workspaceFolder}",
+      "attachSimplePort": 9229,
+      "runtimeExecutable": "/Users/jpravetz/.deno/bin/deno",
+      "runtimeArgs": [
+        "run",
+        "-A",
+        "--inspect-brk"
+      ],
+      "args": [
+        "kml",
+        "-o",
+        "/Users/jpravetz/dev/@epdoc/strava/tmp/",
+        "-d",
+        "20251012"
+      ],
+      "env": {
+        "LAUNCHGEN": "true"
+      },
+      "presentation": {
+        "group": "strava"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "strava: main gpx -d 20251012 -m",
+      "program": "${workspaceFolder}/packages/strava/./main.ts",
+      "cwd": "${workspaceFolder}",
+      "attachSimplePort": 9229,
+      "runtimeExecutable": "/Users/jpravetz/.deno/bin/deno",
+      "runtimeArgs": [
+        "run",
+        "-A",
+        "--inspect-brk"
+      ],
+      "args": [
+        "kml",
+        "-o",
+        "/Users/jpravetz/dev/@epdoc/strava/tmp/",
+        "-d",
+        "20251012",
+        "-m"
+      ],
+      "env": {
+        "LAUNCHGEN": "true"
+      },
+      "presentation": {
+        "group": "strava"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "strava: main gpx -d 20251012 -mel",
+      "program": "${workspaceFolder}/packages/strava/./main.ts",
+      "cwd": "${workspaceFolder}",
+      "attachSimplePort": 9229,
+      "runtimeExecutable": "/Users/jpravetz/.deno/bin/deno",
+      "runtimeArgs": [
+        "run",
+        "-A",
+        "--inspect-brk"
+      ],
+      "args": [
+        "kml",
+        "-o",
+        "/Users/jpravetz/dev/@epdoc/strava/tmp/",
+        "-d",
+        "20251012",
+        "-mel"
+      ],
+      "env": {
+        "LAUNCHGEN": "true"
+      },
+      "presentation": {
+        "group": "strava"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "strava: main gpx -d 20251012 -mel -t Ride",
+      "program": "${workspaceFolder}/packages/strava/./main.ts",
+      "cwd": "${workspaceFolder}",
+      "attachSimplePort": 9229,
+      "runtimeExecutable": "/Users/jpravetz/.deno/bin/deno",
+      "runtimeArgs": [
+        "run",
+        "-A",
+        "--inspect-brk"
+      ],
+      "args": [
+        "kml",
+        "-o",
+        "/Users/jpravetz/dev/@epdoc/strava/tmp/",
+        "-d",
+        "20251012",
+        "-mel",
+        "-t",
+        "Ride"
+      ],
+      "env": {
+        "LAUNCHGEN": "true"
+      },
+      "presentation": {
+        "group": "strava"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "strava: main gpx -d 20251012 -mel -t Walk",
+      "program": "${workspaceFolder}/packages/strava/./main.ts",
+      "cwd": "${workspaceFolder}",
+      "attachSimplePort": 9229,
+      "runtimeExecutable": "/Users/jpravetz/.deno/bin/deno",
+      "runtimeArgs": [
+        "run",
+        "-A",
+        "--inspect-brk"
+      ],
+      "args": [
+        "kml",
+        "-o",
+        "/Users/jpravetz/dev/@epdoc/strava/tmp/",
+        "-d",
+        "20251012",
+        "-mel",
+        "-t",
+        "Walk"
+      ],
+      "env": {
+        "LAUNCHGEN": "true"
+      },
+      "presentation": {
+        "group": "strava"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "strava: main gpx -d 20251113- -mel",
+      "program": "${workspaceFolder}/packages/strava/./main.ts",
+      "cwd": "${workspaceFolder}",
+      "attachSimplePort": 9229,
+      "runtimeExecutable": "/Users/jpravetz/.deno/bin/deno",
+      "runtimeArgs": [
+        "run",
+        "-A",
+        "--inspect-brk"
+      ],
+      "args": [
+        "kml",
+        "-o",
+        "/Users/jpravetz/dev/@epdoc/strava/tmp/",
+        "-d",
+        "20251113-",
+        "-mel"
+      ],
+      "env": {
+        "LAUNCHGEN": "true"
+      },
+      "presentation": {
+        "group": "strava"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "strava: main pdf --help",
       "program": "${workspaceFolder}/packages/strava/./main.ts",
       "cwd": "${workspaceFolder}",

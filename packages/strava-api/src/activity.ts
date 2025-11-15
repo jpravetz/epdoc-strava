@@ -5,10 +5,10 @@ import { _, type CompareResult, type Dict, type Integer } from '@epdoc/type';
 import { assert } from '@std/assert';
 import type { Api } from './api.ts';
 import type * as Ctx from './context.ts';
-import type * as Schema from './schema/mod.ts';
+import * as Schema from './schema/mod.ts';
 import type {
   ActivityFilter,
-  Coord,
+  CoordData,
   Kilometres,
   Metres,
   SegmentData,
@@ -31,7 +31,7 @@ export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
   public data: Schema.SummaryActivity | Schema.DetailedActivity;
   api?: Api<M, L>;
   #detailed = false;
-  private _coordinates: Coord[] = []; // will contain the latlng coordinates for the activity
+  #coordinates: CoordData[] = []; // will contain the latlng coordinates for the activity
   #segments: SegmentData[] = []; // Will be declared here
   #aliases?: Record<string, string>; // Private property for aliases
   #segmentProvider?: { getSegment(name: string): Schema.SummarySegment | undefined }; // Private property for segment provider
@@ -85,12 +85,12 @@ export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
   /**
    * The geographical coordinates of the activity, represented as an array of [latitude, longitude] pairs.
    */
-  public get coordinates(): Coord[] {
-    return this._coordinates;
+  public get coordinates(): CoordData[] {
+    return this.#coordinates;
   }
 
-  public set coordinates(val: Coord[]) {
-    this._coordinates = val;
+  public set coordinates(val: CoordData[]) {
+    this.#coordinates = val;
   }
 
   /**
@@ -215,7 +215,7 @@ export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
     if (!_.isString(this.type) || REGEX.noKmlData.test(this.type)) {
       return false;
     }
-    return this._coordinates.length > 0 ? true : false;
+    return this.#coordinates.length > 0 ? true : false;
   }
 
   /**
@@ -276,18 +276,19 @@ export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
   //   });
   // }
 
-  async getCoordinates(ctx: this['Context']): Promise<void> {
+  async getCoordinates(ctx: this['Context'], streamTypes: Schema.StreamType[]): Promise<void> {
     assert(this.api, 'api not set');
     try {
       const m0 = ctx.log.mark();
       const coords = await this.api.getStreamCoords(
         ctx,
-        'activities' as Schema.StreamKeyType,
+        'activities',
+        streamTypes,
         this.data.id,
         this.data.name,
       );
       if (coords && coords.length > 0) {
-        this._coordinates = coords;
+        this.#coordinates = coords;
         ctx.log.info.h2('Retrieved').count(coords.length)
           .h2('coordinate').h2('for').value(this.toString()).ewt(m0);
       }

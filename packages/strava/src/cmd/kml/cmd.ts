@@ -1,9 +1,8 @@
 import type { Command } from '@epdoc/cliapp';
 import type { DateRanges } from '@epdoc/daterange';
-import * as FS from '@epdoc/fs/fs';
 import { _ } from '@epdoc/type';
 import { Api } from '../../dep.ts';
-import type * as Kml from '../../kml/mod.ts';
+import type * as Stream from '../../stream/mod.ts';
 import type { Ctx } from '../dep.ts';
 import * as Options from '../options/mod.ts';
 import type * as Cmd from '../types.ts';
@@ -100,10 +99,10 @@ export class KmlCmd extends Options.BaseSubCmd {
           Deno.exit(1);
         }
 
-        const opts: Kml.ActivityOpts & Kml.CommonOpts = {
+        const opts: Stream.ActivityOpts & Stream.CommonOpts = {
           activities: true,
           date: kmlOpts.date,
-          output: new FS.File(kmlOpts.output),
+          output: kmlOpts.output,
           more: kmlOpts.more,
           efforts: kmlOpts.efforts,
           laps: kmlOpts.laps,

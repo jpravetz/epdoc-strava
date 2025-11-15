@@ -1,8 +1,8 @@
 // Colors are aabbggrr
 
-import type { LineStyleDefs } from './types.ts';
+import type { KmlLineStyleDefs } from './types.ts';
 
-export const defaultLineStyles: LineStyleDefs = {
+export const defaultKmlLineStyles: KmlLineStyleDefs = {
   Default: {
     color: 'C00000FF',
     width: 4,

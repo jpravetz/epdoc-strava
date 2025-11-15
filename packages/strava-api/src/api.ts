@@ -17,7 +17,7 @@ import {
   isSummarySegmentArray,
 } from './guards.ts';
 import * as Schema from './schema/mod.ts';
-import type * as Strava from './types.ts';
+import * as Strava from './types.ts';
 
 const STRAVA_URL_PREFIX = Deno.env.get('STRAVA_URL_PREFIX') || 'https://www.strava.com';
 const STRAVA_API_PREFIX = STRAVA_URL_PREFIX + '/api/v3';
@@ -279,57 +279,6 @@ export class Api<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
   }
 
   /**
-   * Retrieves the geographical coordinates for a given activity or segment.
-   *
-   * This method is useful for plotting the route of an activity or segment on a map.
-   *
-   * @param ctx The application context for logging.
-   * @param source The type of object to retrieve the stream for (e.g., 'activities', 'segments').
-   * @param objId The ID of the activity or segment.
-   * @param name The name of the object, used for logging purposes.
-   * @returns A promise that resolves to an array of coordinates, where each coordinate is a [latitude, longitude] pair.
-   */
-  public async getStreamCoords(
-    ctx: this['Context'],
-    source: Schema.StreamKeyType,
-    objId: Schema.ActivityId | Schema.SegmentId,
-    name: string,
-  ): Promise<Strava.Coord[]> {
-    const query: Dict = {
-      keys: Schema.StreamKeys.LatLng,
-      key_by_type: '',
-    };
-    const m0 = ctx.log.mark();
-    try {
-      const resp: Partial<Schema.StreamSet> = await this.getStreams(ctx, source, objId, query);
-      if (hasLatLngData(resp)) {
-        return resp.latlng.data as Strava.Coord[];
-      }
-      ctx.log.info.h2('Get').value(name).h2('did not contain unknown coordinates').ewt(m0);
-      return [];
-    } catch (error: unknown) {
-      const err = _.asError(error);
-      const errorMsg = err.message;
-
-      // Handle 404 errors silently - some segments don't have coordinate data
-      if (errorMsg.includes('404')) {
-        // Don't log 404s - they're expected for some segments
-        return [];
-      }
-
-      // Handle 429 rate limit errors with a warning (no stack trace)
-      if (errorMsg.includes('429')) {
-        ctx.log.warn.text('Rate limit exceeded fetching coordinates for').value(name).emit();
-        return [];
-      }
-
-      // Log other errors with full details
-      ctx.log.error.h2('Get').value(name).h2('coordinates').err(err).ewt(m0);
-      return [];
-    }
-  }
-
-  /**
    * Retrieves the detailed representation of a specific activity.
    *
    * This method is useful for getting more detailed information about an activity than is available in the summary representation.
@@ -377,6 +326,65 @@ export class Api<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
   }
 
   /**
+   * Retrieves the geographical coordinates for a given activity or segment.
+   *
+   * This method is useful for plotting the route of an activity or segment on a map.
+   *
+   * @param ctx The application context for logging.
+   * @param source The type of object to retrieve the stream for (e.g., 'activities', 'segments').
+   * @param objId The ID of the activity or segment.
+   * @param name The name of the object, used for logging purposes.
+   * @returns A promise that resolves to an array of coordinates, where each coordinate is a [latitude, longitude] pair.
+   */
+  public async getStreamCoords(
+    ctx: this['Context'],
+    source: 'activities' | 'segments',
+    streamTypes: Schema.StreamKeyType[],
+    objId: Schema.ActivityId | Schema.SegmentId,
+    name: string,
+  ): Promise<Strava.Coord[]> {
+    const query: Dict = {
+      keys: streamTypes,
+      key_by_type: ' ',
+    };
+    const m0 = ctx.log.mark();
+    try {
+      const resp: Partial<Schema.StreamSet> = await this.getStreams(ctx, source, objId, query);
+      if (hasLatLngData(resp)) {
+        const results = Strava.CoordData[];
+        for( let idx=0; idx<resp.latlng.data.length ) {
+          const item: Partial<CoordData> = {};
+        }
+        if (streamTypes.length === 1 && streamTypes[0] === Schema.StreamKeys.LatLng) {
+          return resp.latlng.data as Strava.Coord[];
+        } else {
+        }
+      }
+      ctx.log.info.h2('Get').value(name).h2('did not contain unknown coordinates').ewt(m0);
+      return [];
+    } catch (error: unknown) {
+      const err = _.asError(error);
+      const errorMsg = err.message;
+
+      // Handle 404 errors silently - some segments don't have coordinate data
+      if (errorMsg.includes('404')) {
+        // Don't log 404s - they're expected for some segments
+        return [];
+      }
+
+      // Handle 429 rate limit errors with a warning (no stack trace)
+      if (errorMsg.includes('429')) {
+        ctx.log.warn.text('Rate limit exceeded fetching coordinates for').value(name).emit();
+        return [];
+      }
+
+      // Log other errors with full details
+      ctx.log.error.h2('Get').value(name).h2('coordinates').err(err).ewt(m0);
+      return [];
+    }
+  }
+
+  /**
    * Retrieves the stream data for a given activity or segment.
    *
    * Streams are the raw data associated with an activity or segment, such as latitude/longitude, heart rate, or power.
@@ -390,7 +398,7 @@ export class Api<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
    */
   public async getStreams(
     ctx: this['Context'],
-    source: Schema.StreamKeyType,
+    source: 'activities' | 'segments',
     objId: Schema.ActivityId | Schema.SegmentId,
     options: Strava.Query,
   ): Promise<Partial<Schema.StreamSet>> {

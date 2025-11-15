@@ -48,6 +48,26 @@
           "-d 20251012 -mel -t Hike"
         ]
       },
+      "gpx": {
+        "name": "main gpx",
+        "console": "internalConsole",
+        "program": "./main.ts",
+        "runtimeArgs": [
+          "run",
+          "-A",
+          "--inspect-brk"
+        ],
+        "scriptArgs": "kml -o /Users/jpravetz/dev/@epdoc/strava/tmp/",
+        "scripts": [
+          "--help",
+          "-d 20251012",
+          "-d 20251012 -m",
+          "-d 20251012 -mel",
+          "-d 20251012 -mel -t Ride",
+          "-d 20251012 -mel -t Walk",
+          "-d 20251113- -mel"
+        ]
+      },
       "pdf": {
         "name": "main pdf",
         "console": "internalConsole",

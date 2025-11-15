@@ -6,8 +6,9 @@ import * as BikeLog from '../bikelog/mod.ts';
 import rawConfig from '../config.json' with { type: 'json' };
 import type * as Ctx from '../context.ts';
 import { type Activity, Api, type StravaApi } from '../dep.ts';
-import * as Kml from '../kml/mod.ts';
 import * as Segment from '../segment/mod.ts';
+import { KmlWriter } from '../stream/kml.ts';
+import * as Stream from '../stream/mod.ts';
 import type * as App from './types.ts';
 
 const home = Deno.env.get('HOME');
@@ -25,6 +26,7 @@ const configPaths = lessRaw.paths;
 
 type GetActivitiesOpts = {
   detailed?: boolean;
+  streams?: Api.Schema.StreamType[];
   coordinates?: boolean;
   starredSegments?: boolean;
   filter?: Api.ActivityFilter;
@@ -240,11 +242,11 @@ export class Main {
         });
         await Promise.all(jobs);
       }
-      if (opts.coordinates) {
+      if (_.isNonEmptyArray(opts.streams)) {
         ctx.log.info.text('Fetching coordinates for activities').emit();
         const jobs: Promise<void>[] = [];
         activities.forEach((activity) => {
-          jobs.push(activity.getCoordinates(ctx));
+          jobs.push(activity.getCoordinates(ctx, opts.streams));
         });
         await Promise.all(jobs);
       }
@@ -283,7 +285,7 @@ export class Main {
    * - Segment routes organized by region.
    *
    * @param ctx - Application context for logging.
-   * @param kmlOpts - KML generation options.
+   * @param streamOpts - KML generation options.
    * @param [kmlOpts.activities=false] - Whether to include activity paths in the KML.
    * @param [kmlOpts.date] - Date ranges for filtering activities. Required if `kmlOpts.activities` is true.
    * @param [kmlOpts.output='Activities.kml'] - The path for the output file.
@@ -305,54 +307,58 @@ export class Main {
    * });
    * ```
    */
-  async getKml(ctx: Ctx.Context, kmlOpts: Kml.Opts): Promise<void> {
-    // Initialize KML generator with options and line styles
-    const kml = new Kml.Main(kmlOpts);
-    if (this.userSettings && this.userSettings.lineStyles) {
-      kml.setLineStyles(ctx, this.userSettings.lineStyles);
+  async getKml(ctx: Ctx.Context, streamOpts: Stream.Opts): Promise<void> {
+    // Validate that at least activities or segments is requested
+    if (!streamOpts.activities && !streamOpts.segments) {
+      throw new Error('When writing KML, select either segments, activities, or both');
     }
 
-    // Validate that at least activities or segments is requested
-    if (!kmlOpts.activities && !kmlOpts.segments) {
-      throw new Error('When writing KML, select either segments, activities, or both');
+    // Initialize stream generator with options and line styles
+    const handler = new Stream.Handler(streamOpts);
+    const writer = await handler.initWriter(ctx, streamOpts.output);
+
+    assert(writer, 'No stream writer could be generated for the given output path');
+
+    if (writer instanceof KmlWriter && this.userSettings && this.userSettings.lineStyles) {
+      writer.setLineStyles(ctx, this.userSettings.lineStyles);
     }
 
     let activities: Activity[] = [];
     let segments: Segment.Data[] = [];
 
-    if (kmlOpts.activities) {
-      assert(kmlOpts.date);
+    if (streamOpts.activities) {
+      assert(streamOpts.date);
 
       const opts: GetActivitiesOpts = {
-        detailed: kmlOpts.laps || kmlOpts.more || kmlOpts.efforts,
-        coordinates: true,
-        starredSegments: kmlOpts.efforts,
+        detailed: streamOpts.laps || streamOpts.more || streamOpts.efforts,
+        streams: writer?.streamTypes(),
+        starredSegments: streamOpts.efforts,
       };
       // Filter activities based on commute option
-      if (kmlOpts.commute === 'yes') {
+      if (streamOpts.commute === 'yes') {
         opts.filter = { commuteOnly: true };
-      } else if (kmlOpts.commute === 'no') {
+      } else if (streamOpts.commute === 'no') {
         opts.filter = { nonCommuteOnly: true };
       }
 
-      activities = await this.getActivitiesForDateRange(ctx, kmlOpts.date!, opts);
+      activities = await this.getActivitiesForDateRange(ctx, streamOpts.date!, opts);
     }
 
     // Fetch segments because we are building a KML of all our segments
-    if (kmlOpts.segments) {
-      segments = await this.getKmlSegments(ctx, kmlOpts);
+    if (streamOpts.segments) {
+      segments = await this.getKmlSegments(ctx, streamOpts);
     }
 
     if (activities.length || segments.length) { // Generate KML file
-      const outputPath = typeof kmlOpts.output === 'string'
-        ? kmlOpts.output
-        : kmlOpts.output?.path
-        ? kmlOpts.output.path
+      const outputPath = typeof streamOpts.output === 'string'
+        ? streamOpts.output
+        : streamOpts.output?.path
+        ? streamOpts.output.path
         : 'Activities.kml';
 
       ctx.log.info.text('Generating KML file').fs(outputPath).emit();
       ctx.log.indent();
-      await kml.outputData(ctx, outputPath, activities, segments);
+      await handler.outputData(ctx, outputPath, activities, segments);
       ctx.log.outdent();
       ctx.log.info.h2('KML file generated successfully').fs(outputPath).emit();
     } else {

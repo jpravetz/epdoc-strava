@@ -1,3 +1,4 @@
+import type { ISOTzDate } from '@epdoc/datetime';
 import type { EpochSeconds } from '@epdoc/duration';
 import type * as FS from '@epdoc/fs/fs';
 import type { Dict, Integer } from '@epdoc/type';
@@ -21,8 +22,9 @@ export type Query = Dict;
 export type Coord = [number, number];
 /** Data for a set of coordinates. */
 export type CoordData = {
-  type: string;
-  data: Coord[];
+  latlng: Coord[];
+  altitude?: Metres;
+  time?: ISOTzDate;
 };
 
 /** The client ID for a Strava application. */

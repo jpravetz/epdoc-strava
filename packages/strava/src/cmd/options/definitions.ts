@@ -23,7 +23,7 @@ export const mapDef: Record<string, Options.Def> = {
     params: '<filename>',
     description: 'Output ${cmd} filename (REQUIRED).',
     argParser: (str: string) => {
-      return _.isString(str) ? new FileSpec(Deno.cwd(), str) : str;
+      return str;
     },
   },
   type: {
