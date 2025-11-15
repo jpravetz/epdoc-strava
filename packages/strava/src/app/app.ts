@@ -11,8 +11,9 @@ import { KmlWriter } from '../stream/kml.ts';
 import * as Stream from '../stream/mod.ts';
 import type * as App from './types.ts';
 
-const home = Deno.env.get('HOME');
-assert(home, 'Environment variable HOME is missing');
+const rawHome = Deno.env.get('HOME');
+assert(rawHome, 'Environment variable HOME is missing');
+const home: string = rawHome;
 assert(
   _.isDict(rawConfig) && 'paths' in rawConfig && _.isDict(rawConfig.paths),
   'Invalid application configuration',
@@ -120,7 +121,12 @@ export class Main {
     }
 
     if (opts.userSettings) {
-      this.userSettings = await new FS.File(configPaths.userSettings).readJson();
+      const rawSettings = await new FS.File(configPaths.userSettings).readJson();
+      this.userSettings = _.deepCopy(rawSettings, {
+        replace: { 'HOME': home },
+        pre: '${',
+        post: '}',
+      }) as App.UserSettings;
     }
   }
 
@@ -354,7 +360,9 @@ export class Main {
     if (activities.length || segments.length) { // Generate KML or GPX files
       // We already asserted output is not undefined earlier
       const outputPath = streamOpts.output;
-      const pathStr = typeof outputPath === 'string' ? outputPath : (outputPath as unknown as { path: string }).path;
+      const pathStr = typeof outputPath === 'string'
+        ? outputPath
+        : (outputPath as unknown as { path: string }).path;
       const isKml = /\.kml$/i.test(pathStr);
       const formatName = isKml ? 'KML file' : 'GPX files';
 
@@ -362,7 +370,9 @@ export class Main {
       ctx.log.indent();
       await handler.outputData(ctx, outputPath, activities, segments);
       ctx.log.outdent();
-      ctx.log.info.h2(`${formatName.charAt(0).toUpperCase() + formatName.slice(1)} generated successfully`).fs(outputPath).emit();
+      ctx.log.info.h2(
+        `${formatName.charAt(0).toUpperCase() + formatName.slice(1)} generated successfully`,
+      ).fs(outputPath).emit();
     } else {
       ctx.log.info.warn('No activities or segments found for the specified criteria').emit();
     }
