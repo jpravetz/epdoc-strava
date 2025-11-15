@@ -1,4 +1,4 @@
-import { DateEx } from '@epdoc/datetime';
+import { DateEx, type IANATZ } from '@epdoc/datetime';
 import type * as FS from '@epdoc/fs/fs';
 import { _, type Dict } from '@epdoc/type';
 import { Activity } from './activity.ts';
@@ -380,8 +380,19 @@ export class Api<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
 
             // Only add time if the computed timestamp is valid
             if (!isNaN(timestamp.getTime())) {
-              // Use ISO string format (GPX and KML both support ISO 8601)
-              item.time = timestamp.toISOString();
+              // Extract timezone name from format "(GMT-08:00) America/Los_Angeles"
+              let tz = 'UTC';
+              if (timezone) {
+                const tzMatch = timezone.match(/\)\s*(.+)$/);
+                if (tzMatch) {
+                  tz = tzMatch[1];
+                }
+              }
+
+              // Create DateEx instance and set timezone
+              const dateEx = new DateEx(timestamp);
+              dateEx.tz(tz as IANATZ);
+              item.time = dateEx.toISOLocalString();
             }
           }
 
