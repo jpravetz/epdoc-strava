@@ -39,14 +39,27 @@ export type BikeDef = {
   pattern: string;
 };
 
+export type LatLngRect = {
+  lat: [Api.Latitude, Api.Latitude];
+  lng: [Api.Longitude, Api.Longitude];
+};
+
 export type UserSettings = {
+  /** A description of this file, not used by code */
   description: string;
   // client: StravaClientConfig;
   athleteId?: Integer;
-  // accessToken: string;
+  /**  */
   cachePath?: string;
+  /** Custom line styles for KML files */
   lineStyles?: Record<string, LineStyle>;
   bikes?: BikeDef[];
+  /** Default folder to save gpx files. Can be overridden by --output flag. */
+  gpxFolder?: FS.FolderPath;
+  /**
+   * Blackout regions where we optionally do not show paths in our gpx or kml output
+   */
+  blackout?: LatLngRect[];
   /**
    * A user will manually add entries to this file when they do not like the name that
    * Strava uses for a segment.

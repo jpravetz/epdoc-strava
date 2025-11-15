@@ -52,6 +52,11 @@ export const mapDef: Record<string, Options.Def> = {
       return [];
     },
   },
+  blackout: {
+    short: 'b',
+    name: 'blackout',
+    description: "Apply user's blackout zones to generated ${cmd} file",
+  },
   more: {
     short: 'm',
     name: 'more',
@@ -60,7 +65,7 @@ export const mapDef: Record<string, Options.Def> = {
   laps: {
     short: 'l',
     name: 'laps',
-    description: 'Include lap markers in KML output',
+    description: 'Include lap markers in ${cmd} output',
   },
   efforts: {
     short: 'e',

@@ -94,31 +94,35 @@ methods to bundle each point that is returned into a `CoordData` object (defined
 
 The tasks you have are to:
 
-1. Return all stream requests (no matter which streams are being requested, including our legacy
-   request for just latlng) into an array of `Partial<CoordData>`. The format of the returned data
-   when retrieving streams is shown by the screenshot
-   https://www.dropbox.com/scl/fi/c7b5li8yf6hmjhrwocnvl/Screenshot-2025
-   -11-14-at-6.09.49-PM.png?rlkey=aheq3a7mql7ukhecqwgjlp2m4&dl=0 which is available locally in
-   /Users/jpravetz/Library/CloudStorage/Dropbox/Screenshots/Screenshot 2025-11-14 at 6.09.49 PM.png
-2. Use ISOTzDate for all times. This will use `DateEx` from `@epdoc/datetime`, making use of it's
-   ability to set the TZ of the date, where we can get the TZ from the activity's
-   `"timezone" : "(GMT-08:00) America/Los_Angeles"` field. The `time` field is populated from the
-   `actvity.start_date` plus seconds from the time stream.
-3. Make sure our kml command continues to work, where kml produces kml files for Google Earth
-   ingestion
-4. To start, we will generate gpx files by using the kml command, but instead of specifying a
-   path/to/file.kml as the output option, we specify a --output path/to/folder-without-an-extension.
-   Then we will create a new gpx command to generate gpx via a separate path and we will add a
-   userSettings file option to specify the default path where to store gpx files.
-5. We will add a blackout region to the userSettings file that allows the user to specify a
-   rectangle (latlng rectangle) of points to exclude from any of the commands that can produce a
-   coordinate stream (ie kml and gpx commands)
-6. Our primary target for gpx files is JOSM for editing of the openstreetmaps database, and uploads
-   to the public database of openstreetmap.org, which is the reason for allowing a blackout area to
-   be specified.
-7. Find a way to use the --lap option to add waypoints or, in some other way, highlight points along
-   our paths that are where laps ended. Just as how we do this with KML, we would exclude the last
-   lap point which is at the end of our full path.
+- [x] Return all stream requests (no matter which streams are being requested, including our legacy
+      request for just latlng) into an array of `Partial<CoordData>`. The format of the returned
+      data when retrieving streams is shown by the screenshot
+      https://www.dropbox.com/scl/fi/c7b5li8yf6hmjhrwocnvl/Screenshot-2025
+      -11-14-at-6.09.49-PM.png?rlkey=aheq3a7mql7ukhecqwgjlp2m4&dl=0 which is available locally in
+      /Users/jpravetz/Library/CloudStorage/Dropbox/Screenshots/Screenshot 2025-11-14 at
+      6.09.49 PM.png
+- [x] Use ISOTzDate for all times in gpx. This will use `DateEx` from `@epdoc/datetime`, making use
+      of it's ability to set the TZ of the date, where we can get the TZ from the activity's
+      `"timezone" : "(GMT-08:00) America/Los_Angeles"` field. The `time` field is populated from the
+      `actvity.start_date` plus seconds from the time stream.
+- [x] Make sure our kml command continues to work, where kml produces kml files for Google Earth
+      ingestion
+- [x] To start, we will generate gpx files by using the kml command, but instead of specifying a
+      path/to/file.kml as the output option, we specify a --output
+      path/to/folder-without-an-extension.
+- [ ] Then we will create a new gpx command to generate gpx via a separate path
+- [ ] we will add `gpxFolder` to `App.UserSettings` to specify the default path where to store gpx
+      files and, when specified, the --output flag will be optional
+- [ ] We will add a blackout region to the userSettings file that allows the user to specify a
+      rectangle (latlng rectangle) of points to exclude from any of the commands that can produce a
+      coordinate stream (ie kml and gpx commands)
+- [ ] Our primary target for gpx files is JOSM for editing of the openstreetmaps database, and
+      uploads to the public database of openstreetmap.org, which is the reason for allowing a
+      blackout area to be specified.
+- [ ] 🛑 Find a way to use the --lap option to add waypoints or, in some other way, highlight points
+      along our paths that are where laps ended. Just as how we do this with KML, we would exclude
+      the last lap point which is at the end of our full path. 🛑 The waypoints do not appear to be
+      in the correct location along the paths.
 
 ---
 

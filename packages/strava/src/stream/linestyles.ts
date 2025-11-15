@@ -35,11 +35,11 @@ export const defaultKmlLineStyles: KmlLineStyleDefs = {
     color: 'F0f08000',
     width: 4,
   },
-  'Stand Up Paddling': {
+  StandUpPaddling: {
     color: 'F0f08000',
     width: 4,
   },
-  'Nordic Ski': {
+  NordicSki: {
     color: 'F0f08000',
     width: 4,
   },

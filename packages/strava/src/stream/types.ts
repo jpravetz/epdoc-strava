@@ -8,8 +8,10 @@ export type KmlLineStyle = {
   width: number;
 };
 
+export type LineStyleType = Api.Schema.ActivityType | 'Segment' | 'Commute' | 'Moto' | 'Default';
+
 // LineStyleDefs supports ActivityTypes plus custom style names (Commute, Moto, Segment, Default, etc.)
-export type KmlLineStyleDefs = Record<string, KmlLineStyle>;
+export type KmlLineStyleDefs = Partial<Record<LineStyleType, KmlLineStyle>>;
 
 export type ActivityOpts = {
   activities?: boolean;

@@ -12,10 +12,11 @@ export const cmdConfig: Options.Config = {
   replace: { cmd: 'GPX' },
   options: {
     date: true,
-    output: true,
+    output: { description: 'Output folder (REQUIRED unless set in user settings' },
     laps: true,
     commute: true,
     type: true,
+    blackout: true,
     // Note: imperial and dryRun are global options defined in root command
   },
 };
@@ -26,6 +27,7 @@ type GpxCmdOpts = {
   laps: boolean;
   commute?: Options.CommuteType;
   type: Api.Schema.ActivityType[];
+  blackout: boolean;
 };
 
 /**
@@ -90,7 +92,7 @@ export class GpxCmd extends Options.BaseSubCmd {
           Deno.exit(1);
         }
 
-        if (!gpxOpts.output) {
+        if (!gpxOpts.output && !ctx.app.userSettings?.gpxFolder) {
           ctx.log.error.error('--output is required. Specify output folder (e.g., -o ./gpx-files/)')
             .emit();
           console.error(''); // blank line before help
@@ -111,7 +113,7 @@ export class GpxCmd extends Options.BaseSubCmd {
         const opts: Stream.ActivityOpts & Stream.CommonOpts = {
           activities: true,
           date: gpxOpts.date,
-          output: gpxOpts.output as FS.Path,
+          output: (gpxOpts.output ?? ctx.app.userSettings?.gpxFolder) as FS.Path,
           laps: gpxOpts.laps,
           commute: gpxOpts.commute,
           type: [],
