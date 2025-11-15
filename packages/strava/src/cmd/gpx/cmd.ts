@@ -17,6 +17,7 @@ export const cmdConfig: Options.Config = {
     commute: true,
     type: true,
     blackout: true,
+    allowDups: true,
     // Note: imperial and dryRun are global options defined in root command
   },
 };
@@ -28,6 +29,7 @@ type GpxCmdOpts = {
   commute?: Options.CommuteType;
   type: Api.Schema.ActivityType[];
   blackout: boolean;
+  allowDups: boolean;
 };
 
 /**
@@ -111,7 +113,7 @@ export class GpxCmd extends Options.BaseSubCmd {
           Deno.exit(1);
         }
 
-        const opts: Stream.ActivityOpts & Stream.CommonOpts = {
+        const opts: Stream.ActivityOpts & Stream.CommonOpts & Stream.StreamOpts = {
           activities: true,
           date: gpxOpts.date,
           output: (gpxOpts.output ?? ctx.app.userSettings?.gpxFolder) as FS.Path,

@@ -12,7 +12,8 @@ import { logMgr, type StravaMsgBuilder } from './log.ts';
 export type MsgBuilder = StravaMsgBuilder;
 export type Logger = Log.Std.Logger<MsgBuilder>;
 
-export class Context implements CliApp.ICtx<MsgBuilder, Logger>, Api.Ctx.IContext<MsgBuilder, Logger> {
+export class Context
+  implements CliApp.ICtx<MsgBuilder, Logger>, Api.Ctx.IContext<MsgBuilder, Logger> {
   log: Logger;
   logMgr: Log.Mgr<MsgBuilder> = logMgr;
   dryRun = false;

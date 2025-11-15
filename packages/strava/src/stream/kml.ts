@@ -178,7 +178,9 @@ export class KmlWriter extends StreamWriter {
     this.writeln(2, '<name>Strava Activities</name>');
     this.writeln(2, '<open>1</open>');
     Object.keys(this.lineStyles).forEach((name) => {
-      this.#addLineStyle(name, this.lineStyles[name]);
+      if (isValidActivityType(name)) {
+        this.#addLineStyle(name, this.lineStyles[name] as Stream.KmlLineStyle);
+      }
     });
     // Add lap marker style if laps are enabled
     if (this.opts.laps) {
@@ -371,7 +373,7 @@ export class KmlWriter extends StreamWriter {
       styleName = 'Moto';
     } else if (activity.commute && defaultKmlLineStyles['Commute']) {
       styleName = 'Commute';
-    } else if (defaultKmlLineStyles[activity.type]) {
+    } else if (defaultKmlLineStyles[activity.type as Stream.ActivityExType]) {
       styleName = activity.type;
     }
 

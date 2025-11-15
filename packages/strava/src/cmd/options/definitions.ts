@@ -80,21 +80,25 @@ export const mapDef: Record<string, Options.Def> = {
     choices: ['yes', 'no', 'all'],
     defVal: 'all',
   },
+  allowDups: {
+    name: 'allow-dups',
+    description: 'allow duplicate intermediate coordinates instead of filtering them out',
+  },
   dryRun: {
     short: 'n',
     name: 'dry-run',
-    description: 'Do not modify any data (database, files or server).',
+    description: 'Do not modify any data (database, files or server)',
   },
   refresh: {
     short: 'r',
     name: 'refresh',
-    description: 'Refresh list of starred segments.',
+    description: 'Refresh list of starred segments',
   },
   kml: {
     short: 'k',
     name: 'kml',
     params: '<filename>',
-    description: 'Generate KML file for starred segments.',
+    description: 'Generate KML file for starred segments',
     argParser: (str: string) => {
       return _.isString(str) ? new FileSpec(Deno.cwd(), str) : str;
     },

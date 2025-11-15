@@ -8,20 +8,25 @@ export type KmlLineStyle = {
   width: number;
 };
 
-export type LineStyleType = Api.Schema.ActivityType | 'Segment' | 'Commute' | 'Moto' | 'Default';
+export type ActivityExType = Api.Schema.ActivityType | 'Segment' | 'Commute' | 'Moto' | 'Default';
 
 // LineStyleDefs supports ActivityTypes plus custom style names (Commute, Moto, Segment, Default, etc.)
-export type KmlLineStyleDefs = Partial<Record<LineStyleType, KmlLineStyle>>;
+export type KmlLineStyleDefs = Partial<Record<ActivityExType, KmlLineStyle>>;
 
+/**
+ * Options used when including Activity information
+ */
 export type ActivityOpts = {
   activities?: boolean;
   efforts?: boolean; // include starred segment efforts in activity descriptions
-  laps?: boolean; // include lap markers in KML output
   commute?: 'yes' | 'no' | 'all'; // filter by commute status
   type?: Api.Schema.ActivityType[]; // filter by activity type (empty=all, string[]=filtered by types)
 };
 
-export type SegmentOpts = {
+/**
+ * Options used only when generating segments in streams
+ */
+export type StreamSegmentOpts = {
   segments?: boolean | 'only' | 'flat'; // true/only = include segments, flat = flat folder structure
   refresh?: boolean; // refresh list of starred segments from Strava
   bikes?: Dict; // bike definitions for identifying moto vs bike
@@ -34,7 +39,18 @@ export type CommonOpts = {
   imperial?: boolean; // use imperial units (miles, feet) instead of metric
 };
 
-export type Opts = CommonOpts & ActivityOpts & SegmentOpts;
+/**
+ * Options used only when generating streams
+ */
+export type StreamOpts = {
+  activities?: boolean;
+  laps?: boolean; // include lap markers in stream output
+  blackout?: boolean;
+  /** allow duplicate intermediate coordinates instead of filtering them out */
+  allowDups?: boolean;
+};
+
+export type Opts = CommonOpts & ActivityOpts & StreamSegmentOpts & StreamOpts;
 
 export type Coord = [number, number]; // [lat, lng] - deprecated, use CoordData instead
 

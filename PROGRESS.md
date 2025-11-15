@@ -110,12 +110,16 @@ The tasks you have are to:
 - [x] To start, we will generate gpx files by using the kml command, but instead of specifying a
       path/to/file.kml as the output option, we specify a --output
       path/to/folder-without-an-extension.
-- [ ] Then we will create a new gpx command to generate gpx via a separate path
-- [ ] we will add `gpxFolder` to `App.UserSettings` to specify the default path where to store gpx
+- [x] Then we will create a new gpx command to generate gpx via a separate path
+- [x] we will add `gpxFolder` to `App.UserSettings` to specify the default path where to store gpx
       files and, when specified, the --output flag will be optional
-- [ ] We will add a blackout region to the userSettings file that allows the user to specify a
+- [x] We will add a blackout region to the userSettings file that allows the user to specify a
       rectangle (latlng rectangle) of points to exclude from any of the commands that can produce a
       coordinate stream (ie kml and gpx commands)
+- [ ] We will honour the blackout region by filtering out blackout zone points
+- [ ] Where there are a series of coordinate points with the same coordinates (lat and lng do not
+      change) then filter out the intermediate points from our stream output. For example, below we
+      would keep the first and last points but filter out the intermediate points.
 - [ ] Our primary target for gpx files is JOSM for editing of the openstreetmaps database, and
       uploads to the public database of openstreetmap.org, which is the reason for allowing a
       blackout area to be specified.
@@ -123,6 +127,27 @@ The tasks you have are to:
       along our paths that are where laps ended. Just as how we do this with KML, we would exclude
       the last lap point which is at the end of our full path. 🛑 The waypoints do not appear to be
       in the correct location along the paths.
+- [ ] GPX.metadata.time must use the same time string generation, with local TZ, as is being done
+      for trkpt.time points
+
+```xml
+<trkpt lat="9.083902" lon="-83.633293">
+  <ele>124.8</ele>
+  <time>2025-11-14T09:53:44.000-06:00</time>
+</trkpt>
+<trkpt lat="9.083902" lon="-83.633293">
+  <ele>124.8</ele>
+  <time>2025-11-14T09:53:45.000-06:00</time>
+</trkpt>
+<trkpt lat="9.083902" lon="-83.633293">
+  <ele>124.8</ele>
+  <time>2025-11-14T09:53:46.000-06:00</time>
+</trkpt>
+<trkpt lat="9.083902" lon="-83.633293">
+  <ele>125</ele>
+  <time>2025-11-14T09:53:47.000-06:00</time>
+</trkpt>
+```
 
 ---
 

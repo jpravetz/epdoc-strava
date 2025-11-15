@@ -87,7 +87,9 @@ export class Handler {
 
   initWriter(_ctx: Ctx.Context, filepath: FS.Path): StreamWriter | undefined {
     assert(!this.#writer, 'writer is already initialized');
-    const pathStr = typeof filepath === 'string' ? filepath : (filepath as unknown as { path: string }).path;
+    const pathStr = typeof filepath === 'string'
+      ? filepath
+      : (filepath as unknown as { path: string }).path;
 
     // Determine writer type based on file extension or path characteristics
     if (REGEX.isKml.test(pathStr)) {
@@ -131,7 +133,9 @@ export class Handler {
     segments: SegmentData[],
   ): Promise<void> {
     const _m0 = ctx.log.mark();
-    const pathStr = typeof filepath === 'string' ? filepath : (filepath as unknown as { path: string }).path;
+    const pathStr = typeof filepath === 'string'
+      ? filepath
+      : (filepath as unknown as { path: string }).path;
 
     // Determine output type based on file extension
     if (REGEX.isKml.test(pathStr)) {

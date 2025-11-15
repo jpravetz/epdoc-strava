@@ -16,8 +16,10 @@ export const cmdConfig: Options.Config = {
     more: true,
     efforts: true,
     laps: true,
+    blackout: true,
     commute: true,
     type: true,
+    allowDups: true,
     // Note: imperial and dryRun are global options defined in root command
   },
 };
@@ -28,8 +30,10 @@ type KmlCmdOpts = {
   more: boolean;
   efforts: boolean;
   laps: boolean;
+  blackout: boolean;
   commute?: Options.CommuteType;
   type: Api.Schema.ActivityType[];
+  allowDups: boolean;
 };
 
 /**
@@ -100,7 +104,7 @@ export class KmlCmd extends Options.BaseSubCmd {
           Deno.exit(1);
         }
 
-        const opts: Stream.ActivityOpts & Stream.CommonOpts = {
+        const opts: Stream.ActivityOpts & Stream.CommonOpts & Stream.StreamOpts = {
           activities: true,
           date: kmlOpts.date,
           output: kmlOpts.output as FS.Path,

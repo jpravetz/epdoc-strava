@@ -31,6 +31,8 @@ type GetActivitiesOpts = {
   coordinates?: boolean;
   starredSegments?: boolean;
   filter?: Api.ActivityFilter;
+  dedup?: boolean;
+  blackoutZones?: Api.LatLngRect[];
 };
 
 /**
@@ -256,6 +258,9 @@ export class Main {
           jobs.push(activity.getCoordinates(ctx, streams));
         });
         await Promise.all(jobs);
+        activities.forEach((activity) => {
+          activity.filterCoordinates(opts.dedup = false, opts.blackoutZones);
+        });
       }
 
       if (opts.starredSegments) {
@@ -341,12 +346,17 @@ export class Main {
         detailed: streamOpts.laps || streamOpts.more || streamOpts.efforts,
         streams: writer?.streamTypes(),
         starredSegments: streamOpts.efforts,
+        dedup: (streamOpts.allowDups === true) ? false : true,
       };
       // Filter activities based on commute option
       if (streamOpts.commute === 'yes') {
         opts.filter = { commuteOnly: true };
       } else if (streamOpts.commute === 'no') {
         opts.filter = { nonCommuteOnly: true };
+      }
+      if (streamOpts.blackout) {
+        assert(ctx.app.userSettings, 'User settings have not been read');
+        opts.blackoutZones = ctx.app.userSettings.blackoutZones;
       }
 
       activities = await this.getActivitiesForDateRange(ctx, streamOpts.date!, opts);
@@ -390,7 +400,7 @@ export class Main {
    */
   async getKmlSegments(
     ctx: Ctx.Context,
-    opts: Stream.CommonOpts & Stream.SegmentOpts,
+    opts: Stream.CommonOpts & Stream.StreamSegmentOpts,
   ): Promise<Segment.Data[]> {
     const result: Segment.Data[] = await this.getSegments(ctx, {
       coordinates: true,
