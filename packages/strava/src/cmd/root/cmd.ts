@@ -1,6 +1,7 @@
 import * as CliApp from '@epdoc/cliapp';
 import type { Ctx } from '../dep.ts';
 import * as Athlete from '../athlete/mod.ts';
+import * as Gpx from '../gpx/mod.ts';
 import * as Kml from '../kml/mod.ts';
 import * as Pdf from '../pdf/mod.ts';
 import * as Segments from '../segments/mod.ts';
@@ -40,15 +41,17 @@ export class RootCmd {
     // await ctx.app.initOpts();
     // await this.app.init(ctx, { config: true });
 
-    const pdfCmd = new Pdf.Cmd();
-    const kmlCmd = new Kml.Cmd();
-    const segmentsCmd = new Segments.Cmd();
     const athleteCmd = new Athlete.Cmd();
+    const gpxCmd = new Gpx.Cmd();
+    const kmlCmd = new Kml.Cmd();
+    const pdfCmd = new Pdf.Cmd();
+    const segmentsCmd = new Segments.Cmd();
 
-    this.cmd.addCommand(await pdfCmd.init(ctx));
-    this.cmd.addCommand(await kmlCmd.init(ctx));
-    this.cmd.addCommand(await segmentsCmd.init(ctx));
     this.cmd.addCommand(await athleteCmd.init(ctx));
+    this.cmd.addCommand(await gpxCmd.init(ctx));
+    this.cmd.addCommand(await kmlCmd.init(ctx));
+    this.cmd.addCommand(await pdfCmd.init(ctx));
+    this.cmd.addCommand(await segmentsCmd.init(ctx));
 
     this.cmd.hook('preAction', async (cmd, _actionCmd) => {
       const opts = cmd.opts<Root.RootOpts>();

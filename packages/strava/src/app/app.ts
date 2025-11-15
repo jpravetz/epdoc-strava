@@ -351,15 +351,18 @@ export class Main {
       segments = await this.getKmlSegments(ctx, streamOpts);
     }
 
-    if (activities.length || segments.length) { // Generate KML file
+    if (activities.length || segments.length) { // Generate KML or GPX files
       // We already asserted output is not undefined earlier
       const outputPath = streamOpts.output;
+      const pathStr = typeof outputPath === 'string' ? outputPath : (outputPath as unknown as { path: string }).path;
+      const isKml = /\.kml$/i.test(pathStr);
+      const formatName = isKml ? 'KML file' : 'GPX files';
 
-      ctx.log.info.text('Generating KML file').fs(outputPath).emit();
+      ctx.log.info.text(`Generating ${formatName}`).fs(outputPath).emit();
       ctx.log.indent();
       await handler.outputData(ctx, outputPath, activities, segments);
       ctx.log.outdent();
-      ctx.log.info.h2('KML file generated successfully').fs(outputPath).emit();
+      ctx.log.info.h2(`${formatName.charAt(0).toUpperCase() + formatName.slice(1)} generated successfully`).fs(outputPath).emit();
     } else {
       ctx.log.info.warn('No activities or segments found for the specified criteria').emit();
     }
