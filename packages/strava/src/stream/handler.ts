@@ -87,15 +87,14 @@ export class Handler {
 
   async initWriter(_ctx: Ctx.Context, filepath: FS.Path): Promise<StreamWriter | undefined> {
     assert(!this.#writer, 'writer is already initialized');
-    const fsSpec = new FS.Spec(FS.Folder.cwd(), filepath);
-    const fs = await fsSpec.resolvedType();
-    assert(fs, 'Invalid output file specifier');
-    if (fs) {
-      if (fs instanceof FS.Folder) {
-        this.#writer = new GpxWriter(this.opts);
-      } else if (REGEX.isKml.test(fs.path)) {
-        this.#writer = new KmlWriter(this.opts);
-      }
+    const pathStr = typeof filepath === 'string' ? filepath : filepath.path;
+
+    // Determine writer type based on file extension or path characteristics
+    if (REGEX.isKml.test(pathStr)) {
+      this.#writer = new KmlWriter(this.opts);
+    } else {
+      // If path has no extension or is a folder, assume GPX output
+      this.#writer = new GpxWriter(this.opts);
     }
     return this.#writer;
   }
@@ -132,17 +131,16 @@ export class Handler {
     segments: SegmentData[],
   ): Promise<void> {
     const _m0 = ctx.log.mark();
-    const fsSpec = new FS.Spec(FS.Folder.cwd(), filepath);
-    const fs = await fsSpec.resolvedType();
-    assert(fs, 'Invalid output file specifier');
-    if (fs) {
-      if (fs instanceof FS.Folder) {
-        const gpxWriter = new GpxWriter(this.opts);
-        await gpxWriter.outputData(ctx, fs.path, activities);
-      } else if (REGEX.isKml.test(fs.path)) {
-        const kmlWriter = new KmlWriter(this.opts);
-        await kmlWriter.outputData(ctx, fs.path as FS.FilePath, activities, segments);
-      }
+    const pathStr = typeof filepath === 'string' ? filepath : filepath.path;
+
+    // Determine output type based on file extension
+    if (REGEX.isKml.test(pathStr)) {
+      const kmlWriter = new KmlWriter(this.opts);
+      await kmlWriter.outputData(ctx, pathStr as FS.FilePath, activities, segments);
+    } else {
+      // GPX output to folder
+      const gpxWriter = new GpxWriter(this.opts);
+      await gpxWriter.outputData(ctx, pathStr, activities);
     }
   }
 }
