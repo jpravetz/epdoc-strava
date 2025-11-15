@@ -121,6 +121,8 @@ export class GpxCmd extends Options.BaseSubCmd {
           commute: gpxOpts.commute,
           type: [],
           imperial: cmd.opts().imperial,
+          blackout: gpxOpts.blackout,
+          allowDups: gpxOpts.allowDups,
         };
 
         // Handle activity type filtering

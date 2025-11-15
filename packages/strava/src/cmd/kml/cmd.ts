@@ -114,6 +114,8 @@ export class KmlCmd extends Options.BaseSubCmd {
           commute: kmlOpts.commute,
           type: [],
           imperial: cmd.opts().imperial,
+          blackout: kmlOpts.blackout,
+          allowDups: kmlOpts.allowDups,
         };
 
         // Default to all activities if neither activities nor segments is specified

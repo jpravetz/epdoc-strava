@@ -533,6 +533,32 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "strava: main gpx -d 20251113- -lb",
+      "program": "${workspaceFolder}/packages/strava/./main.ts",
+      "cwd": "${workspaceFolder}",
+      "attachSimplePort": 9229,
+      "runtimeExecutable": "/Users/jpravetz/.deno/bin/deno",
+      "runtimeArgs": [
+        "run",
+        "-A",
+        "--inspect-brk"
+      ],
+      "args": [
+        "gpx",
+        "-d",
+        "20251113-",
+        "-lb"
+      ],
+      "env": {
+        "LAUNCHGEN": "true"
+      },
+      "presentation": {
+        "group": "strava"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "strava: main pdf --help",
       "program": "${workspaceFolder}/packages/strava/./main.ts",
       "cwd": "${workspaceFolder}",

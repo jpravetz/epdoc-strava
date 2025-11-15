@@ -213,7 +213,7 @@ export class Main {
     let activities: Activity[] = [];
 
     const m0 = ctx.log.mark();
-    ctx.log.info.text('Fetching activities for date ranges').dateRange(date).emit();
+    ctx.log.info.h2('Fetching activities for date ranges').dateRange(date).emit();
 
     const athleteId: Api.Schema.AthleteId = (this.athlete && Api.isStravaId(this.athlete.id))
       ? this.athlete.id
@@ -259,7 +259,7 @@ export class Main {
         });
         await Promise.all(jobs);
         activities.forEach((activity) => {
-          activity.filterCoordinates(opts.dedup = false, opts.blackoutZones);
+          activity.filterCoordinates(ctx, opts.dedup, opts.blackoutZones);
         });
       }
 
@@ -370,19 +370,8 @@ export class Main {
     if (activities.length || segments.length) { // Generate KML or GPX files
       // We already asserted output is not undefined earlier
       const outputPath = streamOpts.output;
-      const pathStr = typeof outputPath === 'string'
-        ? outputPath
-        : (outputPath as unknown as { path: string }).path;
-      const isKml = /\.kml$/i.test(pathStr);
-      const formatName = isKml ? 'KML file' : 'GPX files';
 
-      ctx.log.info.text(`Generating ${formatName}`).fs(outputPath).emit();
-      ctx.log.indent();
       await handler.outputData(ctx, outputPath, activities, segments);
-      ctx.log.outdent();
-      ctx.log.info.h2(
-        `${formatName.charAt(0).toUpperCase() + formatName.slice(1)} generated successfully`,
-      ).fs(outputPath).emit();
     } else {
       ctx.log.info.warn('No activities or segments found for the specified criteria').emit();
     }

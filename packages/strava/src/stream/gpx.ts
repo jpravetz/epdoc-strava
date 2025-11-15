@@ -72,9 +72,14 @@ export class GpxWriter extends StreamWriter {
     activities: Activity[],
   ): Promise<void> {
     const fsFolder = new FS.Folder(folderpath);
+    const m0 = ctx.log.mark();
+    ctx.log.info.h2('Generating GPX files in folder').fs(folderpath).emit();
+    ctx.log.indent();
     for (const activity of activities) {
       await this.outputActivity(ctx, fsFolder, activity);
     }
+    ctx.log.outdent();
+    ctx.log.info.h2('Generated').count(activities.length).h2('GPX file').h2('successfully').ewt(m0);
   }
 
   async outputActivity(
@@ -110,7 +115,7 @@ export class GpxWriter extends StreamWriter {
       await this.#footer();
       await this.writer.close();
 
-      ctx.log.verbose.text('Wrote GPX file').fs(fsFile).ewt(m0);
+      ctx.log.info.text('Wrote GPX file').fs(fsFile).ewt(m0);
     } catch (err) {
       if (this.writer) {
         await this.writer.close();

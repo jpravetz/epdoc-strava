@@ -132,6 +132,8 @@ export class KmlWriter extends StreamWriter {
     const m0 = ctx.log.mark();
     const file = filepath || 'Activities.kml';
     const fsFile: FS.File = new FS.File(FS.Folder.cwd(), filepath);
+    ctx.log.info.h2('Generating KML file').fs(fsFile).emit();
+    ctx.log.indent();
     this.writer = await fsFile.writer();
 
     try {
@@ -148,7 +150,8 @@ export class KmlWriter extends StreamWriter {
       await this.#footer();
       await this.writer.close();
 
-      ctx.log.verbose.text('Wrote').fs(file).ewt(m0);
+      ctx.log.outdent();
+      ctx.log.info.h2('Successfully wrote').fs(file).ewt(m0);
     } catch (err) {
       if (this.writer) {
         await this.writer.close();
