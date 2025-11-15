@@ -10,6 +10,7 @@ import type {
   ActivityFilter,
   CoordData,
   Kilometres,
+  LatLngRect,
   Metres,
   SegmentData,
   SegmentEffort,
@@ -31,7 +32,7 @@ export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
   public data: Schema.SummaryActivity | Schema.DetailedActivity;
   api?: Api<M, L>;
   #detailed = false;
-  #coordinates: Partial<CoordData>[] = []; // will contain the latlng coordinates for the activity
+  #coordinates: CoordData[] = []; // will contain the latlng coordinates for the activity
   #segments: SegmentData[] = []; // Will be declared here
   #aliases?: Record<string, string>; // Private property for aliases
   #segmentProvider?: { getSegment(name: string): Schema.SummarySegment | undefined }; // Private property for segment provider
@@ -85,11 +86,11 @@ export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
   /**
    * The geographical coordinates of the activity with optional altitude and time data.
    */
-  public get coordinates(): Partial<CoordData>[] {
+  public get coordinates(): CoordData[] {
     return this.#coordinates;
   }
 
-  public set coordinates(val: Partial<CoordData>[]) {
+  public set coordinates(val: CoordData[]) {
     this.#coordinates = val;
   }
 
@@ -300,6 +301,49 @@ export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
     }
   }
 
+  filterCoordinates(dedup: boolean, blackoutZones?: LatLngRect[]) {
+    if (_.isNonEmptyArray(blackoutZones)) {
+      this.#coordinates = this.#coordinates.filter((pt) => {
+        return !pointIsInRects(pt as CoordData, blackoutZones);
+      });
+    }
+
+    // Then remove intermediate duplicate points
+    if (dedup && this.#coordinates.length > 2) {
+      const filtered: CoordData[] = [];
+
+      for (let i = 0; i < this.#coordinates.length; i++) {
+        const current = this.#coordinates[i];
+
+        // Always keep the first point
+        if (i === 0) {
+          filtered.push(current);
+          continue;
+        }
+
+        // Always keep the last point
+        if (i === this.#coordinates.length - 1) {
+          filtered.push(current);
+          continue;
+        }
+
+        const prev = this.#coordinates[i - 1];
+        const next = this.#coordinates[i + 1];
+
+        // Check if current point is an intermediate duplicate
+        const isSameAsPrev = current.lat === prev.lat && current.lng === prev.lng;
+        const isSameAsNext = current.lat === next.lat && current.lng === next.lng;
+
+        // Only keep if it's NOT an intermediate duplicate
+        if (!(isSameAsPrev && isSameAsNext)) {
+          filtered.push(current);
+        }
+      }
+
+      this.#coordinates = filtered;
+    }
+  }
+
   async getDetailed(ctx: this['Context']): Promise<void> {
     assert(this.api, 'api not set');
     if (this.#detailed) {
@@ -427,4 +471,20 @@ export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
     }
     return 0;
   }
+}
+
+function pointIsInRects(pt: CoordData, rects: LatLngRect[]): boolean {
+  return rects.some((rect) => {
+    const [[x1, y1], [x2, y2]] = rect;
+
+    // Calculate the actual bounds of the rectangle
+    const minLng = Math.min(x1, x2);
+    const maxLng = Math.max(x1, x2);
+    const minLat = Math.min(y1, y2);
+    const maxLat = Math.max(y1, y2);
+
+    // Check if point is within bounds
+    return pt.lng >= minLng && pt.lng <= maxLng &&
+      pt.lat >= minLat && pt.lat <= maxLat;
+  });
 }

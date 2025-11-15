@@ -350,7 +350,7 @@ export class Api<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
     name: string,
     timezone?: string,
     startDate?: Date,
-  ): Promise<Partial<Strava.CoordData>[]> {
+  ): Promise<Strava.CoordData[]> {
     const query: Dict = {
       keys: streamTypes.join(','),
       key_by_type: true,
@@ -359,11 +359,11 @@ export class Api<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
     try {
       const resp: Partial<Schema.StreamSet> = await this.getStreams(ctx, source, objId, query);
       if (hasLatLngData(resp)) {
-        const results: Partial<Strava.CoordData>[] = [];
+        const results: Strava.CoordData[] = [];
         const len = resp.latlng.data.length;
 
         for (let idx = 0; idx < len; idx++) {
-          const item: Partial<Strava.CoordData> = {
+          const item: Strava.CoordData = {
             lat: resp.latlng.data[idx][0],
             lng: resp.latlng.data[idx][1],
           };
@@ -399,7 +399,9 @@ export class Api<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
           results.push(item);
         }
 
-        ctx.log.info.h2('Retrieved').count(results.length).h2('stream points for').value(name).ewt(m0);
+        ctx.log.info.h2('Retrieved').count(results.length).h2('stream points for').value(name).ewt(
+          m0,
+        );
         return results;
       }
       ctx.log.info.h2('Get').value(name).h2('did not contain latlng coordinates').ewt(m0);

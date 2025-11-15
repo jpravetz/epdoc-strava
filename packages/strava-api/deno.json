@@ -1,13 +1,15 @@
 {
   "name": "@jpravetz/strava-api",
   "description": "Strava API",
-  "version": "2.0.0-alpha.8",
+  "version": "2.0.0-alpha.9",
   "author": {
     "name": "James Pravetz",
     "email": "jpravetz@epdoc.com"
   },
   "license": "MIT",
-  "exports": { ".": "./src/mod.ts" },
+  "exports": {
+    ".": "./src/mod.ts"
+  },
   "tasks": {
     "test": "deno test -A",
     "lint": "deno lint",

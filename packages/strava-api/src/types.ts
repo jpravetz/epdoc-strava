@@ -29,6 +29,7 @@ export type CoordData = {
   altitude?: Metres;
   time?: ISOTzDate;
 };
+export type LatLngRect = [Coord, Coord];
 
 /** The client ID for a Strava application. */
 export type ClientId = Integer;
