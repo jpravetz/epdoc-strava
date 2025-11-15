@@ -1,4 +1,5 @@
 import * as FS from '@epdoc/fs/fs';
+import { _ } from '@epdoc/type';
 import pkg from '../../deno.json' with { type: 'json' };
 import type * as Ctx from '../context.ts';
 import { type Activity, Api } from '../dep.ts';
@@ -82,22 +83,34 @@ export class GpxWriter extends StreamWriter {
     activity: Activity,
   ): Promise<void> {
     const m0 = ctx.log.mark();
+    // Generate filename: YYYYMMDD_Activity_Name.gpx
     const filename = activity.data.start_date_local.split('T')[0].replace(/-/g, '') + '_' +
-      activity.name.replace(/\s+/, '_') + '.gpx';
-    const fsFile: FS.File = new FS.File(FS.Folder.cwd(), folderpath, filename);
+      activity.name.replace(/\s+/g, '_') + '.gpx';
+    const fsFile: FS.File = new FS.File(folderpath, filename);
     this.writer = await fsFile.writer();
 
     try {
       await this.#header(activity);
 
+      // Output track points
       for (const coord of activity.coordinates) {
         this.#outputCoordinate(3, coord);
+      }
+
+      await this.#closeTrackSegment();
+
+      // Output lap waypoints if laps flag is enabled
+      if (
+        this.opts.laps && 'laps' in activity.data && _.isArray(activity.data.laps) &&
+        activity.data.laps.length > 1
+      ) {
+        await this.#outputLapWaypoints(activity);
       }
 
       await this.#footer();
       await this.writer.close();
 
-      ctx.log.verbose.text('Wrote').fs(fsFile).ewt(m0);
+      ctx.log.verbose.text('Wrote GPX file').fs(fsFile).ewt(m0);
     } catch (err) {
       if (this.writer) {
         await this.writer.close();
@@ -178,15 +191,118 @@ export class GpxWriter extends StreamWriter {
   }
 
   /**
-   * Writes the KML file footer to close the document structure.
+   * Closes the current track segment.
+   */
+  async #closeTrackSegment(): Promise<void> {
+    this.writeln(2, '</trkseg>');
+    this.writeln(1, '</trk>');
+    await this.flush();
+  }
+
+  /**
+   * Outputs lap waypoints for the activity.
    *
-   * Closes the Document and kml elements, then flushes the buffer to ensure
+   * Creates waypoint markers at each lap button press location (excluding the last lap
+   * which is at the end of the activity).
+   *
+   * @param activity The activity with lap and coordinate data
+   */
+  async #outputLapWaypoints(activity: Activity): Promise<void> {
+    if (!('laps' in activity.data) || !_.isArray(activity.data.laps)) {
+      return;
+    }
+
+    const laps = activity.data.laps as Api.Schema.Lap[];
+    if (!laps || laps.length <= 1) {
+      return;
+    }
+
+    // Skip the last lap as it's at the end of the activity
+    for (let i = 0; i < laps.length - 1; i++) {
+      const lap = laps[i];
+
+      // Find the coordinate at the end of this lap (start of next lap)
+      // Laps have elapsed_time which is cumulative seconds from activity start
+      const lapEndTime = lap.elapsed_time;
+
+      // Find the closest coordinate to this time
+      const coord = this.#findCoordinateAtTime(activity, lapEndTime);
+
+      if (coord) {
+        this.writeln(1, '<wpt lat="' + coord.lat + '" lon="' + coord.lng + '">');
+        this.writeln(2, '<name>Lap ' + (i + 1) + '</name>');
+
+        if (coord.altitude !== undefined) {
+          this.writeln(2, '<ele>' + coord.altitude + '</ele>');
+        }
+
+        if (coord.time) {
+          this.writeln(2, '<time>' + coord.time + '</time>');
+        }
+
+        this.writeln(2, '<type>Lap</type>');
+        this.writeln(1, '</wpt>');
+      }
+    }
+
+    await this.flush();
+  }
+
+  /**
+   * Finds the coordinate closest to a given elapsed time.
+   *
+   * @param activity The activity with coordinates
+   * @param elapsedTime The elapsed time in seconds from activity start
+   * @returns The coordinate closest to the given time, or undefined
+   */
+  #findCoordinateAtTime(
+    activity: Activity,
+    elapsedTime: number,
+  ): Partial<Api.CoordData> | undefined {
+    if (!activity.coordinates || activity.coordinates.length === 0) {
+      return undefined;
+    }
+
+    // If we have time data in coordinates, find by matching time
+    if (activity.coordinates[0].time) {
+      const targetTime = new Date(
+        activity.startDate.getTime() + elapsedTime * 1000,
+      );
+
+      let closestCoord = activity.coordinates[0];
+      let closestDiff = Infinity;
+
+      for (const coord of activity.coordinates) {
+        if (coord.time) {
+          const coordTime = new Date(coord.time);
+          const diff = Math.abs(coordTime.getTime() - targetTime.getTime());
+          if (diff < closestDiff) {
+            closestDiff = diff;
+            closestCoord = coord;
+          }
+        }
+      }
+
+      return closestCoord;
+    }
+
+    // Fallback: estimate based on array position
+    // Assume coordinates are evenly distributed over activity duration
+    const totalTime = activity.data.elapsed_time;
+    const ratio = elapsedTime / totalTime;
+    const index = Math.floor(ratio * activity.coordinates.length);
+
+    return activity.coordinates[Math.min(index, activity.coordinates.length - 1)];
+  }
+
+  /**
+   * Writes the GPX file footer to close the document structure.
+   *
+   * Closes the GPX document and flushes the buffer to ensure
    * all content is written to the file.
    */
   async #footer(): Promise<void> {
-    this.writeln(2, '</trkseg>\n');
-    this.writeln(1, '</trk>\n');
-    this.writeln(0, '</gpx>\n');
+    this.writeln(0, '</gpx>');
     await this.flush();
   }
 }

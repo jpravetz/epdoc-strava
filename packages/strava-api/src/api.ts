@@ -378,18 +378,11 @@ export class Api<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
             const secondsOffset = resp.time.data[idx];
             const timestamp = new Date(startDate.getTime() + secondsOffset * 1000);
 
-            // Extract timezone name from format "(GMT-08:00) America/Los_Angeles"
-            let tz = 'UTC';
-            if (timezone) {
-              const tzMatch = timezone.match(/\)\s*(.+)$/);
-              if (tzMatch) {
-                tz = tzMatch[1];
-              }
+            // Only add time if the computed timestamp is valid
+            if (!isNaN(timestamp.getTime())) {
+              // Use ISO string format (GPX and KML both support ISO 8601)
+              item.time = timestamp.toISOString();
             }
-
-            // Use DateEx to create ISOTzDate with timezone
-            const dateEx = new DateEx(timestamp, { tz });
-            item.time = dateEx.toISOLocalString();
           }
 
           results.push(item);

@@ -1,4 +1,4 @@
-import * as FS from '@epdoc/fs/fs';
+import type * as FS from '@epdoc/fs/fs';
 import { assert } from 'node:console';
 import type * as Ctx from '../context.ts';
 import type { Activity } from '../dep.ts';
@@ -85,9 +85,9 @@ export class Handler {
     return this.opts && this.opts.efforts === true;
   }
 
-  async initWriter(_ctx: Ctx.Context, filepath: FS.Path): Promise<StreamWriter | undefined> {
+  initWriter(_ctx: Ctx.Context, filepath: FS.Path): StreamWriter | undefined {
     assert(!this.#writer, 'writer is already initialized');
-    const pathStr = typeof filepath === 'string' ? filepath : filepath.path;
+    const pathStr = typeof filepath === 'string' ? filepath : (filepath as unknown as { path: string }).path;
 
     // Determine writer type based on file extension or path characteristics
     if (REGEX.isKml.test(pathStr)) {
@@ -131,7 +131,7 @@ export class Handler {
     segments: SegmentData[],
   ): Promise<void> {
     const _m0 = ctx.log.mark();
-    const pathStr = typeof filepath === 'string' ? filepath : filepath.path;
+    const pathStr = typeof filepath === 'string' ? filepath : (filepath as unknown as { path: string }).path;
 
     // Determine output type based on file extension
     if (REGEX.isKml.test(pathStr)) {
@@ -140,7 +140,7 @@ export class Handler {
     } else {
       // GPX output to folder
       const gpxWriter = new GpxWriter(this.opts);
-      await gpxWriter.outputData(ctx, pathStr, activities);
+      await gpxWriter.outputData(ctx, pathStr as FS.FolderPath, activities);
     }
   }
 }
