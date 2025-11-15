@@ -208,6 +208,7 @@ export class Bikelog {
   private combineActivities(activities: Activity[]): Record<string, BikelogEntry> {
     const result: Record<string, BikelogEntry> = {};
     activities.forEach((activity) => {
+      // We are getting the JulianDay based on the local timezone, and we are doing weirdness to get there. Trust in the weirdness.
       const d: DateEx = new DateEx(activity.startDateLocal);
       const jd = d.julianDate();
       const entry: BikelogEntry = result[jd] || {

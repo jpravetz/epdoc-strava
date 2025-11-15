@@ -1,5 +1,5 @@
 import * as FS from '@epdoc/fs/fs';
-import { _, Integer } from '@epdoc/type';
+import { _, type Integer } from '@epdoc/type';
 import pkg from '../../deno.json' with { type: 'json' };
 import type * as Ctx from '../context.ts';
 import { type Activity, Api } from '../dep.ts';
@@ -99,7 +99,7 @@ export class GpxWriter extends StreamWriter {
 
       // Output track points
       for (const coord of activity.coordinates) {
-        this.#outputCoordinate(3, coord);
+        this.#outputCoordinate(3, coord, activity);
       }
 
       await this.#closeTrackSegment();
@@ -134,7 +134,7 @@ export class GpxWriter extends StreamWriter {
    * @param indent - The indentation level for the GPX output.
    * @param coord - The coordinate data containing lat, lng, altitude, and time.
    */
-  #outputCoordinate(indent: number, coord: Partial<Api.CoordData>): void {
+  #outputCoordinate(indent: number, coord: Partial<Api.CoordData>, activity: Activity): void {
     const lines: string[] = [`<trkpt lat="${coord.lat}" lon="${coord.lng}">`];
 
     if (coord.altitude !== undefined) {
@@ -142,7 +142,8 @@ export class GpxWriter extends StreamWriter {
     }
 
     if (coord.time) {
-      lines.push(`  <time>${coord.time}</time>`);
+      const dateEx = activity.startDateEx(coord.time);
+      lines.push(`  <time>${dateEx.toISOLocalString()}</time>`);
     }
 
     lines.push(`</trkpt>`);
@@ -150,43 +151,30 @@ export class GpxWriter extends StreamWriter {
   }
 
   /**
-   * Formats elapsed time in seconds to MM:SS or HH:MM:SS format.
-   * @param seconds Elapsed time in seconds
-   * @returns Formatted time string
-   */
-  #formatTime(seconds: number): string {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = Math.floor(seconds % 60);
-
-    if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    }
-    return `${minutes}:${secs.toString().padStart(2, '0')}`;
-  }
-
-  /**
-   * Writes the KML file header with document structure and style definitions.
+   * Writes the GPX file header with document structure and metadata.
    *
    * The header includes:
-   * - XML declaration and KML namespace declarations
-   * - Document element with name and open state
-   * - LineStyle definitions for all activity types and categories
-   * - Lap marker style (if --laps flag is enabled)
+   * - XML declaration and GPX namespace declarations
+   * - Metadata with timezone-aware start time
+   * - Track element with activity name and type
    *
    * All content is buffered and flushed after header generation.
    */
   async #header(activity: Activity): Promise<void> {
+    // Convert start date to timezone-aware format
+    const startDateEx = activity.startDateEx();
+    const startTime = startDateEx.toISOLocalString();
+
     const lines = [
       '<?xml version="1.0" encoding="UTF-8"?>',
-      `<gpx creator="${pkg.name}" version="${pkg.version}"`,
+      `<gpx creator="${pkg.name.replace('@', '').replace('/', '-')}" version="1.1"`,
       'xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/11.xsd"',
       'xmlns:ns3="http://www.garmin.com/xmlschemas/TrackPointExtension/v1"',
       'xmlns="http://www.topografix.com/GPX/1/1"',
       'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"',
       'xmlns:ns2="http://www.garmin.com/xmlschemas/GpxExtensions/v3">',
       '  <metadata>',
-      `    <time>${activity.data.start_date}</time>`,
+      `    <time>${startTime}</time>`,
       '  </metadata>',
       '  <trk>',
       `    <name>${activity.name}</name>`,
@@ -211,7 +199,13 @@ export class GpxWriter extends StreamWriter {
    * Outputs lap waypoints for the activity.
    *
    * Creates waypoint markers at each lap button press location (excluding the last lap
-   * which is at the end of the activity).
+   * which is at the end of the activity). Each waypoint includes a comment with:
+   * - Distance since previous lap
+   * - Point elevation
+   * - Elevation delta since previous lap
+   * - Gradient percentage
+   *
+   * Uses time-based matching to handle coordinate filtering (deduplication and blackout zones).
    *
    * @param activity The activity with lap and coordinate data
    */
@@ -227,32 +221,60 @@ export class GpxWriter extends StreamWriter {
 
     // Skip the last lap as it's at the end of the activity
     let count = 0;
+    let prevElevation: number | undefined = undefined;
+    let cumulativeTime = 0; // Track cumulative elapsed time
+
     for (let i = 0; i < laps.length - 1; i++) {
       const lap = laps[i];
 
-      // Find the coordinate at the end of this lap (start of next lap)
-      // Laps have elapsed_time which is cumulative seconds from activity start
-      const lapEndTime = lap.elapsed_time;
+      // Calculate cumulative time to end of this lap
+      // lap.elapsed_time is the duration of THIS lap, not cumulative
+      cumulativeTime += lap.elapsed_time;
 
-      // Find the closest coordinate to this time
-      const coord = this.#findCoordinateAtTime(activity, lapEndTime);
+      // Find the coordinate closest to this cumulative time
+      // This works even after coordinate filtering (dedup + blackout)
+      const coord = this.#findCoordinateAtTime(activity, cumulativeTime);
 
-      if (coord) {
-        this.writeln(1, '<wpt lat="' + coord.lat + '" lon="' + coord.lng + '">');
-        this.writeln(2, '<name>Lap ' + (i + 1) + '</name>');
-
-        if (coord.altitude !== undefined) {
-          this.writeln(2, '<ele>' + coord.altitude + '</ele>');
-        }
-
-        if (coord.time) {
-          this.writeln(2, '<time>' + coord.time + '</time>');
-        }
-
-        this.writeln(2, '<type>Lap</type>');
-        this.writeln(1, '</wpt>');
-        ++count;
+      if (!coord) {
+        continue;
       }
+
+      // Calculate metrics for comment
+      const distanceKm = (lap.distance / 1000).toFixed(2);
+      const elevation = coord.altitude ?? 0;
+      let elevDelta = 0;
+      let gradient = 0;
+
+      if (prevElevation !== undefined && lap.distance > 0) {
+        elevDelta = elevation - prevElevation;
+        gradient = (elevDelta / lap.distance) * 100; // Convert to percentage
+      }
+
+      // Build comment with lap statistics
+      const comment = `Distance: ${distanceKm} km, Elevation: ${elevation.toFixed(1)} m` +
+        (prevElevation !== undefined
+          ? `, Delta: ${elevDelta > 0 ? '+' : ''}${elevDelta.toFixed(1)} m, Gradient: ${
+            gradient.toFixed(1)
+          }%`
+          : '');
+
+      this.writeln(1, '<wpt lat="' + coord.lat + '" lon="' + coord.lng + '">');
+      this.writeln(2, '<name>Lap ' + (i + 1) + '</name>');
+
+      if (coord.altitude !== undefined) {
+        this.writeln(2, '<ele>' + coord.altitude + '</ele>');
+      }
+
+      if (coord.time) {
+        this.writeln(2, '<time>' + coord.time + '</time>');
+      }
+
+      this.writeln(2, '<cmt>' + comment + '</cmt>');
+      this.writeln(2, '<type>Lap</type>');
+      this.writeln(1, '</wpt>');
+
+      prevElevation = elevation;
+      ++count;
     }
 
     await this.flush();

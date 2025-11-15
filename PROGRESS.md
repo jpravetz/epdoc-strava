@@ -116,8 +116,8 @@ The tasks you have are to:
 - [x] We will add a blackout region to the userSettings file that allows the user to specify a
       rectangle (latlng rectangle) of points to exclude from any of the commands that can produce a
       coordinate stream (ie kml and gpx commands)
-- [ ] We will honour the blackout region by filtering out blackout zone points
-- [ ] Where there are a series of coordinate points with the same coordinates (lat and lng do not
+- [x] We will honour the blackout region by filtering out blackout zone points
+- [x] Where there are a series of coordinate points with the same coordinates (lat and lng do not
       change) then filter out the intermediate points from our stream output. For example, below we
       would keep the first and last points but filter out the intermediate points.
 - [ ] Our primary target for gpx files is JOSM for editing of the openstreetmaps database, and

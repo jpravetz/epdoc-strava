@@ -259,7 +259,7 @@ export class Main {
         });
         await Promise.all(jobs);
         activities.forEach((activity) => {
-          activity.filterCoordinates(ctx, opts.dedup, opts.blackoutZones);
+          activity.filterCoordinates(ctx, opts.dedup === true, opts.blackoutZones);
         });
       }
 
