@@ -361,9 +361,7 @@
         "--inspect-brk"
       ],
       "args": [
-        "kml",
-        "-o",
-        "/Users/jpravetz/dev/@epdoc/strava/tmp/",
+        "gpx",
         "--help"
       ],
       "env": {
@@ -387,9 +385,7 @@
         "--inspect-brk"
       ],
       "args": [
-        "kml",
-        "-o",
-        "/Users/jpravetz/dev/@epdoc/strava/tmp/",
+        "gpx",
         "-d",
         "20251012"
       ],
@@ -414,9 +410,7 @@
         "--inspect-brk"
       ],
       "args": [
-        "kml",
-        "-o",
-        "/Users/jpravetz/dev/@epdoc/strava/tmp/",
+        "gpx",
         "-d",
         "20251012",
         "-m"
@@ -442,9 +436,7 @@
         "--inspect-brk"
       ],
       "args": [
-        "kml",
-        "-o",
-        "/Users/jpravetz/dev/@epdoc/strava/tmp/",
+        "gpx",
         "-d",
         "20251012",
         "-mel"
@@ -470,9 +462,7 @@
         "--inspect-brk"
       ],
       "args": [
-        "kml",
-        "-o",
-        "/Users/jpravetz/dev/@epdoc/strava/tmp/",
+        "gpx",
         "-d",
         "20251012",
         "-mel",
@@ -500,9 +490,7 @@
         "--inspect-brk"
       ],
       "args": [
-        "kml",
-        "-o",
-        "/Users/jpravetz/dev/@epdoc/strava/tmp/",
+        "gpx",
         "-d",
         "20251012",
         "-mel",
@@ -519,7 +507,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "strava: main gpx -d 20251113- -mel",
+      "name": "strava: main gpx -d 20251113- -l",
       "program": "${workspaceFolder}/packages/strava/./main.ts",
       "cwd": "${workspaceFolder}",
       "attachSimplePort": 9229,
@@ -530,12 +518,10 @@
         "--inspect-brk"
       ],
       "args": [
-        "kml",
-        "-o",
-        "/Users/jpravetz/dev/@epdoc/strava/tmp/",
+        "gpx",
         "-d",
         "20251113-",
-        "-mel"
+        "-l"
       ],
       "env": {
         "LAUNCHGEN": "true"

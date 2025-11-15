@@ -12,7 +12,7 @@ export const cmdConfig: Options.Config = {
   replace: { cmd: 'GPX' },
   options: {
     date: true,
-    output: { description: 'Output folder (REQUIRED unless set in user settings' },
+    output: { description: 'Output folder (REQUIRED unless set in user settings)' },
     laps: true,
     commute: true,
     type: true,
@@ -80,7 +80,8 @@ export class GpxCmd extends Options.BaseSubCmd {
    * @param ctx Application context with logging and app instance
    * @returns Promise resolving to the configured command instance
    */
-  init(ctx: Ctx.Context): Promise<Cmd.Command> {
+  async init(ctx: Ctx.Context): Promise<Cmd.Command> {
+    await ctx.app.init(ctx, { userSettings: true });
     this.cmd.init(ctx).action(async (gpxOpts: GpxCmdOpts, cmd: Command) => {
       try {
         // Validate required options - show help and exit on validation failure

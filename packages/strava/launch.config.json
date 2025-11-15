@@ -57,7 +57,7 @@
           "-A",
           "--inspect-brk"
         ],
-        "scriptArgs": "kml -o /Users/jpravetz/dev/@epdoc/strava/tmp/",
+        "scriptArgs": "gpx",
         "scripts": [
           "--help",
           "-d 20251012",
@@ -65,7 +65,7 @@
           "-d 20251012 -mel",
           "-d 20251012 -mel -t Ride",
           "-d 20251012 -mel -t Walk",
-          "-d 20251113- -mel"
+          "-d 20251113- -l"
         ]
       },
       "pdf": {
