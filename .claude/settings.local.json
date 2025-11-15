@@ -9,7 +9,12 @@
       "WebSearch",
       "Bash(cat:*)",
       "Bash(deno run:*)",
-      "Bash(deno test:*)"
+      "Bash(deno test:*)",
+      "Bash(deno task check:*)",
+      "Bash(deno task lint:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(xmllint:*)"
     ],
     "deny": [],
     "ask": []

@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.0-alpha.16] - 2025-11-15
+
+### Fixed
+- GPX lap waypoint location accuracy
+  - Fixed waypoints appearing at incorrect locations (many at final point)
+  - Now uses cumulative lap time calculation to find correct coordinates
+  - Properly handles coordinate filtering (deduplication and blackout zones)
+- GPX waypoint timestamp format
+  - Fixed waypoints showing raw seconds instead of ISO timestamp strings
+  - Now uses timezone-aware timestamps matching track point format
+- GPX metadata time format
+  - Now uses timezone-aware ISO format matching track points
+
+### Added
+- GPX lap waypoint comments with detailed metrics
+  - Distance since previous lap (in km)
+  - Point elevation (in meters)
+  - Elevation delta since previous lap (in meters)
+  - Gradient percentage
+
 ## [2.0.0-alpha.15] - 2025-11-15
 
 - fix bug in blackout zone calculations

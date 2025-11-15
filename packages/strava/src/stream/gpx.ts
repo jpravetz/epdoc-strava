@@ -103,22 +103,22 @@ export class GpxWriter extends StreamWriter {
       }
 
       await this.#closeTrackSegment();
+      const line = ctx.log.info.text('Wrote').count(activity.coordinates.length)
+        .text('track point');
 
       // Output lap waypoints if laps flag is enabled
       if (
         this.opts.laps && 'laps' in activity.data && _.isArray(activity.data.laps) &&
         activity.data.laps.length > 1
       ) {
-        await this.#outputLapWaypoints(activity);
+        const numWaypoints = await this.#outputLapWaypoints(activity);
+        line.count(numWaypoints).text('waypoint');
       }
 
       await this.#footer();
       await this.writer.close();
 
-      ctx.log.info.text('Wrote').count(activity.coordinates.length).text('point').text(
-        'to GPX file',
-      )
-        .fs(fsFile).ewt(m0);
+      line.text('to GPX file').fs(fsFile).ewt(m0);
     } catch (err) {
       if (this.writer) {
         await this.writer.close();
@@ -266,7 +266,8 @@ export class GpxWriter extends StreamWriter {
       }
 
       if (coord.time) {
-        this.writeln(2, '<time>' + coord.time + '</time>');
+        const dateEx = activity.startDateEx(coord.time);
+        this.writeln(2, '<time>' + dateEx.toISOLocalString() + '</time>');
       }
 
       this.writeln(2, '<cmt>' + comment + '</cmt>');

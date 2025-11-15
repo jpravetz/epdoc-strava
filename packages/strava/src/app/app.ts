@@ -251,7 +251,8 @@ export class Main {
         await Promise.all(jobs);
       }
       if (_.isNonEmptyArray(opts.streams)) {
-        ctx.log.info.text('Fetching coordinates for activities').emit();
+        ctx.log.info.text('Fetching coordinates for').count(activities.length)
+          .text('activity', 'activities').emit();
         const jobs: Promise<void>[] = [];
         const streams = opts.streams; // Extract to non-null variable
         activities.forEach((activity) => {

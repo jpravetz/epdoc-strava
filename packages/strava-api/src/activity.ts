@@ -1,6 +1,6 @@
-import type { ISODate } from '@epdoc/datetime';
+import type { IANATZ, ISODate } from '@epdoc/datetime';
 import { DateEx } from '@epdoc/datetime'; // Import DateEx
-import type { Seconds } from '@epdoc/duration';
+import type { EpochMilliseconds, Seconds } from '@epdoc/duration';
 import { _, type CompareResult, type Dict, type Integer } from '@epdoc/type';
 import { assert } from '@std/assert';
 import type { Api } from './api.ts';
@@ -167,21 +167,37 @@ export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
   /**
    * The ID of the gear used for the activity.
    */
-  public get gearId(): string {
+  get gearId(): string {
     return this.data.gear_id;
   }
 
   /**
    * The start date of the activity in the local timezone, in ISO 8601 format.
    */
-  public get startDateLocal(): ISODate {
+  get startDateLocal(): ISODate {
     return this.data.start_date_local;
+  }
+
+  /**
+   * The start date of the activity in the local timezone, in ISO 8601 format.
+   */
+  startDateEx(delta: Seconds = 0): DateEx {
+    const ms: EpochMilliseconds = new Date(this.data.start_date).getTime() + delta * 1000;
+    const dateEx = new DateEx(ms);
+    if (this.data.timezone) {
+      const tzMatch = this.data.timezone.match(/\)\s*(.+)$/);
+      if (tzMatch) {
+        const tz = tzMatch[1];
+        dateEx.tz(tz as IANATZ);
+      }
+    }
+    return dateEx;
   }
 
   /**
    * The segment efforts associated with the activity.
    */
-  public get segments(): SegmentData[] { // Updated type to SegmentData[]
+  get segments(): SegmentData[] { // Updated type to SegmentData[]
     return this.#segments; // Use private property
   }
 
@@ -189,21 +205,21 @@ export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
    * Sets the segment efforts for the activity.
    * @param segments Array of segment effort data
    */
-  public set segments(segments: SegmentData[]) {
+  set segments(segments: SegmentData[]) {
     this.#segments = segments;
   }
 
   /**
    * The type of the activity (e.g., 'Ride', 'Run').
    */
-  public get type(): string {
+  get type(): string {
     return this.data.type;
   }
 
   /**
    * Checks if the activity is a ride or an e-bike ride.
    */
-  public isRide(): boolean {
+  isRide(): boolean {
     return this.data.type === 'Ride' || this.data.type === 'EBikeRide';
   }
 
@@ -212,7 +228,7 @@ export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
    *
    * Some activity types, such as workouts, yoga, and weight training, do not have KML data.
    */
-  public hasKmlData(): boolean {
+  hasKmlData(): boolean {
     if (!_.isString(this.type) || REGEX.noKmlData.test(this.type)) {
       return false;
     }
@@ -287,8 +303,6 @@ export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
         streamTypes,
         this.data.id,
         this.data.name,
-        this.data.timezone,
-        this.startDate,
       );
       if (coords && coords.length > 0) {
         this.#coordinates = coords;
@@ -302,13 +316,17 @@ export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
   }
 
   filterCoordinates(ctx: this['Context'], dedup: boolean, blackoutZones?: LatLngRect[]) {
+    const len0 = this.#coordinates.length;
     if (_.isNonEmptyArray(blackoutZones)) {
       this.#coordinates = this.#coordinates.filter((pt) => {
         const rm = pointIsInRects(pt as CoordData, blackoutZones);
-        ctx.log.spam.text('Blackout').value(pt.lat).value(pt.lng).value(pt.time).emit();
+        if (rm) {
+          ctx.log.spam.text('Blackout').value(pt.lat).value(pt.lng).value(pt.time).emit();
+        }
         return rm ? false : true;
       });
     }
+    const len1 = this.#coordinates.length;
 
     // Then remove intermediate duplicate points
     if (dedup && this.#coordinates.length > 2) {
@@ -345,6 +363,22 @@ export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
       }
 
       this.#coordinates = filtered;
+    }
+    const len2 = this.#coordinates.length;
+    // Log the results properly
+    const blackoutRemoved = len0 - len1;
+    const dedupRemoved = len1 - len2;
+    const totalRemoved = len0 - len2;
+
+    if (totalRemoved > 0) {
+      const line = ctx.log.info.text('Filtered');
+      if (blackoutRemoved > 0) {
+        line.count(blackoutRemoved).text('point').text('in blackout zones');
+      }
+      if (dedupRemoved > 0) {
+        line.count(dedupRemoved).text('duplicate point');
+      }
+      line.emit();
     }
   }
 
@@ -479,16 +513,16 @@ export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
 
 function pointIsInRects(pt: CoordData, rects: LatLngRect[]): boolean {
   return rects.some((rect) => {
-    const [[x1, y1], [x2, y2]] = rect;
+    const [[lat1, lng1], [lat2, lng2]] = rect;
 
     // Calculate the actual bounds of the rectangle
-    const minLng = Math.min(x1, x2);
-    const maxLng = Math.max(x1, x2);
-    const minLat = Math.min(y1, y2);
-    const maxLat = Math.max(y1, y2);
+    const minLat = Math.min(lat1, lat2);
+    const maxLat = Math.max(lat1, lat2);
+    const minLng = Math.min(lng1, lng2);
+    const maxLng = Math.max(lng1, lng2);
 
     // Check if point is within bounds
-    return pt.lng >= minLng && pt.lng <= maxLng &&
-      pt.lat >= minLat && pt.lat <= maxLat;
+    return pt.lat >= minLat && pt.lat <= maxLat &&
+      pt.lng >= minLng && pt.lng <= maxLng;
   });
 }

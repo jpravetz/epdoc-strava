@@ -123,11 +123,12 @@ The tasks you have are to:
 - [ ] Our primary target for gpx files is JOSM for editing of the openstreetmaps database, and
       uploads to the public database of openstreetmap.org, which is the reason for allowing a
       blackout area to be specified.
-- [ ] 🛑 Find a way to use the --lap option to add waypoints or, in some other way, highlight points
+- [x] Find a way to use the --lap option to add waypoints or, in some other way, highlight points
       along our paths that are where laps ended. Just as how we do this with KML, we would exclude
-      the last lap point which is at the end of our full path. 🛑 The waypoints do not appear to be
-      in the correct location along the paths.
-- [ ] GPX.metadata.time must use the same time string generation, with local TZ, as is being done
+      the last lap point which is at the end of our full path. Fixed by using cumulative lap time
+      calculation to find coordinates after deduplication and blackout filtering. Waypoints include
+      comments with distance, elevation delta, and gradient.
+- [x] GPX.metadata.time must use the same time string generation, with local TZ, as is being done
       for trkpt.time points
 
 ```xml

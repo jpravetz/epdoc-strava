@@ -1,4 +1,3 @@
-import { DateEx, type IANATZ } from '@epdoc/datetime';
 import type * as FS from '@epdoc/fs/fs';
 import { _, type Dict } from '@epdoc/type';
 import { Activity } from './activity.ts';
@@ -348,8 +347,6 @@ export class Api<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
     streamTypes: Schema.StreamKeyType[],
     objId: Schema.ActivityId | Schema.SegmentId,
     name: string,
-    timezone?: string,
-    startDate?: Date,
   ): Promise<Strava.CoordData[]> {
     const query: Dict = {
       keys: streamTypes.join(','),
@@ -374,34 +371,15 @@ export class Api<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
           }
 
           // Add time if available - convert from seconds offset to ISOTzDate
-          if (resp.time && idx < resp.time.data.length && startDate) {
-            const secondsOffset = resp.time.data[idx];
-            const timestamp = new Date(startDate.getTime() + secondsOffset * 1000);
-
-            // Only add time if the computed timestamp is valid
-            if (!isNaN(timestamp.getTime())) {
-              // Extract timezone name from format "(GMT-08:00) America/Los_Angeles"
-              let tz = 'UTC';
-              if (timezone) {
-                const tzMatch = timezone.match(/\)\s*(.+)$/);
-                if (tzMatch) {
-                  tz = tzMatch[1];
-                }
-              }
-
-              // Create DateEx instance and set timezone
-              const dateEx = new DateEx(timestamp);
-              dateEx.tz(tz as IANATZ);
-              item.time = dateEx.toISOLocalString();
-            }
+          if (resp.time && idx < resp.time.data.length) {
+            item.time = resp.time.data[idx];
           }
 
           results.push(item);
         }
 
-        ctx.log.info.h2('Retrieved').count(results.length).h2('stream points for').value(name).ewt(
-          m0,
-        );
+        ctx.log.info.h2('Retrieved').count(results.length).h2('track point')
+          .h2('for').value(name).ewt(m0);
         return results;
       }
       ctx.log.info.h2('Get').value(name).h2('did not contain latlng coordinates').ewt(m0);

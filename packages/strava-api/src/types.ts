@@ -1,5 +1,4 @@
-import type { ISOTzDate } from '@epdoc/datetime';
-import type { EpochSeconds } from '@epdoc/duration';
+import type { EpochSeconds, Seconds } from '@epdoc/duration';
 import type * as FS from '@epdoc/fs/fs';
 import type { Dict, Integer } from '@epdoc/type';
 import type * as Schema from './schema/mod.ts';
@@ -27,7 +26,8 @@ export type CoordData = {
   lat: Latitude;
   lng: Longitude;
   altitude?: Metres;
-  time?: ISOTzDate;
+  /** Offset from start time */
+  time?: Seconds;
 };
 export type LatLngRect = [Coord, Coord];
 
