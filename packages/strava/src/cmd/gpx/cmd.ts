@@ -139,7 +139,7 @@ export class GpxCmd extends Options.BaseSubCmd {
 
         await ctx.app.init(ctx, { strava: true, userSettings: true });
 
-        await ctx.app.getKml(ctx, opts);
+        await ctx.app.getTrack(ctx, opts);
       } catch (e) {
         const err = _.asError(e);
         ctx.log.error.error(`Failed to generate GPX: ${err.message}`).emit();

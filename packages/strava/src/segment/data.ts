@@ -27,7 +27,7 @@ export class SegmentData implements Segment.IData {
   elapsedTime: Seconds = 0;
   movingTime: Seconds = 0;
   distance: Metres = 0;
-  coordinates: Partial<Api.CoordData>[] = [];
+  coordinates: Partial<Api.TrackPoint>[] = [];
   country: string = '';
   state: string = '';
   efforts?: Api.Schema.DetailedSegmentEffort[] = [];

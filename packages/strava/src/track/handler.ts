@@ -6,8 +6,8 @@ import type * as Segment from '../segment/mod.ts';
 import { GpxWriter } from './gpx.ts';
 import { KmlWriter } from './kml.ts';
 import { defaultKmlLineStyles } from './linestyles.ts';
-import type { StreamWriter } from './streamer.ts';
 import type * as Stream from './types.ts';
+import type { TrackWriter } from './writer.ts';
 
 type SegmentData = Segment.Data;
 type PlacemarkParams = Stream.KmlPlacemarkParams;
@@ -44,7 +44,7 @@ const REGEX = {
 export class Handler {
   private opts: Stream.Opts = {};
   private kmlLinestyles: Stream.KmlLineStyleDefs = defaultKmlLineStyles;
-  #writer?: StreamWriter;
+  #writer?: TrackWriter;
 
   /**
    * @param [opts={}] - KML generation options.
@@ -85,7 +85,7 @@ export class Handler {
     return this.opts && this.opts.efforts === true;
   }
 
-  initWriter(_ctx: Ctx.Context, filepath: FS.Path): StreamWriter | undefined {
+  initWriter(_ctx: Ctx.Context, filepath: FS.Path): TrackWriter | undefined {
     assert(!this.#writer, 'writer is already initialized');
     const pathStr = typeof filepath === 'string'
       ? filepath
@@ -116,7 +116,7 @@ export class Handler {
    *
    * @param ctx Application context with logging
    * @param filepath Output file path for the KML file
-   * @param activities Array of Strava activities with coordinates
+   * @param activities Array of Strava activities with track points
    * @param segments Array of starred segments with coordinates
    *
    * @example

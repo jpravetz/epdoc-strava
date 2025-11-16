@@ -2,61 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.0] - 2025-11-15
+
+- Declared release 2.0.0
+
 ## [2.0.0-alpha.16] - 2025-11-15
 
-### Fixed
-- GPX lap waypoint location accuracy
-  - Fixed waypoints appearing at incorrect locations (many at final point)
-  - Now uses cumulative lap time calculation to find correct coordinates
-  - Properly handles coordinate filtering (deduplication and blackout zones)
-- GPX waypoint timestamp format
-  - Fixed waypoints showing raw seconds instead of ISO timestamp strings
-  - Now uses timezone-aware timestamps matching track point format
-- GPX metadata time format
-  - Now uses timezone-aware ISO format matching track points
-
-### Added
-- GPX lap waypoint comments with detailed metrics
-  - Distance since previous lap (in km)
-  - Point elevation (in meters)
-  - Elevation delta since previous lap (in meters)
-  - Gradient percentage
-
-## [2.0.0-alpha.15] - 2025-11-15
-
-- fix bug in blackout zone calculations
-
-## [2.0.0-alpha.14] - 2025-11-15
-
-- logging improvement
-
-## [2.0.0-alpha.13] - 2025-11-15
-
-- Added filter log msg
-
-## [2.0.0-alpha.12] - 2025-11-15
-
-- Bug fixes
-
-## [2.0.0-alpha.11] - 2025-11-15
-
-- Added coordinate filtering
-
-## [2.0.0-alpha.8] - 2025-11-15
-
+- Added gpx command and output
+- Added waypoints to gpx and cleaned up for kml
+- Added track point filtering of duplicate point locations
+- Added point filtering of points within blackout zones
 - Added userSettings blackout and gpxFolder options
-
-## [2.0.0-alpha.7] - 2025-11-13
-
-- Ready to install
-
-## [2.0.0-alpha.6] - 2025-11-13
-
-- fixed non-awaited async call
-
-## [2.0.0-alpha.5] - 2025-11-13
-
-- Cleaning up generics, and making a mess
+- Logging improvements
+- Now refer to our output streams as tracks, track points, and waypoints
 
 ## [2.0.0-alpha.5] - 2025-11-08
 

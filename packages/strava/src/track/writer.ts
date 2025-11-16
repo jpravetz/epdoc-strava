@@ -3,7 +3,7 @@ import { _ } from '@epdoc/type';
 import { Api } from '../dep.ts';
 import type * as Stream from './types.ts';
 
-export class StreamWriter {
+export class TrackWriter {
   protected opts: Stream.Opts = {};
   protected buffer: string = '';
   protected writer?: FS.Writer;

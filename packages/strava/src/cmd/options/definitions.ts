@@ -65,7 +65,13 @@ export const mapDef: Record<string, Options.Def> = {
   laps: {
     short: 'l',
     name: 'laps',
-    description: 'Include lap markers in ${cmd} output',
+    params: '[mode]',
+    description: 'Include lap data. Modes: "tracks", "waypoints", "both" (default: tracks)',
+    choices: ['tracks', 'waypoints', 'both'],
+    argParser: (str: string | boolean) => {
+      if (str === true || str === '') return 'tracks'; // Default
+      return str;
+    },
   },
   efforts: {
     short: 'e',
@@ -82,7 +88,7 @@ export const mapDef: Record<string, Options.Def> = {
   },
   allowDups: {
     name: 'allow-dups',
-    description: 'allow duplicate intermediate coordinates instead of filtering them out',
+    description: 'allow duplicate intermediate track points instead of filtering them out',
   },
   dryRun: {
     short: 'n',

@@ -4,8 +4,8 @@ import pkg from '../../deno.json' with { type: 'json' };
 import type * as Ctx from '../context.ts';
 import { type Activity, Api } from '../dep.ts';
 import type * as Segment from '../segment/mod.ts';
-import { StreamWriter } from './streamer.ts';
 import type * as Stream from './types.ts';
+import { TrackWriter } from './writer.ts';
 
 type SegmentData = Segment.Data;
 type PlacemarkParams = Stream.KmlPlacemarkParams;
@@ -32,7 +32,7 @@ type PlacemarkParams = Stream.KmlPlacemarkParams;
  * await kml.outputData(ctx, 'output.kml', activities, segments);
  * ```
  */
-export class GpxWriter extends StreamWriter {
+export class GpxWriter extends TrackWriter {
   override streamTypes(): Api.Schema.StreamType[] {
     return [
       Api.Schema.StreamKeys.LatLng,
@@ -56,7 +56,7 @@ export class GpxWriter extends StreamWriter {
    *
    * @param ctx Application context with logging
    * @param filepath Output file path for the KML file
-   * @param activities Array of Strava activities with coordinates
+   * @param activities Array of Strava activities with track points
    * @param segments Array of starred segments with coordinates
    *
    * @example
@@ -106,13 +106,14 @@ export class GpxWriter extends StreamWriter {
       const line = ctx.log.info.text('Wrote').count(activity.coordinates.length)
         .text('track point');
 
-      // Output lap waypoints if laps flag is enabled
+      // Output lap waypoints if laps waypoints are requested
       if (
-        this.opts.laps && 'laps' in activity.data && _.isArray(activity.data.laps) &&
+        (this.opts.laps === 'waypoints' || this.opts.laps === 'both') &&
+        'laps' in activity.data && _.isArray(activity.data.laps) &&
         activity.data.laps.length > 1
       ) {
         const numWaypoints = await this.#outputLapWaypoints(activity);
-        line.count(numWaypoints).text('waypoint');
+        line.text('and').count(numWaypoints).text('waypoint');
       }
 
       await this.#footer();
@@ -128,13 +129,13 @@ export class GpxWriter extends StreamWriter {
   }
 
   /**
-   * Writes a GPX track point with coordinates, elevation, and time.
+   * Writes a GPX track point with latitude, longitude, elevation, and time.
    *
    * @private
    * @param indent - The indentation level for the GPX output.
    * @param coord - The coordinate data containing lat, lng, altitude, and time.
    */
-  #outputCoordinate(indent: number, coord: Partial<Api.CoordData>, activity: Activity): void {
+  #outputCoordinate(indent: number, coord: Partial<Api.TrackPoint>, activity: Activity): void {
     const lines: string[] = [`<trkpt lat="${coord.lat}" lon="${coord.lng}">`];
 
     if (coord.altitude !== undefined) {
@@ -260,6 +261,7 @@ export class GpxWriter extends StreamWriter {
 
       this.writeln(1, '<wpt lat="' + coord.lat + '" lon="' + coord.lng + '">');
       this.writeln(2, '<name>Lap ' + (i + 1) + '</name>');
+      this.writeln(2, '<desc>' + distanceKm + ' km</desc>');
 
       if (coord.altitude !== undefined) {
         this.writeln(2, '<ele>' + coord.altitude + '</ele>');
@@ -283,33 +285,30 @@ export class GpxWriter extends StreamWriter {
   }
 
   /**
-   * Finds the coordinate closest to a given elapsed time.
+   * Finds the track point closest to a given elapsed time.
    *
-   * @param activity The activity with coordinates
+   * @param activity The activity with track points
    * @param elapsedTime The elapsed time in seconds from activity start
-   * @returns The coordinate closest to the given time, or undefined
+   * @returns The track point closest to the given time, or undefined
    */
   #findCoordinateAtTime(
     activity: Activity,
     elapsedTime: number,
-  ): Partial<Api.CoordData> | undefined {
+  ): Partial<Api.TrackPoint> | undefined {
     if (!activity.coordinates || activity.coordinates.length === 0) {
       return undefined;
     }
 
     // If we have time data in coordinates, find by matching time
-    if (activity.coordinates[0].time) {
-      const targetTime = new Date(
-        activity.startDate.getTime() + elapsedTime * 1000,
-      );
-
+    // coord.time is Seconds since activity start, so directly compare numeric values
+    if (activity.coordinates[0].time !== undefined) {
       let closestCoord = activity.coordinates[0];
       let closestDiff = Infinity;
 
       for (const coord of activity.coordinates) {
-        if (coord.time) {
-          const coordTime = new Date(coord.time);
-          const diff = Math.abs(coordTime.getTime() - targetTime.getTime());
+        if (coord.time !== undefined) {
+          // Both coord.time and elapsedTime are in seconds
+          const diff = Math.abs(coord.time - elapsedTime);
           if (diff < closestDiff) {
             closestDiff = diff;
             closestCoord = coord;

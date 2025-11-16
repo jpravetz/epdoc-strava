@@ -1,13 +1,13 @@
 import * as FS from '@epdoc/fs/fs';
 import { _ } from '@epdoc/type';
 import type * as Ctx from '../context.ts';
-import type { Activity, Api } from '../dep.ts';
+import { type Activity, Api } from '../dep.ts';
 import { escapeHtml, Fmt } from '../fmt.ts';
 import type * as Segment from '../segment/mod.ts';
 import { isValidActivityType, isValidLineStyle } from './guards.ts';
 import { defaultKmlLineStyles } from './linestyles.ts';
-import { StreamWriter } from './streamer.ts';
 import type * as Stream from './types.ts';
+import { TrackWriter } from './writer.ts';
 
 type SegmentData = Segment.Data;
 type PlacemarkParams = Stream.KmlPlacemarkParams;
@@ -39,9 +39,21 @@ const REGEX = {
  * await kml.outputData(ctx, 'output.kml', activities, segments);
  * ```
  */
-export class KmlWriter extends StreamWriter {
+export class KmlWriter extends TrackWriter {
   private lineStyles: Stream.KmlLineStyleDefs = defaultKmlLineStyles;
   private trackIndex: number = 0;
+
+  override streamTypes(): Api.Schema.StreamType[] {
+    const types: Api.Schema.StreamType[] = [Api.Schema.StreamKeys.LatLng];
+
+    // Request time and altitude streams if lap waypoints are enabled
+    if (this.opts.laps === 'waypoints' || this.opts.laps === 'both') {
+      types.push(Api.Schema.StreamKeys.Time);
+      types.push(Api.Schema.StreamKeys.Altitude);
+    }
+
+    return types;
+  }
 
   /**
    * Indicates if units should be imperial.
@@ -113,7 +125,7 @@ export class KmlWriter extends StreamWriter {
    *
    * @param ctx Application context with logging
    * @param filepath Output file path for the KML file
-   * @param activities Array of Strava activities with coordinates
+   * @param activities Array of Strava activities with track points
    * @param segments Array of starred segments with coordinates
    *
    * @example
@@ -185,8 +197,8 @@ export class KmlWriter extends StreamWriter {
         this.#addLineStyle(name, this.lineStyles[name] as Stream.KmlLineStyle);
       }
     });
-    // Add lap marker style if laps are enabled
-    if (this.opts.laps) {
+    // Add lap marker style if lap waypoints are enabled
+    if (this.opts.laps === 'waypoints' || this.opts.laps === 'both') {
       this.#addLapMarkerStyle();
     }
     await this.flush();
@@ -221,7 +233,7 @@ export class KmlWriter extends StreamWriter {
       );
 
       for (const activity of activities) {
-        if (activity.hasKmlData()) {
+        if (activity.hasTrackPoints()) {
           await this.outputActivity(ctx, indent + 1, activity);
         }
         await this.flush();
@@ -360,7 +372,7 @@ export class KmlWriter extends StreamWriter {
    * otherwise uses the activity type (e.g., "Ride", "Run").
    *
    * @param indent Indentation level for KML output
-   * @param activity Strava activity with coordinates and metadata
+   * @param activity Strava activity with track points and metadata
    */
   async outputActivity(ctx: Ctx.Context, indent: number, activity: Activity): Promise<void> {
     // Get the YYYY-MM-DD string with which to label the date. And always put it in the context of where we are at the time. Trust me.
@@ -391,9 +403,10 @@ export class KmlWriter extends StreamWriter {
     };
     this.#placemark(indent, params);
 
-    // Output lap markers if laps are enabled and available
+    // Output lap markers if laps waypoints are requested and available
     if (
-      this.opts.laps && 'laps' in activity.data && _.isArray(activity.data.laps) &&
+      (this.opts.laps === 'waypoints' || this.opts.laps === 'both') &&
+      'laps' in activity.data && _.isArray(activity.data.laps) &&
       activity.data.laps.length > 1
     ) {
       this.#outputLapMarkers(indent, activity);
@@ -550,15 +563,16 @@ export class KmlWriter extends StreamWriter {
    * Outputs lap marker placemarks for an activity's lap button presses.
    *
    * Creates a Point placemark for each lap button press in the activity. Each marker:
-   * - Uses the lap's start_index to find the coordinate in the activity's coordinate array
+   * - Uses cumulative lap time to find the coordinate (handles filtering correctly)
    * - Displays as a circular icon in Google Earth
-   * - Shows "Lap 1", "Lap 2", etc. when clicked (labels hidden by default)
+   * - Shows "Lap X (distance)" when clicked
+   * - Includes description with elevation, delta, and gradient metrics
    *
-   * Only outputs markers if the activity has lap data and coordinates. Skips laps with
-   * invalid start indices.
+   * Only outputs markers if the activity has lap data and track points. Skips the last lap
+   * as it's at the end of the activity.
    *
    * @param indent - Indentation level for KML output.
-   * @param activity - Strava activity with laps array and coordinates.
+   * @param activity - Strava activity with laps array and track points.
    */
   #outputLapMarkers(indent: number, activity: Activity): void {
     if (!('laps' in activity.data) || !_.isArray(activity.data.laps)) {
@@ -572,30 +586,135 @@ export class KmlWriter extends StreamWriter {
       return;
     }
 
-    laps.forEach((lap, index) => {
-      // Get the coordinate at the lap's start index
-      const startIndex = lap.start_index;
-      if (startIndex >= 0 && startIndex < coords.length) {
-        const coord = coords[startIndex];
-        this.#outputLapPoint(indent, index + 1, coord);
+    // Skip the last lap as it's at the end of the activity
+    let prevElevation: number | undefined = undefined;
+    let cumulativeTime = 0;
+
+    for (let i = 0; i < laps.length - 1; i++) {
+      const lap = laps[i];
+
+      // Calculate cumulative time to end of this lap
+      cumulativeTime += lap.elapsed_time;
+
+      // Find the coordinate closest to this cumulative time
+      const coord = this.#findCoordinateAtTime(activity, cumulativeTime);
+
+      if (!coord) {
+        continue;
       }
-    });
+
+      // Calculate metrics
+      const distanceKm = (lap.distance / 1000).toFixed(2);
+      const elevation = coord.altitude ?? 0;
+      let elevDelta = 0;
+      let gradient = 0;
+
+      if (prevElevation !== undefined && lap.distance > 0) {
+        elevDelta = elevation - prevElevation;
+        gradient = (elevDelta / lap.distance) * 100;
+      }
+
+      this.#outputLapPoint(
+        indent,
+        i + 1,
+        coord,
+        distanceKm,
+        elevation,
+        elevDelta,
+        gradient,
+        prevElevation !== undefined,
+      );
+
+      prevElevation = elevation;
+    }
+  }
+
+  /**
+   * Finds the track point closest to a given elapsed time.
+   *
+   * Uses time-based matching which works correctly even after track point filtering
+   * (deduplication and blackout zones).
+   *
+   * @param activity - The activity with track points
+   * @param elapsedTime - The elapsed time in seconds from activity start
+   * @returns The track point closest to the given time, or undefined
+   */
+  #findCoordinateAtTime(
+    activity: Activity,
+    elapsedTime: number,
+  ): Partial<Api.TrackPoint> | undefined {
+    if (!activity.coordinates || activity.coordinates.length === 0) {
+      return undefined;
+    }
+
+    // If we have time data in coordinates, find by matching time
+    // coord.time is Seconds since activity start, so directly compare numeric values
+    if (activity.coordinates[0].time !== undefined) {
+      let closestCoord = activity.coordinates[0];
+      let closestDiff = Infinity;
+
+      for (const coord of activity.coordinates) {
+        if (coord.time !== undefined) {
+          // Both coord.time and elapsedTime are in seconds
+          const diff = Math.abs(coord.time - elapsedTime);
+          if (diff < closestDiff) {
+            closestDiff = diff;
+            closestCoord = coord;
+          }
+        }
+      }
+
+      return closestCoord;
+    }
+
+    // Fallback: estimate based on array position
+    // Assume coordinates are evenly distributed over activity duration
+    const totalTime = activity.data.elapsed_time;
+    const ratio = elapsedTime / totalTime;
+    const index = Math.floor(ratio * activity.coordinates.length);
+
+    return activity.coordinates[Math.min(index, activity.coordinates.length - 1)];
   }
 
   /**
    * Outputs a single lap marker as a KML Point placemark.
    *
-   * Creates a circular marker icon at the specified coordinate with a label showing
-   * the lap number. The label is hidden by default (scale=0) and only appears when
-   * the marker is clicked in Google Earth.
+   * Creates a circular marker icon at the specified coordinate with:
+   * - Name showing lap number and distance (e.g., "Lap 4 (0.27 km)")
+   * - Description with elevation, delta, and gradient metrics
+   * - Label hidden by default (scale=0), appears when clicked in Google Earth
    *
-   * @param indent - Indentation level for KML output.
-   * @param lapNumber - Lap number for the label (e.g., 1 for "Lap 1").
-   * @param coord - Coordinate data object with lat, lng, and optional altitude.
+   * @param indent - Indentation level for KML output
+   * @param lapNumber - Lap number for the label (e.g., 1 for "Lap 1")
+   * @param coord - Coordinate data object with lat, lng, and optional altitude
+   * @param distanceKm - Distance for this lap in km (formatted string)
+   * @param elevation - Point elevation in meters
+   * @param elevDelta - Elevation delta since previous lap in meters
+   * @param gradient - Gradient percentage
+   * @param hasMetrics - Whether to include delta/gradient in description
    */
-  #outputLapPoint(indent: number, lapNumber: number, coord: Partial<Api.CoordData>): void {
+  #outputLapPoint(
+    indent: number,
+    lapNumber: number,
+    coord: Partial<Api.TrackPoint>,
+    distanceKm: string,
+    elevation: number,
+    elevDelta: number,
+    gradient: number,
+    hasMetrics: boolean,
+  ): void {
     this.writeln(indent, '<Placemark id="LapMarker' + ++this.trackIndex + '">');
-    this.writeln(indent + 1, '<name>Lap ' + lapNumber + '</name>');
+    this.writeln(indent + 1, '<name>Lap ' + lapNumber + ' (' + distanceKm + ' km)</name>');
+
+    // Build description with lap statistics
+    const descParts = [`Distance: ${distanceKm} km`, `Elevation: ${elevation.toFixed(1)} m`];
+    if (hasMetrics) {
+      descParts.push(`Delta: ${elevDelta > 0 ? '+' : ''}${elevDelta.toFixed(1)} m`);
+      descParts.push(`Gradient: ${gradient.toFixed(1)}%`);
+    }
+    const description = descParts.join(', ');
+
+    this.writeln(indent + 1, '<description>' + description + '</description>');
     this.writeln(indent + 1, '<visibility>1</visibility>');
     this.writeln(indent + 1, '<styleUrl>#LapMarker</styleUrl>');
     this.writeln(indent + 1, '<Point>');

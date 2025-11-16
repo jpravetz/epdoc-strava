@@ -91,7 +91,7 @@ export class SegmentsCmd extends Options.BaseSubCmd {
             date: opts.date,
             imperial: opts.imperial || false,
           };
-          await ctx.app.getKml(ctx, kmlOpts);
+          await ctx.app.getTrack(ctx, kmlOpts);
           return; // Exit after KML generation
         }
 

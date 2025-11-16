@@ -44,9 +44,9 @@ export type CommonOpts = {
  */
 export type StreamOpts = {
   activities?: boolean;
-  laps?: boolean; // include lap markers in stream output
+  laps?: 'tracks' | 'waypoints' | 'both'; // what to output for laps: tracks only (default), waypoints only, or both
   blackout?: boolean;
-  /** allow duplicate intermediate coordinates instead of filtering them out */
+  /** allow duplicate intermediate track points instead of filtering them out */
   allowDups?: boolean;
 };
 
@@ -56,7 +56,7 @@ export type Coord = [number, number]; // [lat, lng] - deprecated, use CoordData 
 
 export type KmlPlacemarkParams = {
   description?: string;
-  coordinates?: Partial<Api.CoordData>[];
+  coordinates?: Partial<Api.TrackPoint>[];
   placemarkId?: string;
   name?: string;
   styleName?: string;

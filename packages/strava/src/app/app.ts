@@ -194,13 +194,13 @@ export class Main {
    *
    * This method retrieves activities from the Strava API within one or more
    * specified date ranges. It can optionally fetch detailed information,
-   * coordinates, and attach starred segment data to the activities.
+   * track points, and attach starred segment data to the activities.
    *
    * @param ctx - The application context for logging.
    * @param date - The date ranges to fetch activities for.
    * @param [opts={}] - Options for fetching activities.
    * @param [opts.detailed=false] - Whether to fetch detailed information for each activity.
-   * @param [opts.coordinates=false] - Whether to fetch coordinates for each activity.
+   * @param [opts.coordinates=false] - Whether to fetch track points for each activity.
    * @param [opts.starredSegments=false] - Whether to attach starred segment information to each activity.
    * @param [opts.filter] - A filter to apply to the activities.
    * @returns A promise that resolves to an array of activities.
@@ -251,16 +251,16 @@ export class Main {
         await Promise.all(jobs);
       }
       if (_.isNonEmptyArray(opts.streams)) {
-        ctx.log.info.text('Fetching coordinates for').count(activities.length)
+        ctx.log.info.text('Fetching track points for').count(activities.length)
           .text('activity', 'activities').emit();
         const jobs: Promise<void>[] = [];
         const streams = opts.streams; // Extract to non-null variable
         activities.forEach((activity) => {
-          jobs.push(activity.getCoordinates(ctx, streams));
+          jobs.push(activity.getTrackPoints(ctx, streams));
         });
         await Promise.all(jobs);
         activities.forEach((activity) => {
-          activity.filterCoordinates(ctx, opts.dedup === true, opts.blackoutZones);
+          activity.filterTrackPoints(ctx, opts.dedup === true, opts.blackoutZones);
         });
       }
 
@@ -288,7 +288,7 @@ export class Main {
    * 2. Validates that activities or segments are requested.
    * 3. Fetches activities for the specified date ranges, applying filters.
    * 4. Optionally fetches detailed activity data for lap markers (if `kmlOpts.laps` is true).
-   * 5. Fetches coordinates for each activity from Strava streams.
+   * 5. Fetches track points for each activity from Strava streams.
    * 6. Applies commute filtering based on `kmlOpts.commute`.
    * 7. Generates a KML file with appropriate styling and organization.
    *
@@ -320,7 +320,7 @@ export class Main {
    * });
    * ```
    */
-  async getKml(ctx: Ctx.Context, streamOpts: Stream.Opts): Promise<void> {
+  async getTrack(ctx: Ctx.Context, streamOpts: Stream.Opts): Promise<void> {
     // Validate that at least activities or segments is requested
     if (!streamOpts.activities && !streamOpts.segments) {
       throw new Error('When writing KML, select either segments, activities, or both');
@@ -344,7 +344,8 @@ export class Main {
       assert(streamOpts.date);
 
       const opts: GetActivitiesOpts = {
-        detailed: streamOpts.laps || streamOpts.more || streamOpts.efforts,
+        detailed: streamOpts.laps === 'waypoints' || streamOpts.laps === 'both' ||
+          streamOpts.more || streamOpts.efforts,
         streams: writer?.streamTypes(),
         starredSegments: streamOpts.efforts,
         dedup: (streamOpts.allowDups === true) ? false : true,
@@ -381,7 +382,7 @@ export class Main {
   /**
    * Retrieves segments suitable for KML generation.
    *
-   * This method fetches starred segments, including their coordinates, but
+   * This method fetches starred segments including their coordinates, but
    * without effort data, which is not needed for KML visualization.
    *
    * @param ctx - Application context for logging.
