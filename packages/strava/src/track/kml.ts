@@ -376,7 +376,7 @@ export class KmlWriter extends TrackWriter {
    */
   async outputActivity(ctx: Ctx.Context, indent: number, activity: Activity): Promise<void> {
     // Get the YYYY-MM-DD string with which to label the date. And always put it in the context of where we are at the time. Trust me.
-    const t0 = activity.startDateLocal.slice(0, 10);
+    const t0 = activity.startDatetimeLocal.slice(0, 10);
     let styleName = 'Default';
 
     const bike = activity.gearId && this.opts.bikes ? this.opts.bikes[activity.gearId] : undefined;

@@ -66,3 +66,5 @@ export interface IList {
 }
 
 export type CommuteType = 'yes' | 'no' | 'all';
+
+export type LapType = 'tracks' | 'waypoints' | 'both';

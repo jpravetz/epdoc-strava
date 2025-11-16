@@ -2,7 +2,7 @@ import type * as CliApp from '@epdoc/cliapp';
 import type * as FS from '@epdoc/fs/fs';
 import type { Dict, Integer } from '@epdoc/type';
 import type { Api } from '../dep.ts';
-import type { KmlLineStyle as LineStyle } from '../stream/types.ts';
+import type { KmlLineStyle as LineStyle } from '../track/types.ts';
 
 export type SegmentConfig = {
   description: string;

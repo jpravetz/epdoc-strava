@@ -23,6 +23,20 @@ export class TrackWriter {
     this.opts = opts;
   }
 
+  writeTracks(): boolean {
+    return (!_.isNonEmptyString(this.opts.laps) || this.opts.laps === 'tracks' ||
+        this.opts.laps === 'both')
+      ? true
+      : false;
+  }
+
+  writeWaypoints(): boolean {
+    return (_.isNonEmptyString(this.opts.laps) &&
+        (this.opts.laps === 'waypoints' || this.opts.laps === 'both'))
+      ? true
+      : false;
+  }
+
   /**
    * Lists the stream types we will need to retrieve from Strava for the output stream we are generating.
    * @returns

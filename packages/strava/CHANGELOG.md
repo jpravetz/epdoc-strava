@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.1] - 2025-11-16
+
+- Added multiple activity per gpx file support
+
 ## [2.0.0] - 2025-11-15
 
 - Declared release 2.0.0

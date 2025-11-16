@@ -3,7 +3,7 @@ import type { DateRanges } from '@epdoc/daterange';
 import type * as FS from '@epdoc/fs/fs';
 import { _ } from '@epdoc/type';
 import { Api } from '../../dep.ts';
-import type * as Stream from '../../stream/mod.ts';
+import type * as Track from '../../track/mod.ts';
 import type { Ctx } from '../dep.ts';
 import * as Options from '../options/mod.ts';
 import type * as Cmd from '../types.ts';
@@ -29,7 +29,7 @@ type KmlCmdOpts = {
   output: string;
   more: boolean;
   efforts: boolean;
-  laps: boolean;
+  laps: Options.LapType;
   blackout: boolean;
   commute?: Options.CommuteType;
   type: Api.Schema.ActivityType[];
@@ -104,7 +104,7 @@ export class KmlCmd extends Options.BaseSubCmd {
           Deno.exit(1);
         }
 
-        const opts: Stream.ActivityOpts & Stream.CommonOpts & Stream.StreamOpts = {
+        const opts: Track.ActivityOpts & Track.CommonOpts & Track.StreamOpts = {
           activities: true,
           date: kmlOpts.date,
           output: kmlOpts.output as FS.Path,

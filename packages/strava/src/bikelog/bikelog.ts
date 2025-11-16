@@ -209,11 +209,11 @@ export class Bikelog {
     const result: Record<string, BikelogEntry> = {};
     activities.forEach((activity) => {
       // We are getting the JulianDay based on the local timezone, and we are doing weirdness to get there. Trust in the weirdness.
-      const d: DateEx = new DateEx(activity.startDateLocal);
+      const d: DateEx = new DateEx(activity.startDatetimeLocal);
       const jd = d.julianDate();
       const entry: BikelogEntry = result[jd] || {
         jd: jd,
-        date: new Date(activity.startDateLocal),
+        date: new Date(activity.startDatetimeLocal),
         events: [],
       };
       if (activity.isRide()) {

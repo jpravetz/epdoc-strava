@@ -10,6 +10,10 @@ import { TrackWriter } from './writer.ts';
 type SegmentData = Segment.Data;
 type PlacemarkParams = Stream.KmlPlacemarkParams;
 
+const REG = {
+  isGpx: new RegExp(/\.gpx$/i),
+};
+
 /**
  * Generates KML (Keyhole Markup Language) files for visualizing Strava activities in Google Earth.
  *
@@ -71,47 +75,106 @@ export class GpxWriter extends TrackWriter {
     folderpath: FS.FolderPath,
     activities: Activity[],
   ): Promise<void> {
-    const fsFolder = new FS.Folder(folderpath);
-    const m0 = ctx.log.mark();
-    ctx.log.info.h2('Generating GPX files in folder').fs(folderpath).emit();
-    ctx.log.indent();
-    for (const activity of activities) {
-      await this.outputActivity(ctx, fsFolder, activity);
+    if (REG.isGpx.test(folderpath)) {
+      const fsFile = new FS.File(folderpath);
+      await this.#outputActivitiesFile(ctx, fsFile, activities);
+    } else {
+      const fsFolder = new FS.Folder(folderpath);
+      await fsFolder.ensureDir();
+      const m0 = ctx.log.mark();
+      ctx.log.info.h2('Generating GPX files in folder').fs(folderpath).emit();
+      ctx.log.indent();
+      for (const activity of activities) {
+        await this.#outputActivityFile(ctx, fsFolder, activity);
+      }
+      ctx.log.outdent();
+      ctx.log.info.h2('Generated').count(activities.length).h2('GPX file').h2('successfully').ewt(
+        m0,
+      );
     }
-    ctx.log.outdent();
-    ctx.log.info.h2('Generated').count(activities.length).h2('GPX file').h2('successfully').ewt(m0);
   }
 
-  async outputActivity(
+  async #outputActivitiesFile(
+    ctx: Ctx.Context,
+    fsFile: FS.File,
+    activities: Activity[],
+  ): Promise<void> {
+    this.writer = await fsFile.writer();
+    ctx.log.info.h2('Generating GPX file').fs(fsFile).emit();
+    ctx.log.indent();
+    const [minDate, maxDate] = getDateRange(activities);
+    const metadata = {
+      title: `Activities ${minDate} to ${maxDate}`,
+      time: minDate,
+    };
+    const m0 = ctx.log.mark();
+    try {
+      let numWaypoints = 0;
+      let numTrackpoints = 0;
+      await this.#header(metadata);
+
+      if (this.writeTracks()) {
+        for (const activity of activities) {
+          const num = await this.outputActivityTrack(activity);
+          numTrackpoints += num;
+          ctx.log.info.text('Adding').count(num).text('track point')
+            .value(activity.startDateLocal).value(activity.name).emit();
+        }
+      }
+
+      if (this.writeWaypoints()) {
+        for (const activity of activities) {
+          if (activity.hasWaypoints()) {
+            numWaypoints += await this.#outputLapWaypoints(activity);
+          }
+        }
+      }
+      await this.#footer();
+      await this.writer.close();
+
+      ctx.log.outdent();
+      ctx.log.info.text('Wrote').count(activities.length).text('track')
+        .text('and').count(numWaypoints).text('waypoint')
+        .text('to GPX file').fs(fsFile).ewt(m0);
+    } catch (err) {
+      ctx.log.outdent();
+      if (this.writer) {
+        await this.writer.close();
+      }
+      throw err;
+    }
+  }
+
+  async #outputActivityFile(
     ctx: Ctx.Context,
     folderpath: FS.Folder,
     activity: Activity,
   ): Promise<void> {
     const m0 = ctx.log.mark();
     // Generate filename: YYYYMMDD_Activity_Name.gpx
-    const filename = activity.data.start_date_local.split('T')[0].replace(/-/g, '') + '_' +
+    const filename = activity.startDateLocal.replace(/-/g, '') + '_' +
       activity.name.replace(/\s+/g, '_') + '.gpx';
     const fsFile: FS.File = new FS.File(folderpath, filename);
     this.writer = await fsFile.writer();
 
-    try {
-      await this.#header(activity);
+    // Convert start date to timezone-aware format
+    const startDateEx = activity.startDateEx();
+    const metadata = {
+      title: activity.name,
+      time: startDateEx.toISOLocalString(),
+    };
 
-      // Output track points
-      for (const coord of activity.coordinates) {
-        this.#outputCoordinate(3, coord, activity);
+    try {
+      await this.#header(metadata);
+      const line = ctx.log.info.text('Wrote');
+
+      if (this.writeTracks() && activity.hasTrackPoints()) {
+        const numTrackpoints = await this.outputActivityTrack(activity);
+        line.count(numTrackpoints).text('track point');
       }
 
-      await this.#closeTrackSegment();
-      const line = ctx.log.info.text('Wrote').count(activity.coordinates.length)
-        .text('track point');
-
       // Output lap waypoints if laps waypoints are requested
-      if (
-        (this.opts.laps === 'waypoints' || this.opts.laps === 'both') &&
-        'laps' in activity.data && _.isArray(activity.data.laps) &&
-        activity.data.laps.length > 1
-      ) {
+      if (this.writeWaypoints() && activity.hasWaypoints()) {
         const numWaypoints = await this.#outputLapWaypoints(activity);
         line.text('and').count(numWaypoints).text('waypoint');
       }
@@ -126,6 +189,16 @@ export class GpxWriter extends TrackWriter {
       }
       throw err;
     }
+  }
+
+  async outputActivityTrack(activity: Activity): Promise<Integer> {
+    await this.#openTrackSegment(activity);
+    // Output track points
+    for (const coord of activity.coordinates) {
+      this.#outputCoordinate(3, coord, activity);
+    }
+    await this.#closeTrackSegment();
+    return activity.coordinates.length;
   }
 
   /**
@@ -161,11 +234,7 @@ export class GpxWriter extends TrackWriter {
    *
    * All content is buffered and flushed after header generation.
    */
-  async #header(activity: Activity): Promise<void> {
-    // Convert start date to timezone-aware format
-    const startDateEx = activity.startDateEx();
-    const startTime = startDateEx.toISOLocalString();
-
+  async #header(metadata: Record<string, string>): Promise<void> {
     const lines = [
       '<?xml version="1.0" encoding="UTF-8"?>',
       `<gpx creator="${pkg.name.replace('@', '').replace('/', '-')}" version="1.1"`,
@@ -175,15 +244,31 @@ export class GpxWriter extends TrackWriter {
       'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"',
       'xmlns:ns2="http://www.garmin.com/xmlschemas/GpxExtensions/v3">',
       '  <metadata>',
-      `    <time>${startTime}</time>`,
+    ];
+    Object.entries(metadata).forEach(([key, val]) => {
+      lines.push(`    <${key}>${val}</${key}>`);
+    });
+    lines.push(
       '  </metadata>',
+    );
+
+    this.writelns(0, lines);
+
+    await this.flush();
+  }
+
+  /**
+   * Closes the current track segment.
+   */
+  async #openTrackSegment(activity: Activity): Promise<void> {
+    const name = [activity.startDateLocal, activity.name].join(' ');
+    const lines = [
       '  <trk>',
-      `    <name>${activity.name}</name>`,
+      `    <name>${name}</name>`,
       `    <type>${activity.type}</type>`,
       '    <trkseg>',
     ];
     this.writelns(0, lines);
-
     await this.flush();
   }
 
@@ -338,4 +423,15 @@ export class GpxWriter extends TrackWriter {
     this.writeln(0, '</gpx>');
     await this.flush();
   }
+}
+
+function getDateRange(activities: { startDateLocal: string }[]): [string, string] {
+  if (!activities || activities.length === 0) {
+    return ['', '']; // Return empty strings if no activities
+  }
+
+  const dates = activities.map((activity) => activity.startDateLocal);
+  dates.sort(); // ISO dates sort chronologically
+
+  return [dates[0], dates[dates.length - 1]];
 }

@@ -3,7 +3,7 @@ import type { DateRanges } from '@epdoc/daterange';
 import type * as FS from '@epdoc/fs/fs';
 import { _ } from '@epdoc/type';
 import { Api } from '../../dep.ts';
-import type * as Stream from '../../stream/mod.ts';
+import type * as Track from '../../track/mod.ts';
 import type { Ctx } from '../dep.ts';
 import * as Options from '../options/mod.ts';
 import type * as Cmd from '../types.ts';
@@ -25,7 +25,7 @@ export const cmdConfig: Options.Config = {
 type GpxCmdOpts = {
   date: DateRanges;
   output: string;
-  laps: boolean;
+  laps: Options.LapType;
   commute?: Options.CommuteType;
   type: Api.Schema.ActivityType[];
   blackout: boolean;
@@ -113,7 +113,7 @@ export class GpxCmd extends Options.BaseSubCmd {
           Deno.exit(1);
         }
 
-        const opts: Stream.ActivityOpts & Stream.CommonOpts & Stream.StreamOpts = {
+        const opts: Track.ActivityOpts & Track.CommonOpts & Track.StreamOpts = {
           activities: true,
           date: gpxOpts.date,
           output: (gpxOpts.output ?? ctx.app.userSettings?.gpxFolder) as FS.Path,
