@@ -8,13 +8,13 @@ import type * as Ctx from './context.ts';
 import type * as Schema from './schema/mod.ts';
 import type {
   ActivityFilter,
-  CoordData,
   Kilometres,
   LatLngRect,
   Metres,
   SegmentData,
   SegmentEffort,
   StarredSegmentDict,
+  TrackPoint,
 } from './types.ts';
 
 const REGEX = {
@@ -32,7 +32,7 @@ export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
   public data: Schema.SummaryActivity | Schema.DetailedActivity;
   api?: Api<M, L>;
   #detailed = false;
-  #coordinates: CoordData[] = []; // will contain the latlng coordinates for the activity
+  #trackPoints: TrackPoint[] = []; // will contain the latlng coordinates for the activity
   #segments: SegmentData[] = []; // Will be declared here
   #aliases?: Record<string, string>; // Private property for aliases
   #segmentProvider?: { getSegment(name: string): Schema.SummarySegment | undefined }; // Private property for segment provider
@@ -86,12 +86,12 @@ export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
   /**
    * The geographical coordinates of the activity with optional altitude and time data.
    */
-  public get coordinates(): CoordData[] {
-    return this.#coordinates;
+  public get coordinates(): TrackPoint[] {
+    return this.#trackPoints;
   }
 
-  public set coordinates(val: CoordData[]) {
-    this.#coordinates = val;
+  public set coordinates(val: TrackPoint[]) {
+    this.#trackPoints = val;
   }
 
   /**
@@ -179,7 +179,24 @@ export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
   }
 
   /**
-   * The start date of the activity in the local timezone, in ISO 8601 format.
+   * Creates a timezone-aware DateEx object for a specific time during the activity.
+   *
+   * Converts a time offset (in seconds from activity start) to a DateEx object with the
+   * activity's local timezone. Used for generating timezone-aware timestamps in GPX/KML output.
+   *
+   * @param [delta=0] - Time offset in seconds from activity start (e.g., from stream time data)
+   * @returns DateEx object set to the activity's timezone
+   *
+   * @example
+   * ```ts
+   * // Get DateEx for activity start
+   * const startTime = activity.startDateEx();
+   * console.log(startTime.toISOLocalString()); // "2025-11-14T09:53:35.000-06:00"
+   *
+   * // Get DateEx for a point 3600 seconds into the activity
+   * const pointTime = activity.startDateEx(3600);
+   * console.log(pointTime.toISOLocalString()); // "2025-11-14T10:53:35.000-06:00"
+   * ```
    */
   startDateEx(delta: Seconds = 0): DateEx {
     const ms: EpochMilliseconds = new Date(this.data.start_date).getTime() + delta * 1000;
@@ -228,11 +245,11 @@ export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
    *
    * Some activity types, such as workouts, yoga, and weight training, do not have KML data.
    */
-  hasKmlData(): boolean {
+  hasTrackPoints(): boolean {
     if (!_.isString(this.type) || REGEX.noKmlData.test(this.type)) {
       return false;
     }
-    return this.#coordinates.length > 0 ? true : false;
+    return this.#trackPoints.length > 0 ? true : false;
   }
 
   /**
@@ -293,7 +310,31 @@ export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
   //   });
   // }
 
-  async getCoordinates(ctx: this['Context'], streamTypes: Schema.StreamType[]): Promise<void> {
+  /**
+   * Fetches coordinate stream data from the Strava API for this activity.
+   *
+   * Retrieves one or more stream types (lat/lng, altitude, time, etc.) from Strava and
+   * combines them into TrackPoint objects. The returned data populates the activity's
+   * coordinates array for use in GPX/KML generation.
+   *
+   * @param ctx - Application context with logging
+   * @param streamTypes - Array of stream types to fetch (e.g., LatLng, Altitude, Time)
+   *
+   * @example
+   * ```ts
+   * // Fetch coordinates with altitude and time for GPX export
+   * await activity.getCoordinates(ctx, [
+   *   Api.Schema.StreamKeys.LatLng,
+   *   Api.Schema.StreamKeys.Altitude,
+   *   Api.Schema.StreamKeys.Time
+   * ]);
+   *
+   * // Access the populated coordinates
+   * console.log(activity.coordinates.length); // e.g., 3822
+   * console.log(activity.coordinates[0]); // { lat: 9.108, lng: -83.647, altitude: 124.8, time: 0 }
+   * ```
+   */
+  async getTrackPoints(ctx: this['Context'], streamTypes: Schema.StreamType[]): Promise<void> {
     assert(this.api, 'api not set');
     try {
       const m0 = ctx.log.mark();
@@ -305,9 +346,9 @@ export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
         this.data.name,
       );
       if (coords && coords.length > 0) {
-        this.#coordinates = coords;
+        this.#trackPoints = coords;
         ctx.log.info.h2('Retrieved').count(coords.length)
-          .h2('coordinate').h2('for').value(this.toString()).ewt(m0);
+          .h2('track point').h2('for').value(this.toString()).ewt(m0);
       }
     } catch (_e) {
       // const err = _.asError(_e);
@@ -315,25 +356,51 @@ export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
     }
   }
 
-  filterCoordinates(ctx: this['Context'], dedup: boolean, blackoutZones?: LatLngRect[]) {
-    const len0 = this.#coordinates.length;
+  /**
+   * Filters the activity's coordinates to remove blackout zones and duplicate points.
+   *
+   * Performs two filtering operations:
+   * 1. **Blackout zones**: Removes any coordinates that fall within specified rectangular regions
+   * 2. **Deduplication**: Removes intermediate points where consecutive coordinates have identical lat/lng
+   *
+   * The filtering is done in-place, modifying the activity's coordinates array. Original array
+   * indices (e.g., from lap.start_index) become invalid after filtering.
+   *
+   * @param ctx - Application context with logging
+   * @param dedup - Whether to remove intermediate duplicate coordinates
+   * @param [blackoutZones] - Array of rectangular regions to exclude (e.g., home locations)
+   *
+   * @example
+   * ```ts
+   * // Define a blackout zone around home (lat/lng rectangle)
+   * const blackoutZones: LatLngRect[] = [
+   *   [[9.100, -83.650], [9.110, -83.640]]  // [[lat1, lng1], [lat2, lng2]]
+   * ];
+   *
+   * // Apply filtering
+   * activity.filterCoordinates(ctx, true, blackoutZones);
+   * // Logs: "Filtered 244 points in blackout zones and 2235 duplicate points for ..."
+   * ```
+   */
+  filterTrackPoints(ctx: this['Context'], dedup: boolean, blackoutZones?: LatLngRect[]) {
+    const len0 = this.#trackPoints.length;
     if (_.isNonEmptyArray(blackoutZones)) {
-      this.#coordinates = this.#coordinates.filter((pt) => {
-        const rm = pointIsInRects(pt as CoordData, blackoutZones);
+      this.#trackPoints = this.#trackPoints.filter((pt) => {
+        const rm = pointIsInRects(pt as TrackPoint, blackoutZones);
         if (rm) {
           ctx.log.spam.text('Blackout').value(pt.lat).value(pt.lng).value(pt.time).emit();
         }
         return rm ? false : true;
       });
     }
-    const len1 = this.#coordinates.length;
+    const len1 = this.#trackPoints.length;
 
     // Then remove intermediate duplicate points
-    if (dedup && this.#coordinates.length > 2) {
-      const filtered: CoordData[] = [];
+    if (dedup && this.#trackPoints.length > 2) {
+      const filtered: TrackPoint[] = [];
 
-      for (let i = 0; i < this.#coordinates.length; i++) {
-        const pt = this.#coordinates[i];
+      for (let i = 0; i < this.#trackPoints.length; i++) {
+        const pt = this.#trackPoints[i];
 
         // Always keep the first point
         if (i === 0) {
@@ -342,13 +409,13 @@ export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
         }
 
         // Always keep the last point
-        if (i === this.#coordinates.length - 1) {
+        if (i === this.#trackPoints.length - 1) {
           filtered.push(pt);
           continue;
         }
 
-        const prev = this.#coordinates[i - 1];
-        const next = this.#coordinates[i + 1];
+        const prev = this.#trackPoints[i - 1];
+        const next = this.#trackPoints[i + 1];
 
         // Check if current point is an intermediate duplicate
         const isSameAsPrev = pt.lat === prev.lat && pt.lng === prev.lng;
@@ -362,9 +429,9 @@ export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
         }
       }
 
-      this.#coordinates = filtered;
+      this.#trackPoints = filtered;
     }
-    const len2 = this.#coordinates.length;
+    const len2 = this.#trackPoints.length;
     // Log the results properly
     const blackoutRemoved = len0 - len1;
     const dedupRemoved = len1 - len2;
@@ -376,12 +443,41 @@ export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
         line.count(blackoutRemoved).text('point').text('in blackout zones');
       }
       if (dedupRemoved > 0) {
+        if (blackoutRemoved) {
+          line.text('and');
+        }
         line.count(dedupRemoved).text('duplicate point');
       }
-      line.emit();
+      line.text('for').value(this.toString()).emit();
     }
   }
 
+  /**
+   * Fetches detailed activity data from the Strava API and updates this activity.
+   *
+   * Upgrades a summary activity to a detailed activity by fetching additional fields such as:
+   * - segment_efforts (for starred segment matching)
+   * - laps (for lap waypoint generation)
+   * - description and private_note (for PDF/XML export)
+   *
+   * This method is idempotent - it only fetches data once and returns immediately on subsequent calls.
+   *
+   * @param ctx - Application context with logging
+   *
+   * @example
+   * ```ts
+   * // Start with summary activity
+   * const activity = new Activity(summaryData);
+   *
+   * // Upgrade to detailed
+   * await activity.getDetailed(ctx);
+   *
+   * // Now has access to laps, segment_efforts, description
+   * if ('laps' in activity.data) {
+   *   console.log(`Activity has ${activity.data.laps.length} laps`);
+   * }
+   * ```
+   */
   async getDetailed(ctx: this['Context']): Promise<void> {
     assert(this.api, 'api not set');
     if (this.#detailed) {
@@ -511,7 +607,29 @@ export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
   }
 }
 
-function pointIsInRects(pt: CoordData, rects: LatLngRect[]): boolean {
+/**
+ * Checks if a coordinate point falls within any of the specified rectangular regions.
+ *
+ * Used for blackout zone filtering to exclude sensitive locations (e.g., home, work)
+ * from exported GPX/KML files. Rectangles are defined by two opposing corners.
+ *
+ * @param pt - Coordinate point to check (with lat/lng)
+ * @param rects - Array of rectangular regions defined by two corner points
+ * @returns `true` if the point is inside any rectangle, `false` otherwise
+ *
+ * @example
+ * ```ts
+ * const point: TrackPoint = { lat: 9.105, lng: -83.645 };
+ * const blackoutZones: LatLngRect[] = [
+ *   [[9.100, -83.650], [9.110, -83.640]]  // Home area
+ * ];
+ *
+ * if (pointIsInRects(point, blackoutZones)) {
+ *   console.log('Point is in a blackout zone - exclude from export');
+ * }
+ * ```
+ */
+function pointIsInRects(pt: TrackPoint, rects: LatLngRect[]): boolean {
   return rects.some((rect) => {
     const [[lat1, lng1], [lat2, lng2]] = rect;
 

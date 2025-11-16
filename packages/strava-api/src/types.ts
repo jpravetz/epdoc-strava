@@ -17,19 +17,23 @@ export type Metres = number;
 
 /** A dictionary of query parameters. */
 export type Query = Dict;
+
 export type Latitude = number;
 export type Longitude = number;
+
 /** A geographical coordinate, represented as a [latitude, longitude] pair. */
-export type Coord = [number, number];
-/** Data for a set of coordinates. */
-export type CoordData = {
+export type LatLngPoint = [number, number];
+/** A geographical rectangle */
+export type LatLngRect = [LatLngPoint, LatLngPoint];
+
+/** Data for a track point. */
+export type TrackPoint = {
   lat: Latitude;
   lng: Longitude;
   altitude?: Metres;
   /** Offset from start time */
   time?: Seconds;
 };
-export type LatLngRect = [Coord, Coord];
 
 /** The client ID for a Strava application. */
 export type ClientId = Integer;

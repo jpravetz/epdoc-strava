@@ -326,20 +326,39 @@ export class Api<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
   }
 
   /**
-   * Retrieves stream data for a given activity or segment and combines it into CoordData objects.
+   * Retrieves and combines stream coordinate data for a given activity or segment.
    *
-   * This method fetches the requested stream types from the Strava API and combines
-   * them into an array of CoordData objects, where each object represents a single point
-   * with all available data (lat, lng, altitude, time, etc.).
+   * Fetches one or more stream types from the Strava API and merges them into TrackPoint objects.
+   * Each TrackPoint represents a single point along the route with available data fields.
    *
-   * @param ctx The application context for logging.
-   * @param source The type of object to retrieve the stream for (e.g., 'activities', 'segments').
-   * @param streamTypes The types of streams to retrieve (latlng, altitude, time, etc.).
-   * @param objId The ID of the activity or segment.
-   * @param name The name of the object, used for logging purposes.
-   * @param timezone Optional timezone string in format "(GMT-08:00) America/Los_Angeles" for converting time to ISOTzDate.
-   * @param startDate Optional start date for calculating absolute times from relative time stream.
-   * @returns A promise that resolves to an array of CoordData objects with requested stream data.
+   * **Stream Types:**
+   * - `LatLng` - Latitude/longitude coordinates (required)
+   * - `Altitude` - Elevation in meters
+   * - `Time` - Seconds since activity start
+   * - `Distance` - Cumulative distance in meters
+   * - `Heartrate`, `Cadence`, `Watts`, etc. - Additional sensor data
+   *
+   * **Time Data:** The time stream returns seconds offset from activity start (e.g., 0, 1, 2...).
+   * Use `Activity.startDateEx(seconds)` to convert to timezone-aware timestamps.
+   *
+   * @param ctx - Application context for logging
+   * @param source - Type of object ('activities' or 'segments')
+   * @param streamTypes - Array of stream types to retrieve and merge
+   * @param objId - ID of the activity or segment
+   * @param name - Name of the object (for logging)
+   * @returns Array of TrackPoint objects with requested stream data merged
+   *
+   * @example
+   * ```ts
+   * // Fetch lat/lng + altitude + time for an activity
+   * const coords = await api.getStreamCoords(ctx, 'activities', [
+   *   Schema.StreamKeys.LatLng,
+   *   Schema.StreamKeys.Altitude,
+   *   Schema.StreamKeys.Time
+   * ], activityId, activityName);
+   *
+   * // Result: [{ lat: 9.108, lng: -83.647, altitude: 124.8, time: 0 }, ...]
+   * ```
    */
   public async getStreamCoords(
     ctx: this['Context'],
@@ -347,7 +366,7 @@ export class Api<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
     streamTypes: Schema.StreamKeyType[],
     objId: Schema.ActivityId | Schema.SegmentId,
     name: string,
-  ): Promise<Strava.CoordData[]> {
+  ): Promise<Strava.TrackPoint[]> {
     const query: Dict = {
       keys: streamTypes.join(','),
       key_by_type: true,
@@ -356,11 +375,11 @@ export class Api<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
     try {
       const resp: Partial<Schema.StreamSet> = await this.getStreams(ctx, source, objId, query);
       if (hasLatLngData(resp)) {
-        const results: Strava.CoordData[] = [];
+        const results: Strava.TrackPoint[] = [];
         const len = resp.latlng.data.length;
 
         for (let idx = 0; idx < len; idx++) {
-          const item: Strava.CoordData = {
+          const item: Strava.TrackPoint = {
             lat: resp.latlng.data[idx][0],
             lng: resp.latlng.data[idx][1],
           };
@@ -378,8 +397,8 @@ export class Api<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
           results.push(item);
         }
 
-        ctx.log.info.h2('Retrieved').count(results.length).h2('track point')
-          .h2('for').value(name).ewt(m0);
+        // ctx.log.info.h2('Retrieved').count(results.length).h2('track point')
+        //   .h2('for').value(name).ewt(m0);
         return results;
       }
       ctx.log.info.h2('Get').value(name).h2('did not contain latlng coordinates').ewt(m0);

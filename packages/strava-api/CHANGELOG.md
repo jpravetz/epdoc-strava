@@ -2,30 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.0] - 2025-11-15
+
+- Declared release 2.0.0
+
 ## [2.0.0-alpha.10] - 2025-11-15
 
-- bug fixes
-
-## [2.0.0-alpha.9] - 2025-11-15
-
-- Added coordinate filtering
-
-## [2.0.0-alpha.8] - 2025-11-13
-
-- Playing with generics, very annoying that you cant
-- aliase
-- your
-- generics
-- away
-
-
-## [2.0.0-alpha.7] - 2025-11-13
-
-- Simplified use of generics in strava-api
-
-## [2.0.0-alpha.6] - 2025-11-09
-
-- Changed StravaId to StravaLontInt
+- Combine activity streams into one generic object
+- Added coordinate filtering based on duplicates and blackzones
+- Cleaning up use of generics as best I can
 
 ## [2.0.0-alpha.5] - 2025-11-02
 
