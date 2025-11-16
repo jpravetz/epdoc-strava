@@ -71,7 +71,7 @@ export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
   /**
    * The start date of the activity as a `Date` object.
    */
-  get startDate(): Date {
+  get startDateAsDate(): Date {
     return new Date(this.data.start_date);
   }
 
@@ -80,7 +80,7 @@ export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
    */
   public toString(): string {
     const d = Math.round(this.data.distance / 100) / 10;
-    return `${this.data.start_date_local.slice(0, 10)}, ${this.type} ${d} km, ${this.name}`;
+    return `${this.startDateLocal}, ${this.type} ${d} km, ${this.name}`;
   }
 
   /**
@@ -172,10 +172,17 @@ export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
   }
 
   /**
-   * The start date of the activity in the local timezone, in ISO 8601 format.
+   * The start datetime of the activity in the local timezone, in ISO 8601 format.
    */
-  get startDateLocal(): ISODate {
+  get startDatetimeLocal(): ISODate {
     return this.data.start_date_local;
+  }
+
+  /**
+   * The start date in the local timezone in YYYY-MM-DD format.
+   */
+  get startDateLocal(): string {
+    return this.data.start_date_local.split('T')[0];
   }
 
   /**
@@ -241,7 +248,7 @@ export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
   }
 
   /**
-   * Checks if the activity has KML data.
+   * Checks if the activity has track points.
    *
    * Some activity types, such as workouts, yoga, and weight training, do not have KML data.
    */
@@ -250,6 +257,18 @@ export class Activity<M extends Ctx.MsgBuilder, L extends Ctx.Logger<M>> {
       return false;
     }
     return this.#trackPoints.length > 0 ? true : false;
+  }
+
+  /**
+   * Checks if the activity has way points.
+   */
+  hasWaypoints(): boolean {
+    if (!_.isString(this.type) || REGEX.noKmlData.test(this.type)) {
+      return false;
+    }
+    return ('laps' in this.data && _.isArray(this.data.laps) && this.data.laps.length > 1)
+      ? true
+      : false;
   }
 
   /**
