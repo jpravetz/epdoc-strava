@@ -7,8 +7,8 @@ import rawConfig from '../config.json' with { type: 'json' };
 import type * as Ctx from '../context.ts';
 import { type Activity, Api, type StravaApi } from '../dep.ts';
 import * as Segment from '../segment/mod.ts';
-import { KmlWriter } from '../stream/kml.ts';
-import * as Stream from '../stream/mod.ts';
+import { KmlWriter } from '../track/kml.ts';
+import * as Stream from '../track/mod.ts';
 import type * as App from './types.ts';
 
 const rawHome = Deno.env.get('HOME');
