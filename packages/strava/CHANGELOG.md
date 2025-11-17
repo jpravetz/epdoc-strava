@@ -4,14 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [2.0.1] - 2025-11-16
 
-- Added multiple activity per gpx file support
+- Added support for multiple activities per gpx file
 
 ## [2.0.0] - 2025-11-15
 
 - Declared release 2.0.0
-
-## [2.0.0-alpha.16] - 2025-11-15
-
 - Added gpx command and output
 - Added waypoints to gpx and cleaned up for kml
 - Added track point filtering of duplicate point locations

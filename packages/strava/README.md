@@ -12,6 +12,8 @@ This CLI provides three main export formats for your Strava activities:
 
 ## Installation
 
+See the [repository readme](../../README.md) for earlier steps.
+
 ```bash
 cd packages/strava
 deno task install
@@ -26,13 +28,16 @@ After installation, the `strava` command will be available globally.
 strava athlete
 
 # Generate KML for January activities
-strava kml -d 2025-01- -o january.kml
+strava kml -d 202501 -o january.kml
 
-# Generate GPX files for recent rides
-strava gpx -d 2025-01- -t Ride,EBikeRide
+# Generate individual GPX files for recent rides
+strava gpx -d 20250101- -t Ride,EBikeRide -o ~/Documents/gpxfiles
+
+# Generate a combined GPX files for recent activities
+strava gpx -d 20250101- -o ~/Documents/gpxfiles/2025_Activities.gpx
 
 # Generate PDF form data for the month
-strava pdf -d 2025-01- -o bikelog.xml
+strava pdf -d 20250101- -o bikelog.xml
 ```
 
 ## Commands
@@ -47,7 +52,11 @@ strava kml [options]
 ```
 
 **Required Options:**
-- `-d, --date <dates>` - Date range(s) in format `YYYYMMDD-YYYYMMDD` (e.g., `20250101-20250131` or `2025-01-`)
+- `-d, --date <dates>` - Date range(s) in format `YYYYMMDD-YYYYMMDD`
+  -  Enter just a start date `20250701-`. 
+  -  Enter a day `20250715`
+  -  Enter a month `202507`
+  -  Enter a year `2025`
 - `-o, --output <filename>` - Output KML filename (e.g., `activities.kml`)
 
 **Activity Options:**
@@ -82,7 +91,7 @@ strava kml -d 2025-01- --commute no -l both -e -o activities.kml
 
 ### gpx - GPS Exchange Format Export
 
-Generate individual GPX files for each activity, suitable for GPS editors like JOSM and OpenStreetMap editing.
+Generate individual or combined GPX files with your activities, suitable for GPS editors like JOSM and OpenStreetMap editing.
 
 **Syntax:**
 ```bash
@@ -91,32 +100,40 @@ strava gpx [options]
 
 **Required Options:**
 - `-d, --date <dates>` - Date range(s) in format `YYYYMMDD-YYYYMMDD`
+  -  Enter just a start date `20250701-`. 
+  -  Enter a day `20250715`
+  -  Enter a month `202507`
+  -  Enter a year `2025`
 - `-o, --output <folder>` - Output folder path (or use `gpxFolder` in user settings)
+  - Specifying `--output <file>` with a `.gpx` extension will result in all activities being added to the same file
 
 **Activity Options:**
-- `-t, --type [types]` - Filter by activity types (comma-separated)
+- `-t, --type [types]` - Filter by activity types (comma-separated).
 - `--commute <choice>` - Filter by commute status: `yes`, `no`, or `all`
 
 **Content Options:**
 - `-l, --laps [mode]` - Include lap data. Modes: `tracks` (default), `waypoints`, `both`
 
 **Filtering Options:**
-- `-b, --blackout` - Apply blackout zones to exclude sensitive locations
-- `--allow-dups` - Keep duplicate intermediate track points
+- `-b, --blackout` - Apply blackout zones to exclude sensitive locations (defined in your user settings file)
+- `--allow-dups` - Keep duplicate intermediate track points (default is to remove them)
 
 **Output:**
-Each activity generates a separate GPX file named: `YYYYMMDD_Activity_Name.gpx`
+When using `--output <folder>` each activity generates a separate GPX file named: `YYYYMMDD_Activity_Name.gpx`.
 
 **Examples:**
 ```bash
 # Generate GPX files in ~/gpx folder for November rides
-strava gpx -d 2025-11- -o ~/gpx -t Ride,EBikeRide
+strava gpx -d 20251101- -o ~/gpxfiles -t Ride,EBikeRide
 
 # GPX with lap waypoints and blackout filtering
 strava gpx -d 20251101-20251130 -o ./rides/ -l waypoints -b
 
 # All activities with default folder from user settings
-strava gpx -d 2025-11-
+strava gpx -d 20251101-
+
+# Combine activities into a single gpx file
+strava gpx -d 20250101- -o ~/gpx/2025_Activities.gpx
 ```
 
 **Lap Waypoints:**
@@ -130,7 +147,7 @@ When `-l waypoints` or `-l both` is specified, lap button presses are exported a
 
 ### pdf - PDF Acroforms Export
 
-Generate Adobe Acroforms XML files for filling out PDF bikelog forms.
+Generate Adobe Acroforms XML files for filling out PDF bikelog forms. These files forms are generated using a separate application that is not currently public.
 
 **Syntax:**
 ```bash
